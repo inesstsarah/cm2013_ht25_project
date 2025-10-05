@@ -45,8 +45,8 @@ function [hdr, record] = edfread(fname, varargin)
 % represented as a 2-byte integer in 2's complement format. Figure 1 shows
 % the detailed format of each data record.
 %
-% DATA SOURCE: Signals of various types (including the sample signal used
-% below) are available from PHYSIONET: http://www.physionet.org/
+% DATA SOURCE: This function reads standard EDF (European Data Format) files
+% as specified in the EDF specification.
 %
 %
 % % EXAMPLE 1:

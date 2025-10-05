@@ -14,10 +14,10 @@ def test_load_training_data():
     assert 'eog' in multi_channel_data
     assert 'emg' in multi_channel_data
 
-    # Test data shapes for multi-channel format
-    assert multi_channel_data['eeg'].shape == (240, 2, 3000)  # 240 epochs, 2 EEG channels, 3000 samples
-    assert multi_channel_data['eog'].shape == (240, 2, 3000)  # 240 epochs, 2 EOG channels, 3000 samples
-    assert multi_channel_data['emg'].shape == (240, 1, 6000)  # 240 epochs, 1 EMG channel, 6000 samples (200Hz)
+    # Test data shapes for multi-channel format (125 Hz for EEG, 50 Hz for EOG, 125 Hz for EMG)
+    assert multi_channel_data['eeg'].shape == (240, 2, 3750)  # 240 epochs, 2 EEG channels, 3750 samples (125 Hz * 30s)
+    assert multi_channel_data['eog'].shape == (240, 2, 1500)  # 240 epochs, 2 EOG channels, 1500 samples (50 Hz * 30s)
+    assert multi_channel_data['emg'].shape == (240, 1, 3750)  # 240 epochs, 1 EMG channel, 3750 samples (125 Hz * 30s)
 
     assert isinstance(labels, np.ndarray)
     assert labels.shape == (240,)  # 240 epoch labels
@@ -36,8 +36,8 @@ def test_load_holdout_data():
     assert isinstance(multi_channel_data, dict)
     assert 'eeg' in multi_channel_data
 
-    # Test data shapes for holdout format
-    assert multi_channel_data['eeg'].shape == (240, 2, 3000)  # 240 epochs, 2 EEG channels, 3000 samples
+    # Test data shapes for holdout format (125 Hz sampling rate)
+    assert multi_channel_data['eeg'].shape == (240, 2, 3750)  # 240 epochs, 2 EEG channels, 3750 samples (125 Hz * 30s)
 
     assert isinstance(info, dict)
     assert 'n_epochs' in info
