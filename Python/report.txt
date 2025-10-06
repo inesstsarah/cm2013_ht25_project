@@ -11,11 +11,11 @@ Multi-channel structure:
   EOG: 2 channels, 1500 samples/epoch
   EMG: 1 channels, 3750 samples/epoch
 Generated dummy sleep data: 240 epochs (2.0 hours)
-  Wake: 15 epochs (6.2%)
-  N1: 11 epochs (4.6%)
-  N2: 107 epochs (44.6%)
-  N3: 73 epochs (30.4%)
-  REM: 34 epochs (14.2%)
+  Wake: 10 epochs (4.2%)
+  N1: 9 epochs (3.8%)
+  N2: 128 epochs (53.3%)
+  N3: 51 epochs (21.2%)
+  REM: 42 epochs (17.5%)
 Multi-channel data loaded:
   EEG: (240, 2, 3750)
   EOG: (240, 2, 1500)
@@ -24,61 +24,64 @@ Labels shape: (240,)
 Using EEG channel 1 for pipeline: (240, 3750)
 
 === STEP 2: PREPROCESSING ===
-Loading data from cache: cache/preprocessed_data_iter1.joblib
-Loaded preprocessed data from cache
+Preprocessing data for iteration 1...
+Processing single-channel data (backward compatibility)
+Preprocessed data shape: (240, 3750)
 
 === STEP 3: FEATURE EXTRACTION ===
-Loading data from cache: cache/features_iter1.joblib
-Loaded features from cache
+Extracting features for iteration 1...
+Processing single-channel data (backward compatibility)
+Single-channel Iteration 1: 18 features (target: 16+)
+Extracted features shape: (240, 18)
 
 === STEP 4: FEATURE SELECTION ===
 Selecting features for iteration 1...
-Input features shape: (240, 3)
+Input features shape: (240, 18)
 Early iteration - using all available features
-Selected features shape: (240, 3)
-Selected features shape: (240, 3)
+Selected features shape: (240, 18)
+Selected features shape: (240, 18)
 
 === STEP 5: CLASSIFICATION ===
 Training knn classifier...
-Features shape: (240, 3), Labels shape: (240,)
+Features shape: (240, 18), Labels shape: (240,)
 Using stratified train/test split to maintain class balance
 Training set: 192 samples, Test set: 48 samples
 Using k-NN with k=5
 Training model...
-Overall accuracy: 0.396
+Overall accuracy: 0.500
 
 ======================================================================
 SLEEP STAGE CLASSIFICATION PERFORMANCE METRICS
 ======================================================================
-Overall Accuracy: 0.396
-Macro F1-Score: 0.164
-Weighted F1-Score: 0.327
+Overall Accuracy: 0.500
+Macro F1-Score: 0.176
+Weighted F1-Score: 0.393
 
 Confusion Matrix:
       Wake  N1  N2  N3  REM
-Wake     0   0   1   2    0
+Wake     0   0   2   0    0
 N1       0   0   2   0    0
-N2       0   0  16   2    3
-N3       0   1  11   3    0
-REM      0   0   6   1    0
+N2       3   0  23   0    0
+N3       0   0  10   0    0
+REM      0   0   7   0    1
 
 Per-Class Performance Metrics:
 ----------------------------------------------------------------------
 Stage    Accuracy   Sensitivity  Specificity  F1-Score  
 ----------------------------------------------------------------------
-Wake     0.000      0.000        1.000        0.000     
-N1       0.000      0.000        0.978        0.000     
-N2       0.762      0.762        0.259        0.561     
-N3       0.200      0.200        0.848        0.261     
-REM      0.000      0.000        0.927        0.000     
+Wake     0.000      0.000        0.935        0.000     
+N1       0.000      0.000        1.000        0.000     
+N2       0.885      0.885        0.045        0.657     
+N3       0.000      0.000        1.000        0.000     
+REM      0.125      0.125        1.000        0.222     
 ----------------------------------------------------------------------
 
 Class Distribution in Test Set:
-Wake: 3 samples (6.2%)
+Wake: 2 samples (4.2%)
 N1: 2 samples (4.2%)
-N2: 21 samples (43.8%)
-N3: 15 samples (31.2%)
-REM: 7 samples (14.6%)
+N2: 26 samples (54.2%)
+N3: 10 samples (20.8%)
+REM: 8 samples (16.7%)
 
 Notes for Sleep Scoring:
 - Sensitivity = Recall = True Positive Rate (correctly identified stages)

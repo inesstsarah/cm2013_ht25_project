@@ -37,7 +37,41 @@ def hjorth_complexity(signal):
     """
 
     return hjorth_mobility(np.diff(signal)) / hjorth_mobility(signal)
-    
+
+def k_complexes(epoch):
+    eeg_fs = 125
+    min_delta = int(0.5*eeg_fs)
+    max_delta = int(1.5*eeg_fs)
+    min_peak_to_peak = 75
+
+    #Find peaks that stands out with at least 30 uV and is 240 ms from next peak
+    neg_peaks,_ = scipy.signal.find_peaks(-epoch,prominence = 30, distance = 30)
+    pos_peaks,_ = scipy.signal.find_peaks(epoch,prominence = 30, distance = 30)
+    #print(len(pos_peaks)," ", len(neg_peaks))
+    pos_idx = 0
+    k_complexes=[]
+    for neg_idx in neg_peaks:
+        while pos_idx < len(pos_peaks) and pos_peaks[pos_idx]<= neg_idx:
+            pos_idx +=1
+
+        for j in range(pos_idx,len(pos_peaks)):
+            delta = pos_peaks[j]-neg_idx
+            peak_to_peak = np.abs(epoch[pos_peaks[j]]-epoch[neg_idx])
+            if delta > max_delta:
+                break
+            if delta >= min_delta  and peak_to_peak > min_peak_to_peak:
+                k_complexes.append(
+                    {
+                        'delta' : delta,
+                        'peak_to_peak' : peak_to_peak
+                    }
+                )
+    nb = len(k_complexes)
+    duration = 0
+    for complex in k_complexes:
+        duration += complex['delta']
+    return nb, duration/eeg_fs
+
 
 def extract_time_domain_features(epoch):
     """
@@ -75,6 +109,9 @@ def extract_time_domain_features(epoch):
     # Signal energy and power:
     features['total_energy'] = np.sum(epoch**2)
     features['mean_power'] = np.mean(epoch**2)
+
+    #K-complex features:
+    features['nb_complexes'],  features['duration_complexes'] = k_complexes(epoch)
 
     return features
 
@@ -186,7 +223,6 @@ def extract_single_channel_features(data, config):
         raise ValueError(f"Invalid iteration: {config.CURRENT_ITERATION}")
 
     return features
-
 
 def extract_eog_features(eog_signal):
     """
