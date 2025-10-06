@@ -160,13 +160,12 @@ def extract_single_channel_features(data, config):
     """
     if config.CURRENT_ITERATION == 1:
         # Iteration 1: Time-domain features (TARGET: 16 features)
-
+        expected = 1 * 16  # 1 EEG channels × 16 features
         all_features = []
         for epoch in data:
             features = extract_time_domain_features(epoch)
             all_features.append(list(features.values()))
         features = np.array(all_features)
-
         print(f"Single-channel Iteration 1: {features.shape[1]} features (target: {expected}+)")
     
 
