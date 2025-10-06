@@ -4,3 +4,4 @@ scikit-learn
 matplotlib
 joblib
 mne
+pandas

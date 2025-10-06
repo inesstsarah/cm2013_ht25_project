@@ -1,11 +1,47 @@
 import numpy as np
+import scipy
+
+def hjorth_activity(signal):
+    """
+    Computes the Hjorth Activity for one epoch of signal data.
+
+    Args:
+        signal (np.ndarray): A 1D array representing one epoch of signal data.
+
+    Returns:
+        float: A float representing the variance of the signal, also known as Hjorth Activity.
+    """
+    return np.var(signal)
+
+def hjorth_mobility(signal):
+    """
+    Computes the Hjorth Mobility for one epoch of signal data.
+
+    Args:
+        signal (np.ndarray): A 1D array representing one epoch of signal data.
+
+    Returns:
+        float: A flaot representing the Hjorth Mobility.
+    """
+    return np.sqrt(hjorth_activity(np.diff(signal)) / hjorth_activity(signal))
+
+def hjorth_complexity(signal):
+    """
+    Computes the Hjorth Complexity for one epoch of signal data.
+
+    Args:
+        signal (np.ndarray): A 1D array representing one epoch of signal data.
+
+    Returns:
+        float: A Float representing the Hjorth Complexity.
+    """
+
+    return hjorth_mobility(np.diff(signal)) / hjorth_mobility(signal)
+    
 
 def extract_time_domain_features(epoch):
     """
-    EXAMPLE: Extract basic time-domain features from a single epoch.
-
-    This is a MINIMAL example with only 3 features.
-    Students must implement the remaining 13+ time-domain features.
+    Extract 16 time-domain features from a single epoch.
 
     Works for any signal type (EEG, EOG, EMG) but students should consider
     signal-specific features for optimal performance.
@@ -16,32 +52,29 @@ def extract_time_domain_features(epoch):
     Returns:
         dict: A dictionary of features.
     """
-    # EXAMPLE: Only 3 basic features - students must add 13+ more
-    features = {
-        'mean': np.mean(epoch),
-        'median': np.median(epoch),
-        'std': np.std(epoch),
-    }
+    features = {}
 
-    # TODO: Students must implement remaining time-domain features:
     # Basic statistical features:
-    # features['variance'] = np.var(epoch)
-    # features['rms'] = np.sqrt(np.mean(epoch**2))
-    # features['min'] = np.min(epoch)
-    # features['max'] = np.max(epoch)
-    # features['range'] = np.max(epoch) - np.min(epoch)
-    # features['skewness'] = scipy.stats.skew(epoch)
-    # features['kurtosis'] = scipy.stats.kurtosis(epoch)
+    features['mean'] = np.mean(epoch)
+    features['median'] = np.median(epoch)
+    features['std'] = np.std(epoch)
+    features['variance'] = np.var(epoch)
+    features['rms'] = np.sqrt(np.mean(epoch**2))
+    features['min'] = np.min(epoch)
+    features['max'] = np.max(epoch)
+    features['range'] = np.max(epoch) - np.min(epoch)
+    features['skewness'] = scipy.stats.skew(epoch)
+    features['kurtosis'] = scipy.stats.kurtosis(epoch)
 
     # Signal complexity features:
-    # features['zero_crossings'] = np.sum(np.diff(np.sign(epoch)) != 0)
-    # features['hjorth_activity'] = np.var(epoch)
-    # features['hjorth_mobility'] = np.sqrt(np.var(np.diff(epoch)) / np.var(epoch))
-    # features['hjorth_complexity'] = hjorth_complexity(epoch)
+    features['zero_crossings'] = np.sum(np.diff(np.sign(epoch)) != 0)
+    features['hjorth_activity'] = hjorth_activity(epoch)
+    features['hjorth_mobility'] = hjorth_mobility(epoch)
+    features['hjorth_complexity'] = hjorth_complexity(epoch)
 
     # Signal energy and power:
-    # features['total_energy'] = np.sum(epoch**2)
-    # features['mean_power'] = np.mean(epoch**2)
+    features['total_energy'] = np.sum(epoch**2)
+    features['mean_power'] = np.mean(epoch**2)
 
     return features
 
@@ -112,9 +145,8 @@ def extract_multi_channel_features(multi_channel_data, config):
     features = np.array(all_features)
 
     if config.CURRENT_ITERATION == 1:
-        expected = 2 * 3  # 2 EEG channels × 3 features each
-        print(f"Multi-channel Iteration 1: {features.shape[1]} features (target: {expected}+)")
-        print("Students must implement remaining 13 time-domain features per EEG channel!")
+        expected = 2 * 16  # 2 EEG channels × 16 features each
+        print(f"Multi-channel Iteration 1: {features.shape[1]} features (target: {expected}+)")  
     elif config.CURRENT_ITERATION >= 3:
         print(f"Multi-channel features extracted: {features.shape[1]} total")
         print("(2 EEG + 2 EOG + 1 EMG channels)")
@@ -128,15 +160,15 @@ def extract_single_channel_features(data, config):
     """
     if config.CURRENT_ITERATION == 1:
         # Iteration 1: Time-domain features (TARGET: 16 features)
-        # CURRENT: Only 3 features implemented - students must add 13 more!
+
         all_features = []
         for epoch in data:
             features = extract_time_domain_features(epoch)
             all_features.append(list(features.values()))
         features = np.array(all_features)
 
-        print(f"WARNING: Only {features.shape[1]} features extracted, target is 16 for iteration 1")
-        print("Students must implement the remaining time-domain features!")
+        print(f"Single-channel Iteration 1: {features.shape[1]} features (target: {expected}+)")
+    
 
     elif config.CURRENT_ITERATION == 2:
         # TODO: Students must implement frequency-domain features
