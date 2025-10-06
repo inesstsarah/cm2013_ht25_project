@@ -39,6 +39,15 @@ def hjorth_complexity(signal):
     return hjorth_mobility(np.diff(signal)) / hjorth_mobility(signal)
 
 def k_complexes(epoch):
+    """_summary_
+
+    Args:
+        epoch (np.ndarray): A 1D array representing one epoch of signal data.
+
+    Returns:
+        nb (int): Number of K-complexes detected
+        duration (float) : Total duration of K-complexes in epoch in seconds
+    """
     eeg_fs = 125
     min_delta = int(0.5*eeg_fs)
     max_delta = int(1.5*eeg_fs)
@@ -114,6 +123,8 @@ def extract_time_domain_features(epoch):
     features['nb_complexes'],  features['duration_complexes'] = k_complexes(epoch)
 
     return features
+
+
 
 def extract_features(data, config):
     """
