@@ -5,3 +5,5 @@ matplotlib
 joblib
 mne
 pandas
+pytest
+nolds

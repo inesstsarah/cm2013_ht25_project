@@ -4,7 +4,7 @@ from src.preprocessing import preprocess
 from src.feature_extraction import extract_features
 from src.feature_selection import select_features
 from src.classification import train_classifier
-from src.visualization import visualize_results
+from src.visualization import visualize_results, plot_sample_epoch
 from src.report import generate_report
 from src.utils import save_cache, load_cache
 import os

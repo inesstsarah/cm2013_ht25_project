@@ -24,6 +24,11 @@ if not os.path.exists(CACHE_DIR):
 
 # -- Preprocessing --
 LOW_PASS_FILTER_FREQ = 40  # Hz
+NOTCH_FILTER_FREQ = 50 # Hz
+NOTCH_FILTER_Q = 30
+BANDPASS_FILTER_LOWER_FREQ = 0.5 # Hz
+BANDPASS_FILTER_HIGHER_FREQ = 40 # Hz
+BANDPASS_FILTER_ORDER = 5
 
 # -- Feature Extraction --
 # (Add feature-specific parameters here)

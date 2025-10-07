@@ -1,5 +1,6 @@
 import numpy as np
 import scipy
+import nolds
 
 def hjorth_activity(signal):
     """
@@ -38,8 +39,10 @@ def hjorth_complexity(signal):
 
     return hjorth_mobility(np.diff(signal)) / hjorth_mobility(signal)
 
-def k_complexes(epoch):
-    """_summary_
+def simple_k_complex_extraction(epoch):
+    """
+    
+    Simple K-complex detection i time domain.
 
     Args:
         epoch (np.ndarray): A 1D array representing one epoch of signal data.
@@ -119,8 +122,10 @@ def extract_time_domain_features(epoch):
     features['total_energy'] = np.sum(epoch**2)
     features['mean_power'] = np.mean(epoch**2)
 
+    features['Entropy'] = nolds.sampen(epoch, 2, 0.2*np.std(epoch))
+
     #K-complex features:
-    features['nb_complexes'],  features['duration_complexes'] = k_complexes(epoch)
+    features['nb_complexes'],  features['duration_complexes'] = simple_k_complex_extraction(epoch)
 
     return features
 
