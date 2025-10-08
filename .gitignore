@@ -5,3 +5,4 @@ VISUALIZATION_GUIDE.md
 python/__pycache__/
 *.py[cod]
 python/cache/
+python/report.txt
