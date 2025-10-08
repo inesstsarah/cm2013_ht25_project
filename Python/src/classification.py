@@ -4,7 +4,7 @@ from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
-from sklearn.metrics import precision_score, recall_score, f1_score
+from sklearn.metrics import precision_score, recall_score, f1_score, cohen_kappa_score
 import pandas as pd
 
 def train_classifier(features, labels, config):
@@ -103,6 +103,8 @@ def train_classifier(features, labels, config):
 
     # TODO: Students should add more advanced metrics:
     # - Cohen's kappa (important for sleep scoring)
+    cohen_res = cohen_kappa_score(y_test, y_pred)
+
     # - ROC-AUC for each class
     # - Cross-validation scores
     # - Feature importance analysis
