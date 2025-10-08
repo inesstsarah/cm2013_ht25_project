@@ -30,7 +30,7 @@ LOW_PASS_FILTER_FREQ = 40  # Hz
 
 # -- Classification --
 # Iteration-specific parameters - students should modify these based on current iteration
-if CURRENT_ITERATION == 1:
+if CURRENT_ITERATION == 1: # TODO: add more hyperparameters for the hyperparameter optimization
     # Iteration 1: Basic pipeline with k-NN
     CLASSIFIER_TYPE = 'knn'
     KNN_N_NEIGHBORS = 5

@@ -1,6 +1,15 @@
 from scipy.signal import butter, lfilter
 import numpy as np
 
+def highpass_filter(data,cutoff,fs,order=5):
+    """
+    Simple highpass filter for baseline wander removal"""
+    nyquist = 0.5 * fs
+    normal_cutoff = cutoff / nyquist
+    b, a = butter(order, normal_cutoff, btype='high', analog=False)
+    y = lfilter(b, a, data)
+    return y
+
 def lowpass_filter(data, cutoff, fs, order=5):
     """
     EXAMPLE IMPLEMENTATION: Simple low-pass Butterworth filter.
