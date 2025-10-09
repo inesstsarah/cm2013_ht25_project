@@ -122,7 +122,7 @@ def extract_time_domain_features(epoch):
     features['total_energy'] = np.sum(epoch**2)
     features['mean_power'] = np.mean(epoch**2)
 
-    features['Entropy'] = nolds.sampen(epoch, 2, 0.2*np.std(epoch))
+    #features['Entropy'] = nolds.sampen(epoch, 2, 0.2*np.std(epoch))
 
     #K-complex features:
     features['nb_complexes'],  features['duration_complexes'] = simple_k_complex_extraction(epoch)

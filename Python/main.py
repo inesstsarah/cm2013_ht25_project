@@ -31,6 +31,7 @@ def main():
     print("\n=== STEP 1: DATA LOADING ===")
     edf_file = os.path.join(config.SAMPLE_DIR, "R1.edf")  # Example EDF file
     xml_file = os.path.join(config.SAMPLE_DIR, "R1.xml")  # Corresponding annotation file
+   
 
     # Handle both new multi-channel format and old single-channel format for compatibility
     try:
@@ -65,7 +66,7 @@ def main():
         if config.USE_CACHE:
             save_cache(preprocessed_data, cache_filename_preprocess, config.CACHE_DIR)
             print("Saved preprocessed data to cache")
-
+    
     # 3. Feature Extraction
     print("\n=== STEP 3: FEATURE EXTRACTION ===")
     features = None

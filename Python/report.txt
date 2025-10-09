@@ -11,11 +11,11 @@ Multi-channel structure:
   EOG: 2 channels, 1500 samples/epoch
   EMG: 1 channels, 3750 samples/epoch
 Generated dummy sleep data: 240 epochs (2.0 hours)
-  Wake: 15 epochs (6.2%)
-  N1: 6 epochs (2.5%)
-  N2: 118 epochs (49.2%)
-  N3: 51 epochs (21.2%)
-  REM: 50 epochs (20.8%)
+  Wake: 13 epochs (5.4%)
+  N1: 11 epochs (4.6%)
+  N2: 117 epochs (48.8%)
+  N3: 63 epochs (26.2%)
+  REM: 36 epochs (15.0%)
 Multi-channel data loaded:
   EEG: (240, 2, 3750)
   EOG: (240, 2, 1500)
@@ -48,40 +48,40 @@ Using stratified train/test split to maintain class balance
 Training set: 192 samples, Test set: 48 samples
 Using k-NN with k=5
 Training model...
-Overall accuracy: 0.438
+Overall accuracy: 0.417
 
 ======================================================================
 SLEEP STAGE CLASSIFICATION PERFORMANCE METRICS
 ======================================================================
-Overall Accuracy: 0.438
+Overall Accuracy: 0.417
 Macro F1-Score: 0.178
 Weighted F1-Score: 0.367
 
 Confusion Matrix:
       Wake  N1  N2  N3  REM
-Wake     0   0   2   0    1
-N1       0   0   1   0    0
-N2       0   0  19   4    1
-N3       1   0   7   1    1
-REM      0   0   8   1    1
+Wake     0   0   3   0    0
+N1       0   0   0   2    0
+N2       2   0  16   5    0
+N3       0   0   8   4    1
+REM      0   0   3   4    0
 
 Per-Class Performance Metrics:
 ----------------------------------------------------------------------
 Stage    Accuracy   Sensitivity  Specificity  F1-Score  
 ----------------------------------------------------------------------
-Wake     0.000      0.000        0.978        0.000     
+Wake     0.000      0.000        0.956        0.000     
 N1       0.000      0.000        1.000        0.000     
-N2       0.792      0.792        0.250        0.623     
-N3       0.100      0.100        0.868        0.125     
-REM      0.100      0.100        0.921        0.143     
+N2       0.696      0.696        0.440        0.604     
+N3       0.308      0.308        0.686        0.286     
+REM      0.000      0.000        0.976        0.000     
 ----------------------------------------------------------------------
 
 Class Distribution in Test Set:
 Wake: 3 samples (6.2%)
-N1: 1 samples (2.1%)
-N2: 24 samples (50.0%)
-N3: 10 samples (20.8%)
-REM: 10 samples (20.8%)
+N1: 2 samples (4.2%)
+N2: 23 samples (47.9%)
+N3: 13 samples (27.1%)
+REM: 7 samples (14.6%)
 
 Notes for Sleep Scoring:
 - Sensitivity = Recall = True Positive Rate (correctly identified stages)
