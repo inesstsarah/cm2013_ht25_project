@@ -88,7 +88,7 @@ def preprocess_multi_channel(multi_channel_data, config):
         for epoch in range(eeg_data.shape[0]):
             signal = eeg_data[epoch, ch, :]
             # Apply EEG-specific preprocessing
-            filtered_signal = notch_filter(filtered_signal, config.NOTCH_FILTER_FREQ, config.NOTCH_FILTER_Q, eeg_fs)
+            filtered_signal = notch_filter(signal, config.NOTCH_FILTER_FREQ, config.NOTCH_FILTER_Q, eeg_fs)
             filtered_signal = bandpass_filter(filtered_signal, config.BANDPASS_FILTER_LOWER_FREQ, config.BANDPASS_FILTER_HIGHER_FREQ, eeg_fs, config.BANDPASS_FILTER_ORDER)
             # TODO: Students should add bandpass filter, artifact removal
             preprocessed_eeg[epoch, ch, :] = filtered_signal
