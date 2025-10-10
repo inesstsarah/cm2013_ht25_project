@@ -132,10 +132,12 @@ def print_performance_metrics(y_true, y_pred):
     overall_accuracy = accuracy_score(y_true, y_pred)
     macro_f1 = f1_score(y_true, y_pred, average='macro')
     weighted_f1 = f1_score(y_true, y_pred, average='weighted')
+    cohen_res = cohen_kappa_score(y_true, y_pred)
 
     print(f"Overall Accuracy: {overall_accuracy:.3f}")
     print(f"Macro F1-Score: {macro_f1:.3f}")
     print(f"Weighted F1-Score: {weighted_f1:.3f}")
+    print(f"Cohen's Kappa Score: {cohen_res:.3f}")
 
     # Confusion Matrix
     print("\nConfusion Matrix:")
