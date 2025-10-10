@@ -1,6 +1,42 @@
 import numpy as np
-from src.preprocessing import lowpass_filter, preprocess
+from src.preprocessing import lowpass_filter, preprocess, highpass_filter
 import config
+from src.data_loader import load_training_data
+
+
+def test_highpass_filter_edf():
+    edf_file = "../data/training/R1.edf"
+    xml_file = "../data/training/R1.xml"
+    multi_channel_data, labels, info = load_training_data(
+                edf_file, xml_file
+            )
+    
+    """Function to test highpass filter for baseline wander removal"""
+    
+    fs = 100
+    cutoff = 10
+    data = np.sin(2 * np.pi * 5 * np.arange(0, 10, 1/fs)) + np.sin(2 * np.pi * 20 * np.arange(0, 10, 1/fs))
+    filtered_data = highpass_filter(data, cutoff, fs)
+    assert isinstance(filtered_data, np.ndarray)
+    assert filtered_data.shape == data.shape
+    # Basic check: ensure some attenuation of high frequency component
+    # This is a very simple check and might need more sophisticated validation
+    assert np.std(filtered_data) < np.std(data) # Expect some reduction in signal power
+
+
+def test_highpass_filter():
+    """Function to test highpass filter for baseline wander removal"""
+
+    fs = 100
+    cutoff = 10
+    data = np.sin(2 * np.pi * 5 * np.arange(0, 10, 1/fs)) + np.sin(2 * np.pi * 20 * np.arange(0, 10, 1/fs))
+    filtered_data = highpass_filter(data, cutoff, fs)
+    assert isinstance(filtered_data, np.ndarray)
+    assert filtered_data.shape == data.shape
+    # Basic check: ensure some attenuation of high frequency component
+    # This is a very simple check and might need more sophisticated validation
+    assert np.std(filtered_data) < np.std(data) # Expect some reduction in signal power
+
 
 def test_lowpass_filter():
     fs = 100

@@ -4,3 +4,6 @@ scikit-learn
 matplotlib
 joblib
 mne
+pandas
+pytest
+nolds

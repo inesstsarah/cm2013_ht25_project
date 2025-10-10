@@ -1,82 +1,173 @@
 
-    --- Sleep Scoring Pipeline - Iteration 1 ---
+    
+=== PROCESSING LOG ===
+--- Sleep Scoring Pipeline - Iteration 1 ---
 
 === STEP 1: DATA LOADING ===
-Loading training data from ../data/sample/R1.edf and ../data/sample/R1.xml...
-WARNING: Using dummy data! Students must implement actual EDF/XML loading.
-Multi-channel structure:
-  EEG: 2 channels, 3000 samples/epoch
-  EOG: 2 channels, 3000 samples/epoch
-  EMG: 1 channels, 6000 samples/epoch
-Generated dummy sleep data: 240 epochs (2.0 hours)
-  Wake: 10 epochs (4.2%)
-  N1: 13 epochs (5.4%)
-  N2: 126 epochs (52.5%)
-  N3: 53 epochs (22.1%)
-  REM: 38 epochs (15.8%)
+Loading all training data from ../data/training/...
+Found 4 recordings
+
+Loading R1...
+Loading training data from ../data/training\R1.edf and ../data/training\R1.xml...
+Identified channels:
+  EEG: ['EEG(sec)', 'EEG']
+  EOG: ['EOG(L)', 'EOG(R)']
+  EMG: ['EMG']
+NOTE: pick_channels() is a legacy function. New code should use inst.pick(...).
+  EEG: 2 channels, 3750 samples/epoch, 125.0 Hz
+NOTE: pick_channels() is a legacy function. New code should use inst.pick(...).
+  EOG: 2 channels, 3750 samples/epoch, 125.0 Hz
+NOTE: pick_channels() is a legacy function. New code should use inst.pick(...).
+  EMG: 1 channels, 3750 samples/epoch, 125.0 Hz
+
+Loaded 1083 epochs (9.03 hours)
+Sleep stage distribution:
+  Wake: 333 epochs (30.7%)
+  N1: 47 epochs (4.3%)
+  N2: 457 epochs (42.2%)
+  N3: 145 epochs (13.4%)
+  REM: 102 epochs (9.4%)
+
+Loading R2...
+Loading training data from ../data/training\R2.edf and ../data/training\R2.xml...
+Identified channels:
+  EEG: ['EEG(sec)', 'EEG']
+  EOG: ['EOG(L)', 'EOG(R)']
+  EMG: ['EMG']
+NOTE: pick_channels() is a legacy function. New code should use inst.pick(...).
+  EEG: 2 channels, 3750 samples/epoch, 125.0 Hz
+NOTE: pick_channels() is a legacy function. New code should use inst.pick(...).
+  EOG: 2 channels, 3750 samples/epoch, 125.0 Hz
+NOTE: pick_channels() is a legacy function. New code should use inst.pick(...).
+  EMG: 1 channels, 3750 samples/epoch, 125.0 Hz
+
+Loaded 1078 epochs (8.98 hours)
+Sleep stage distribution:
+  Wake: 716 epochs (66.4%)
+  N1: 3 epochs (0.3%)
+  N2: 238 epochs (22.1%)
+  N3: 61 epochs (5.7%)
+  REM: 61 epochs (5.7%)
+
+Loading R3...
+Loading training data from ../data/training\R3.edf and ../data/training\R3.xml...
+Identified channels:
+  EEG: ['EEG(sec)', 'EEG']
+  EOG: ['EOG(L)', 'EOG(R)']
+  EMG: ['EMG']
+NOTE: pick_channels() is a legacy function. New code should use inst.pick(...).
+  EEG: 2 channels, 3750 samples/epoch, 125.0 Hz
+NOTE: pick_channels() is a legacy function. New code should use inst.pick(...).
+  EOG: 2 channels, 3750 samples/epoch, 125.0 Hz
+NOTE: pick_channels() is a legacy function. New code should use inst.pick(...).
+  EMG: 1 channels, 3750 samples/epoch, 125.0 Hz
+
+Loaded 1048 epochs (8.73 hours)
+Sleep stage distribution:
+  Wake: 332 epochs (31.6%)
+  N1: 35 epochs (3.3%)
+  N2: 289 epochs (27.6%)
+  N3: 307 epochs (29.3%)
+  REM: 86 epochs (8.2%)
+
+Loading R4...
+Loading training data from ../data/training\R4.edf and ../data/training\R4.xml...
+Identified channels:
+  EEG: ['EEG(sec)', 'EEG']
+  EOG: ['EOG(L)', 'EOG(R)']
+  EMG: ['EMG']
+NOTE: pick_channels() is a legacy function. New code should use inst.pick(...).
+  EEG: 2 channels, 3750 samples/epoch, 125.0 Hz
+NOTE: pick_channels() is a legacy function. New code should use inst.pick(...).
+  EOG: 2 channels, 3750 samples/epoch, 125.0 Hz
+NOTE: pick_channels() is a legacy function. New code should use inst.pick(...).
+  EMG: 1 channels, 3750 samples/epoch, 125.0 Hz
+
+Loaded 874 epochs (7.28 hours)
+Sleep stage distribution:
+  Wake: 273 epochs (31.2%)
+  N1: 18 epochs (2.1%)
+  N2: 177 epochs (20.2%)
+  N3: 315 epochs (36.0%)
+  REM: 92 epochs (10.5%)
+
+Combined EEG shape: (4083, 2, 3750)
+Combined EOG shape: (4083, 2, 3750)
+Combined EMG shape: (4083, 1, 3750)
+
+Total loaded: 4083 epochs from 4 recordings
+Sleep stage distribution:
+  Wake: 1650 epochs (40.4%)
+  N1: 103 epochs (2.5%)
+  N2: 1161 epochs (28.4%)
+  N3: 828 epochs (20.3%)
+  REM: 341 epochs (8.4%)
 Multi-channel data loaded:
-  EEG: (240, 2, 3000)
-  EOG: (240, 2, 3000)
-  EMG: (240, 1, 6000)
-Labels shape: (240,)
-Using EEG channel 1 for pipeline: (240, 3000)
+  EEG: (4083, 2, 3750)
+  EOG: (4083, 2, 3750)
+  EMG: (4083, 1, 3750)
+Labels shape: (4083,)
 
 === STEP 2: PREPROCESSING ===
-Loading data from cache: cache/preprocessed_data_iter1.joblib
-Loaded preprocessed data from cache
+Preprocessing data for iteration 1...
+Processing multi-channel data (EEG + EOG + EMG)
+(4083, 2, 3750)
+Iteration 1: Processing EEG channels only
 
 === STEP 3: FEATURE EXTRACTION ===
-Loading data from cache: cache/features_iter1.joblib
-Loaded features from cache
+Extracting features for iteration 1...
+Processing multi-channel data (EEG + EOG + EMG)
+Multi-channel Iteration 1: 36 features (target: 32+)
+Extracted features shape: (4083, 36)
 
 === STEP 4: FEATURE SELECTION ===
 Selecting features for iteration 1...
-Input features shape: (240, 3)
+Input features shape: (4083, 36)
 Early iteration - using all available features
-Selected features shape: (240, 3)
-Selected features shape: (240, 3)
+Selected features shape: (4083, 36)
+Selected features shape: (4083, 36)
 
 === STEP 5: CLASSIFICATION ===
 Training knn classifier...
-Features shape: (240, 3), Labels shape: (240,)
+Features shape: (4083, 36), Labels shape: (4083,)
 Using stratified train/test split to maintain class balance
-Training set: 192 samples, Test set: 48 samples
+Training set: 3266 samples, Test set: 817 samples
 Using k-NN with k=5
 Training model...
-Overall accuracy: 0.458
+Overall accuracy: 0.723
 
 ======================================================================
 SLEEP STAGE CLASSIFICATION PERFORMANCE METRICS
 ======================================================================
-Overall Accuracy: 0.458
-Macro F1-Score: 0.191
-Weighted F1-Score: 0.391
+Overall Accuracy: 0.723
+Macro F1-Score: 0.540
+Weighted F1-Score: 0.711
 
 Confusion Matrix:
-      REM  N3  N2  N1  Wake
-REM     0   0   2   0     0
-N3      0   0   1   1     0
-N2      1   1  20   2     1
-N1      0   0  10   1     0
-Wake    0   0   5   2     1
+      Wake  N1   N2   N3  REM
+Wake   290   1   24    2   13
+N1      12   2    6    0    1
+N2      38   1  147   25   21
+N3       0   0   28  138    0
+REM     17   0   37    0   14
 
 Per-Class Performance Metrics:
 ----------------------------------------------------------------------
 Stage    Accuracy   Sensitivity  Specificity  F1-Score  
 ----------------------------------------------------------------------
-REM      0.000      0.000        0.978        0.000     
-N3       0.000      0.000        0.978        0.000     
-N2       0.800      0.800        0.217        0.635     
-N1       0.091      0.091        0.865        0.118     
-Wake     0.125      0.125        0.975        0.200     
+Wake     0.879      0.879        0.862        0.844     
+N1       0.095      0.095        0.997        0.160     
+N2       0.634      0.634        0.838        0.620     
+N3       0.831      0.831        0.959        0.834     
+REM      0.206      0.206        0.953        0.239     
 ----------------------------------------------------------------------
 
 Class Distribution in Test Set:
-REM: 2 samples (4.2%)
-N3: 2 samples (4.2%)
-N2: 25 samples (52.1%)
-N1: 11 samples (22.9%)
-Wake: 8 samples (16.7%)
+Wake: 330 samples (40.4%)
+N1: 21 samples (2.6%)
+N2: 232 samples (28.4%)
+N3: 166 samples (20.3%)
+REM: 68 samples (8.3%)
 
 Notes for Sleep Scoring:
 - Sensitivity = Recall = True Positive Rate (correctly identified stages)
@@ -90,6 +181,9 @@ Trained knn classifier
 
 === STEP 6: VISUALIZATION ===
 Visualizing results...
+
+=== STEP 7: PROCESSING LOG & REPORT GENERATION ===
+
 
 
     # Sleep Scoring Report - Iteration 1
