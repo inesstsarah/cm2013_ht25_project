@@ -9,7 +9,7 @@ def highpass_filter(data,cutoff,fs,order=5):
     nyquist = 0.5 * fs
     normal_cutoff = cutoff / nyquist
     b, a = butter(order, normal_cutoff, btype='high', analog=False)
-    y = lfilter(b, a, data)
+    y = filtfilt(b, a, data, padlen = 3*order, padtype="odd")
     return y
 
 def lowpass_filter(data, cutoff, fs, order=5):
@@ -43,8 +43,9 @@ def lowpass_filter(data, cutoff, fs, order=5):
     return y
 
 def notch_filter(data, f0, Q, fs):
-    b, a = iirnotch(f0, Q, fs)        
-    y = filtfilt(b,a,data) 
+    b, a = iirnotch(f0, Q, fs)  
+    order = 3      
+    y = filtfilt(b,a,data,padlen = 3*order, padtype="odd") 
     return y
 
 def bandpass_filter(data, lowcut , highcut, fs, order):
@@ -52,7 +53,7 @@ def bandpass_filter(data, lowcut , highcut, fs, order):
     normal_lowcut = lowcut / nyquist
     normal_highcut = highcut/nyquist
     b, a = butter(order, [normal_lowcut, normal_highcut], btype='band', analog=False)
-    y = filtfilt(b, a, data)
+    y = filtfilt(b, a, data,padlen = 3*order, padtype="odd")
     return y
 
 def preprocess(data, config):
