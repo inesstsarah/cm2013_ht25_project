@@ -35,7 +35,7 @@ BANDPASS_FILTER_ORDER = 5
 
 # -- Classification --
 # Iteration-specific parameters - students should modify these based on current iteration
-if CURRENT_ITERATION == 1:
+if CURRENT_ITERATION == 1: # TODO: add more hyperparameters for the hyperparameter optimization
     # Iteration 1: Basic pipeline with k-NN
     CLASSIFIER_TYPE = 'knn'
     KNN_N_NEIGHBORS = 5
