@@ -1,5 +1,7 @@
-from scipy.signal import butter, lfilter
+from scipy.signal import butter, lfilter, iirnotch, filtfilt
 import numpy as np
+
+
 
 def highpass_filter(data,cutoff,fs,order=5):
     """
@@ -38,6 +40,19 @@ def lowpass_filter(data, cutoff, fs, order=5):
     normal_cutoff = cutoff / nyquist
     b, a = butter(order, normal_cutoff, btype='low', analog=False)
     y = lfilter(b, a, data)
+    return y
+
+def notch_filter(data, f0, Q, fs):
+    b, a = iirnotch(f0, Q, fs)        
+    y = filtfilt(b,a,data) 
+    return y
+
+def bandpass_filter(data, lowcut , highcut, fs, order):
+    nyquist = 0.5 * fs
+    normal_lowcut = lowcut / nyquist
+    normal_highcut = highcut/nyquist
+    b, a = butter(order, [normal_lowcut, normal_highcut], btype='band', analog=False)
+    y = filtfilt(b, a, data)
     return y
 
 def preprocess(data, config):
@@ -83,11 +98,13 @@ def preprocess_multi_channel(multi_channel_data, config):
         for epoch in range(eeg_data.shape[0]):
             signal = eeg_data[epoch, ch, :]
             # Apply EEG-specific preprocessing
-            filtered_signal = lowpass_filter(signal, config.LOW_PASS_FILTER_FREQ, eeg_fs)
+            filtered_signal = notch_filter(signal, config.NOTCH_FILTER_FREQ, config.NOTCH_FILTER_Q, eeg_fs)
+            filtered_signal = bandpass_filter(filtered_signal, config.BANDPASS_FILTER_LOWER_FREQ, config.BANDPASS_FILTER_HIGHER_FREQ, eeg_fs, config.BANDPASS_FILTER_ORDER)
             # TODO: Students should add bandpass filter, artifact removal
             preprocessed_eeg[epoch, ch, :] = filtered_signal
 
     preprocessed_data['eeg'] = preprocessed_eeg
+    
 
     if config.CURRENT_ITERATION >= 2:  # EOG starts in iteration 2
         # Process EOG channels (2 channels) - may need different filtering
@@ -140,6 +157,10 @@ def preprocess_single_channel(data, config):
         # EXAMPLE: Very basic low-pass filter (students should expand)
         fs = 125  # Actual EEG sampling rate: 125 Hz (TODO: Get from data/config)
         preprocessed_data = lowpass_filter(data, config.LOW_PASS_FILTER_FREQ, fs)
+        preprocessed_data = notch_filter(preprocessed_data, config.NOTCH_FILTER_FREQ, config.NOTCH_FILTER_Q, fs)
+        preprocessed_data = bandpass_filter(preprocessed_data, config.BANDPASS_FILTER_LOWER_FREQ, config.BANDPASS_FILTER_HIGHER_FREQ, fs, config.BANDPASS_FILTER_ORDER)
+        
+
 
     elif config.CURRENT_ITERATION == 2:
         print("TODO: Implement enhanced preprocessing for iteration 2")
