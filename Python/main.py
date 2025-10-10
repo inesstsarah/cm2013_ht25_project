@@ -62,7 +62,7 @@ def main():
 
     if preprocessed_data is None:
         preprocessed_data = preprocess(multi_channel_data, config)
-        #print(f"Preprocessed data shape: {preprocessed_data}")
+        #print(f"Preprocessed data shape: {preprocessed_data.shape}")
         if config.USE_CACHE:
             save_cache(preprocessed_data, cache_filename_preprocess, config.CACHE_DIR)
             print("Saved preprocessed data to cache")

@@ -3,6 +3,6 @@ PROJECT_GUIDE.md
 README.md
 VISUALIZATION_GUIDE.md
 python/__pycache__/
-*.py[cod]
+*.pyc
 python/cache/
 python/report.txt
