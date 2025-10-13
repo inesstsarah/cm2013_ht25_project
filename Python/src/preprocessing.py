@@ -150,7 +150,7 @@ def preprocess_eeg_channel(eeg_data, config):
     for ch in range(eeg_data.shape[1]):
         print(f"Processing EEG channel {ch+1}")
         nepochs = eeg_data.shape[0]
-        signal = eeg_data[0:2, ch, :].flatten()
+        signal = eeg_data[:, ch, :].flatten()
         # Apply EEG-specific preprocessing
         filtered_signal = notch_filter(signal, config.NOTCH_FILTER_FREQ, config.NOTCH_FILTER_Q, eeg_fs)
         filtered_signal = bandpass_filter(filtered_signal, config.BANDPASS_FILTER_LOWER_FREQ, config.BANDPASS_FILTER_HIGHER_FREQ, eeg_fs, config.BANDPASS_FILTER_ORDER)
@@ -161,6 +161,6 @@ def preprocess_eeg_channel(eeg_data, config):
         fig, axes = plt.subplot(2, 2, 1)
         visualize_fft(signal, eeg_fs, ax=axes[0], title=f"EEG Channel {ch+1} - Original Signal FFT")
         visualize_fft(filtered_signal, eeg_fs, ax=axes[1], title=f"EEG Channel {ch+1} - Filtered Signal FFT")
-        preprocessed_eeg[0:2, ch, :] = filtered_signal.reshape(nepochs, -1)
+        preprocessed_eeg[:, ch, :] = filtered_signal.reshape(nepochs, -1)
 
     return preprocessed_eeg

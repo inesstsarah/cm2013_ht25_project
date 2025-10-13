@@ -6,3 +6,4 @@ python/__pycache__/
 *.py[cod]
 python/cache/
 python/report.txt
+python/plots/
