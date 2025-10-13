@@ -18,7 +18,7 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
 
 import config
-from data_loader import load_training_data
+from src.data_loader import load_training_data
 
 def main():
     print("=== Multi-Channel Feature Extraction Example ===")
