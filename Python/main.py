@@ -66,9 +66,7 @@ def main():
         print(f"Using EEG channel 1 for pipeline: {eeg_data.shape}")
 
     except (ValueError, TypeError):
-        # Fallback to old format if multi-channel not implemented
-        eeg_data, labels = load_training_data(edf_file, xml_file)
-        print(f"Single-channel data loaded: {eeg_data.shape}, Labels: {labels.shape}")
+        print("Fail to load multi-channel data, closely check the error message above.")
 
     # 2. Preprocessing
     print("\n=== STEP 2: PREPROCESSING ===")

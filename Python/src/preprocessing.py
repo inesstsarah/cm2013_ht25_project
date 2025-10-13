@@ -1,5 +1,7 @@
-from scipy.signal import butter, lfilter
+from scipy.signal import butter, lfilter, iirnotch, filtfilt, welch
 import numpy as np
+import matplotlib.pyplot as plt
+from src.visualization import visualize_fft
 
 def lowpass_filter(data, cutoff, fs, order=5):
     """
@@ -31,6 +33,20 @@ def lowpass_filter(data, cutoff, fs, order=5):
     y = lfilter(b, a, data)
     return y
 
+def notch_filter(data, f0, Q, fs):
+    b, a = iirnotch(f0, Q, fs)        
+    y = filtfilt(b,a,data) 
+    return y
+
+def bandpass_filter(data, lowcut , highcut, fs, order):
+    nyquist = 0.5 * fs
+    normal_lowcut = lowcut / nyquist
+    normal_highcut = highcut/nyquist
+    b, a = butter(order, [normal_lowcut, normal_highcut], btype='band', analog=False)
+    y = filtfilt(b, a, data)
+    return y
+
+
 def preprocess(data, config):
     """
     STUDENT IMPLEMENTATION AREA: Preprocess data based on current iteration.
@@ -55,8 +71,7 @@ def preprocess(data, config):
         return preprocess_multi_channel(data, config)
     else:
         print("Processing single-channel data (backward compatibility)")
-        return preprocess_single_channel(data, config)
-
+        return preprocess_multi_channel(data, config)
 
 def preprocess_multi_channel(multi_channel_data, config):
     """
@@ -64,21 +79,7 @@ def preprocess_multi_channel(multi_channel_data, config):
     Each channel type may have different sampling rates and require different processing.
     """
     preprocessed_data = {}
-
-    # Process EEG channels (2 channels)
-    eeg_data = multi_channel_data['eeg']
-    eeg_fs = 125  # Actual sampling rate: 125 Hz (TODO: Get from channel_info)
-    preprocessed_eeg = np.zeros_like(eeg_data)
-
-    for ch in range(eeg_data.shape[1]):
-        for epoch in range(eeg_data.shape[0]):
-            signal = eeg_data[epoch, ch, :]
-            # Apply EEG-specific preprocessing
-            filtered_signal = lowpass_filter(signal, config.LOW_PASS_FILTER_FREQ, eeg_fs)
-            # TODO: Students should add bandpass filter, artifact removal
-            preprocessed_eeg[epoch, ch, :] = filtered_signal
-
-    preprocessed_data['eeg'] = preprocessed_eeg
+    preprocessed_data['eeg'] = preprocess_eeg_channel(multi_channel_data['eeg'], config)
 
     if config.CURRENT_ITERATION >= 2:  # EOG starts in iteration 2
         # Process EOG channels (2 channels) - may need different filtering
@@ -114,12 +115,6 @@ def preprocess_multi_channel(multi_channel_data, config):
     else:
         print("Iteration 1: Processing EEG channels only")
 
-    # TODO: Students should add:
-    # - Channel-specific artifact removal
-    # - Cross-channel artifact detection
-    # - Signal quality assessment
-    # - Normalization per channel type
-
     return preprocessed_data
 
 
@@ -128,9 +123,7 @@ def preprocess_single_channel(data, config):
     Backward compatibility for single-channel preprocessing.
     """
     if config.CURRENT_ITERATION == 1:
-        # EXAMPLE: Very basic low-pass filter (students should expand)
-        fs = 125  # Actual EEG sampling rate: 125 Hz (TODO: Get from data/config)
-        preprocessed_data = lowpass_filter(data, config.LOW_PASS_FILTER_FREQ, fs)
+        preprocessed_data = preprocess_eeg_channel(data, config)
 
     elif config.CURRENT_ITERATION == 2:
         print("TODO: Implement enhanced preprocessing for iteration 2")
@@ -144,3 +137,30 @@ def preprocess_single_channel(data, config):
         raise ValueError(f"Invalid iteration: {config.CURRENT_ITERATION}")
 
     return preprocessed_data
+
+
+def preprocess_eeg_channel(eeg_data, config):
+    """
+    Preprocess single EEG channel data.
+    """
+    # Process EEG channels (2 channels)
+    eeg_fs = 125
+    preprocessed_eeg = np.zeros_like(eeg_data)
+
+    for ch in range(eeg_data.shape[1]):
+        print(f"Processing EEG channel {ch+1}")
+        nepochs = eeg_data.shape[0]
+        signal = eeg_data[0:2, ch, :].flatten()
+        # Apply EEG-specific preprocessing
+        filtered_signal = notch_filter(signal, config.NOTCH_FILTER_FREQ, config.NOTCH_FILTER_Q, eeg_fs)
+        filtered_signal = bandpass_filter(filtered_signal, config.BANDPASS_FILTER_LOWER_FREQ, config.BANDPASS_FILTER_HIGHER_FREQ, eeg_fs, config.BANDPASS_FILTER_ORDER)
+        
+        filtered_signal = signal
+        # FFT visualization
+        plt.figure(figsize=(12, 6))
+        fig, axes = plt.subplot(2, 2, 1)
+        visualize_fft(signal, eeg_fs, ax=axes[0], title=f"EEG Channel {ch+1} - Original Signal FFT")
+        visualize_fft(filtered_signal, eeg_fs, ax=axes[1], title=f"EEG Channel {ch+1} - Filtered Signal FFT")
+        preprocessed_eeg[0:2, ch, :] = filtered_signal.reshape(nepochs, -1)
+
+    return preprocessed_eeg

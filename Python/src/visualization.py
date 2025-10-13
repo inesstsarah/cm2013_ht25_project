@@ -299,3 +299,28 @@ def visualize_results(model, features, labels, config):
     class_names = ['Wake', 'N1', 'N2', 'N3', 'REM']
     y_pred = model.predict(features)
     plot_confusion_matrix(labels, y_pred, class_names)
+
+def visualize_fft(signal, fs, ax=None, title="FFT of Signal"):
+    """
+    Plot the FFT of a signal on a given matplotlib Axes.
+
+    Args:
+        signal (np.ndarray): The input signal.
+        fs (float): Sampling frequency (Hz).
+        ax (matplotlib.axes.Axes, optional): Axes to plot on. 
+                                             If None, create a new figure.
+        title (str, optional): Plot title.
+    """
+    n = len(signal)
+    freq = np.fft.fftfreq(n, d=1/fs)
+    fft_values = np.fft.fft(signal)
+    magnitude = np.abs(fft_values)[:n // 2]
+
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(10, 5))
+
+    ax.plot(freq[:n // 2], magnitude)
+    ax.set_title(title)
+    ax.set_xlabel("Frequency (Hz)")
+    ax.set_ylabel("Magnitude")
+    ax.grid(True)
