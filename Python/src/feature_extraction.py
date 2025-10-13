@@ -1,6 +1,5 @@
 import numpy as np
 import scipy
-import nolds
 
 def hjorth_activity(signal):
     """

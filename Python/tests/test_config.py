@@ -21,8 +21,8 @@ def test_sample_files_exist():
     """Test that sample files exist for jumpstart."""
     import config
 
-    dummy_edf = os.path.join(config.SAMPLE_DIR, "dummy.edf")
-    dummy_xml = os.path.join(config.SAMPLE_DIR, "dummy.xml")
+    dummy_edf = os.path.join(config.SAMPLE_DIR, "R1.edf")
+    dummy_xml = os.path.join(config.SAMPLE_DIR, "R1.xml")
 
     assert os.path.exists(dummy_edf), f"Sample EDF file not found: {dummy_edf}"
     assert os.path.exists(dummy_xml), f"Sample XML file not found: {dummy_xml}"

@@ -13,11 +13,11 @@ Identified channels:
   EEG: ['EEG(sec)', 'EEG']
   EOG: ['EOG(L)', 'EOG(R)']
   EMG: ['EMG']
-NOTE: pick_channels() is a legacy function. New code should use inst.pick(...).
+125.0
   EEG: 2 channels, 3750 samples/epoch, 125.0 Hz
-NOTE: pick_channels() is a legacy function. New code should use inst.pick(...).
+125.0
   EOG: 2 channels, 3750 samples/epoch, 125.0 Hz
-NOTE: pick_channels() is a legacy function. New code should use inst.pick(...).
+125.0
   EMG: 1 channels, 3750 samples/epoch, 125.0 Hz
 
 Loaded 1083 epochs (9.03 hours)
@@ -34,11 +34,11 @@ Identified channels:
   EEG: ['EEG(sec)', 'EEG']
   EOG: ['EOG(L)', 'EOG(R)']
   EMG: ['EMG']
-NOTE: pick_channels() is a legacy function. New code should use inst.pick(...).
+125.0
   EEG: 2 channels, 3750 samples/epoch, 125.0 Hz
-NOTE: pick_channels() is a legacy function. New code should use inst.pick(...).
+125.0
   EOG: 2 channels, 3750 samples/epoch, 125.0 Hz
-NOTE: pick_channels() is a legacy function. New code should use inst.pick(...).
+125.0
   EMG: 1 channels, 3750 samples/epoch, 125.0 Hz
 
 Loaded 1078 epochs (8.98 hours)
@@ -55,11 +55,11 @@ Identified channels:
   EEG: ['EEG(sec)', 'EEG']
   EOG: ['EOG(L)', 'EOG(R)']
   EMG: ['EMG']
-NOTE: pick_channels() is a legacy function. New code should use inst.pick(...).
+125.0
   EEG: 2 channels, 3750 samples/epoch, 125.0 Hz
-NOTE: pick_channels() is a legacy function. New code should use inst.pick(...).
+125.0
   EOG: 2 channels, 3750 samples/epoch, 125.0 Hz
-NOTE: pick_channels() is a legacy function. New code should use inst.pick(...).
+125.0
   EMG: 1 channels, 3750 samples/epoch, 125.0 Hz
 
 Loaded 1048 epochs (8.73 hours)
@@ -76,11 +76,11 @@ Identified channels:
   EEG: ['EEG(sec)', 'EEG']
   EOG: ['EOG(L)', 'EOG(R)']
   EMG: ['EMG']
-NOTE: pick_channels() is a legacy function. New code should use inst.pick(...).
+125.0
   EEG: 2 channels, 3750 samples/epoch, 125.0 Hz
-NOTE: pick_channels() is a legacy function. New code should use inst.pick(...).
+125.0
   EOG: 2 channels, 3750 samples/epoch, 125.0 Hz
-NOTE: pick_channels() is a legacy function. New code should use inst.pick(...).
+125.0
   EMG: 1 channels, 3750 samples/epoch, 125.0 Hz
 
 Loaded 874 epochs (7.28 hours)

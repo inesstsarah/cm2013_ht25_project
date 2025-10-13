@@ -101,7 +101,7 @@ def load_training_data(edf_file_path, xml_file_path, epoch_length=30):
 
     # Extract EEG data
     if eeg_channels:
-        eeg_raw = raw.copy().pick_channels(eeg_channels)
+        eeg_raw = raw.copy().pick(eeg_channels)
         eeg_data, eeg_fs = _extract_epochs(eeg_raw, epoch_length, n_epochs)
         multi_channel_data['eeg'] = eeg_data
         channel_info['eeg_names'] = eeg_channels
@@ -110,7 +110,7 @@ def load_training_data(edf_file_path, xml_file_path, epoch_length=30):
 
     # Extract EOG data
     if eog_channels:
-        eog_raw = raw.copy().pick_channels(eog_channels)
+        eog_raw = raw.copy().pick(eog_channels)
         eog_data, eog_fs = _extract_epochs(eog_raw, epoch_length, n_epochs)
         multi_channel_data['eog'] = eog_data
         channel_info['eog_names'] = eog_channels
@@ -119,7 +119,7 @@ def load_training_data(edf_file_path, xml_file_path, epoch_length=30):
 
     # Extract EMG data
     if emg_channels:
-        emg_raw = raw.copy().pick_channels(emg_channels)
+        emg_raw = raw.copy().pick(emg_channels)
         emg_data, emg_fs = _extract_epochs(emg_raw, epoch_length, n_epochs)
         multi_channel_data['emg'] = emg_data
         channel_info['emg_names'] = emg_channels
@@ -204,21 +204,21 @@ def load_holdout_data(edf_file_path, epoch_length=30):
     sampling_rates = {}
 
     if eeg_channels:
-        eeg_raw = raw.copy().pick_channels(eeg_channels)
+        eeg_raw = raw.copy().pick(eeg_channels)
         eeg_data, eeg_fs = _extract_epochs(eeg_raw, epoch_length, n_epochs)
         multi_channel_data['eeg'] = eeg_data
         sampling_rates['eeg'] = eeg_fs
         print(f"  EEG: {eeg_data.shape[1]} channels, {eeg_data.shape[2]} samples/epoch, {eeg_fs} Hz")
 
     if eog_channels:
-        eog_raw = raw.copy().pick_channels(eog_channels)
+        eog_raw = raw.copy().pick(eog_channels)
         eog_data, eog_fs = _extract_epochs(eog_raw, epoch_length, n_epochs)
         multi_channel_data['eog'] = eog_data
         sampling_rates['eog'] = eog_fs
         print(f"  EOG: {eog_data.shape[1]} channels, {eog_data.shape[2]} samples/epoch, {eog_fs} Hz")
 
     if emg_channels:
-        emg_raw = raw.copy().pick_channels(emg_channels)
+        emg_raw = raw.copy().pick(emg_channels)
         emg_data, emg_fs = _extract_epochs(emg_raw, epoch_length, n_epochs)
         multi_channel_data['emg'] = emg_data
         sampling_rates['emg'] = emg_fs
@@ -255,6 +255,7 @@ def _extract_epochs(raw, epoch_length, n_epochs):
     # Get data and sampling rate
     data = raw.get_data()  # Shape: (n_channels, n_samples)
     fs = raw.info['sfreq']
+    print(fs)
     n_channels = data.shape[0]
 
     # Calculate samples per epoch
