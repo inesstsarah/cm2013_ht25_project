@@ -14,6 +14,10 @@ TRAINING_DIR = f'{DATA_DIR}training/'
 HOLDOUT_DIR = f'{DATA_DIR}holdout/'
 SAMPLE_DIR = f'{DATA_DIR}sample/'
 CACHE_DIR = 'cache/'
+FIGURE_DATA_DIR = 'figure/Data/'
+FIGURES_PREPROCESSING_DIR = 'figure/Preprocessing/'
+FIGURES_FEATURE_EXTRACTION_DIR = 'figure/Feature_Extraction/'
+FIGURES_CLASSIFICATION_DIR = 'figure/Classification/'
 
 # Validate and create directories if needed
 if not os.path.exists(DATA_DIR):

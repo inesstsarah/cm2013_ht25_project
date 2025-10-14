@@ -324,3 +324,26 @@ def visualize_fft(signal, fs, ax=None, title="FFT of Signal"):
     ax.set_xlabel("Frequency (Hz)")
     ax.set_ylabel("Magnitude")
     ax.grid(True)
+
+def visualize_signal(signal, fs, ax=None, title="Time-domain Signal"):
+    """
+    Plot the time-domain waveform of a signal on a given matplotlib Axes.
+
+    Args:
+        signal (np.ndarray): The input signal.
+        fs (float): Sampling frequency (Hz).
+        ax (matplotlib.axes.Axes, optional): Axes to plot on. 
+                                             If None, create a new figure.
+        title (str, optional): Plot title.
+    """
+    n = len(signal)
+    t = np.arange(n) / fs  # 时间轴
+
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(10, 5))
+
+    ax.plot(t, signal)
+    ax.set_title(title)
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel("Amplitude")
+    ax.grid(True)

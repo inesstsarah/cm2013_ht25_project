@@ -33,12 +33,12 @@ class TeeIO:
 def main():
     # Create a string buffer
     stdout_buffer = io.StringIO()
-
     # Save the original stdout
     original_stdout = sys.stdout
 
     # Redirect stdout to the buffer
-    # sys.stdout = stdout_buffer 
+    # sys.stdout = stdout_buffer
+
     # Redirect stdout to both terminal and buffer
     sys.stdout = TeeIO(original_stdout, stdout_buffer, show_terminal=True)
 
@@ -61,10 +61,6 @@ def main():
         print(f"  EMG: {multi_channel_data['emg'].shape}")
         print(f"Labels shape: {labels.shape}")
 
-        # For pipeline compatibility, use EEG data as primary signal
-        eeg_data = multi_channel_data['eeg'][:, 0, :]  # Use first EEG channel for now
-        print(f"Using EEG channel 1 for pipeline: {eeg_data.shape}")
-
     except (ValueError, TypeError):
         print("Fail to load multi-channel data, closely check the error message above.")
 
@@ -78,8 +74,8 @@ def main():
             print("Loaded preprocessed data from cache")
 
     if preprocessed_data is None:
-        preprocessed_data = preprocess(eeg_data, config)
-        print(f"Preprocessed data shape: {preprocessed_data.shape}")
+        preprocessed_data = preprocess(multi_channel_data, config)
+        print(f"Preprocessed EEG shape: {preprocessed_data['eeg'].shape}")
         if config.USE_CACHE:
             save_cache(preprocessed_data, cache_filename_preprocess, config.CACHE_DIR)
             print("Saved preprocessed data to cache")

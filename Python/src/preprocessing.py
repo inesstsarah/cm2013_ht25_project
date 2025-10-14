@@ -1,7 +1,8 @@
 from scipy.signal import butter, lfilter, iirnotch, filtfilt, welch
 import numpy as np
+import os
 import matplotlib.pyplot as plt
-from src.visualization import visualize_fft
+from src.visualization import visualize_fft, visualize_signal
 
 def lowpass_filter(data, cutoff, fs, order=5):
     """
@@ -79,7 +80,7 @@ def preprocess_multi_channel(multi_channel_data, config):
     Each channel type may have different sampling rates and require different processing.
     """
     preprocessed_data = {}
-    preprocessed_data['eeg'] = preprocess_eeg_channel(multi_channel_data['eeg'], config)
+    preprocessed_data['eeg'] = _preprocess_eeg_channel(multi_channel_data['eeg'], config)
 
     if config.CURRENT_ITERATION >= 2:  # EOG starts in iteration 2
         # Process EOG channels (2 channels) - may need different filtering
@@ -123,7 +124,7 @@ def preprocess_single_channel(data, config):
     Backward compatibility for single-channel preprocessing.
     """
     if config.CURRENT_ITERATION == 1:
-        preprocessed_data = preprocess_eeg_channel(data, config)
+        preprocessed_data = _preprocess_eeg_channel(data, config)
 
     elif config.CURRENT_ITERATION == 2:
         print("TODO: Implement enhanced preprocessing for iteration 2")
@@ -139,7 +140,7 @@ def preprocess_single_channel(data, config):
     return preprocessed_data
 
 
-def preprocess_eeg_channel(eeg_data, config):
+def _preprocess_eeg_channel(eeg_data, config):
     """
     Preprocess single EEG channel data.
     """
@@ -155,12 +156,17 @@ def preprocess_eeg_channel(eeg_data, config):
         filtered_signal = notch_filter(signal, config.NOTCH_FILTER_FREQ, config.NOTCH_FILTER_Q, eeg_fs)
         filtered_signal = bandpass_filter(filtered_signal, config.BANDPASS_FILTER_LOWER_FREQ, config.BANDPASS_FILTER_HIGHER_FREQ, eeg_fs, config.BANDPASS_FILTER_ORDER)
         
-        filtered_signal = signal
         # FFT visualization
-        plt.figure(figsize=(12, 6))
-        fig, axes = plt.subplot(2, 2, 1)
-        visualize_fft(signal, eeg_fs, ax=axes[0], title=f"EEG Channel {ch+1} - Original Signal FFT")
-        visualize_fft(filtered_signal, eeg_fs, ax=axes[1], title=f"EEG Channel {ch+1} - Filtered Signal FFT")
+        y_range_signal = [-0.0002, 0.0002]
+        fig, axes = plt.subplots(2, 2, figsize=(8, 6))
+        visualize_signal(signal, eeg_fs, ax=axes[0,0], title=f"EEG Channel {ch+1} - Original Signal")
+        axes[0,0].set_ylim(y_range_signal)
+        visualize_fft(signal, eeg_fs, ax=axes[1,0], title=f"EEG Channel {ch+1} - Original Signal FFT")
+        visualize_signal(filtered_signal, eeg_fs, ax=axes[0,1], title=f"EEG Channel {ch+1} - Filtered Signal")
+        axes[0,1].set_ylim(y_range_signal)
+        visualize_fft(filtered_signal, eeg_fs, ax=axes[1,1], title=f"EEG Channel {ch+1} - Filtered Signal FFT")
+        plt.tight_layout()
+        fig.savefig(os.path.join(config.FIGURES_PREPROCESSING_DIR, f"preprocessing_EEG_filtering_channel_{ch+1}.png"))
         preprocessed_eeg[:, ch, :] = filtered_signal.reshape(nepochs, -1)
 
     return preprocessed_eeg
