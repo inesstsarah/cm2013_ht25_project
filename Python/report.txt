@@ -134,32 +134,32 @@ Using stratified train/test split to maintain class balance
 Training set: 3266 samples, Test set: 817 samples
 Using k-NN with k=5
 Training model...
-Overall accuracy: 0.723
+Overall accuracy: 0.619
 
 ======================================================================
 SLEEP STAGE CLASSIFICATION PERFORMANCE METRICS
 ======================================================================
-Overall Accuracy: 0.723
-Macro F1-Score: 0.540
-Weighted F1-Score: 0.711
+Overall Accuracy: 0.619
+Macro F1-Score: 0.399
+Weighted F1-Score: 0.599
 
 Confusion Matrix:
       Wake  N1   N2   N3  REM
-Wake   290   1   24    2   13
-N1      12   2    6    0    1
-N2      38   1  147   25   21
-N3       0   0   28  138    0
-REM     17   0   37    0   14
+Wake   271   2   39   10    8
+N1      12   0    8    1    0
+N2      44   0  130   44   14
+N3       4   1   57  102    2
+REM     18   0   41    6    3
 
 Per-Class Performance Metrics:
 ----------------------------------------------------------------------
 Stage    Accuracy   Sensitivity  Specificity  F1-Score  
 ----------------------------------------------------------------------
-Wake     0.879      0.879        0.862        0.844     
-N1       0.095      0.095        0.997        0.160     
-N2       0.634      0.634        0.838        0.620     
-N3       0.831      0.831        0.959        0.834     
-REM      0.206      0.206        0.953        0.239     
+Wake     0.821      0.821        0.840        0.798     
+N1       0.000      0.000        0.996        0.000     
+N2       0.560      0.560        0.752        0.513     
+N3       0.614      0.614        0.906        0.620     
+REM      0.044      0.044        0.968        0.063     
 ----------------------------------------------------------------------
 
 Class Distribution in Test Set:
