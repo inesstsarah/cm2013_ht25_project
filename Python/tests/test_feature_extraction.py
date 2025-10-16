@@ -24,8 +24,8 @@ from src.preprocessing import preprocess
 
 edf_path = os.path.join('../data/sample', 'R1.edf')
 xml_path = os.path.join('../data/sample', 'R1.xml')
-data,_,_ = load_training_data(edf_path, xml_path)
-preprocessed_data = preprocess(data, config)
+data,_,channel_info= load_training_data(edf_path, xml_path)
+preprocessed_data = preprocess(data,channel_info, config)
 epoch_eeg = preprocessed_data['eeg'][0,0,:]
 
 def test_hjorth_activity():
