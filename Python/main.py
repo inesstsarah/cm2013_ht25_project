@@ -103,7 +103,7 @@ def main():
     # 5. Classification
     print("\n=== STEP 5: CLASSIFICATION ===")
     if selected_features.shape[1] > 0:
-        model = train_classifier(selected_features, labels, config)
+        model = train_classifier(selected_features, labels, record_ids, config)
         print(f"Trained {config.CLASSIFIER_TYPE} classifier")
     else:
         print("⚠️  WARNING: Cannot train classifier - no features available!")

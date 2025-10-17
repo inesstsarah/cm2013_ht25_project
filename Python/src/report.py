@@ -33,6 +33,6 @@ def generate_report(model, features, labels, config, processing_log):
     ## Notes
     This is a dummy report. Implement full report generation.
     """
-    with open("report.txt", "w") as f:
+    with open("report.txt", "w", encoding="utf-8") as f:
         f.write(report_content)
     print("Report saved to report.txt")

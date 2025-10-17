@@ -2,12 +2,14 @@ import numpy as np
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
-from sklearn.metrics import precision_score, recall_score, f1_score
+from sklearn.model_selection import train_test_split, LeaveOneGroupOut
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, cohen_kappa_score
+from sklearn.metrics import precision_score, recall_score, f1_score, precision_recall_fscore_support
 import pandas as pd
+from imblearn.over_sampling import SMOTE
 
-def train_classifier(features, labels, config):
+
+def train_classifier(features, labels, record_ids, config):
     """
     STUDENT IMPLEMENTATION AREA: Train classifier based on iteration.
 
@@ -34,36 +36,11 @@ def train_classifier(features, labels, config):
     if features.shape[0] == 0 or features.shape[1] == 0:
         raise ValueError("No features available for training!")
 
-    # BASIC train/test split - students should implement cross-validation
-    # TODO: Students should implement k-fold cross-validation for more robust evaluation
-    # Use stratified split for realistic sleep data distribution
-    # Sleep stages are naturally imbalanced (more N2, less N1/REM)
-    try:
-        X_train, X_test, y_train, y_test = train_test_split(
-            features, labels, test_size=0.2, random_state=42, stratify=labels
-        )
-        print("Using stratified train/test split to maintain class balance")
-    except ValueError as e:
-        # Fallback for edge cases (very small datasets)
-        X_train, X_test, y_train, y_test = train_test_split(
-            features, labels, test_size=0.2, random_state=42
-        )
-        print(f"Using non-stratified split: {e}")
-    print(f"Training set: {X_train.shape[0]} samples, Test set: {X_test.shape[0]} samples")
-
-    # TODO: Students should address class imbalance in sleep data:
-    # - Sleep stages are not equally distributed
-    # - Consider SMOTE, class weights, or other techniques
-    # from imblearn.over_sampling import SMOTE
-    # smote = SMOTE(random_state=42)
-    # X_train, y_train = smote.fit_resample(X_train, y_train)
-
     # Select classifier based on iteration (using config parameters)
     if config.CURRENT_ITERATION == 1:
         # Iteration 1: Simple k-NN
         model = KNeighborsClassifier(n_neighbors=config.KNN_N_NEIGHBORS)
         print(f"Using k-NN with k={config.KNN_N_NEIGHBORS}")
-
     elif config.CURRENT_ITERATION == 2:
         # Iteration 2: SVM
         # TODO: Students should tune hyperparameters (C, kernel, gamma)
@@ -73,7 +50,6 @@ def train_classifier(features, labels, config):
             random_state=42
         )
         print(f"Using SVM with C={model.C}, kernel={model.kernel}")
-
     elif config.CURRENT_ITERATION >= 3:
         # Iteration 3+: Random Forest
         # TODO: Students should tune hyperparameters (n_estimators, max_depth, etc.)
@@ -85,28 +61,12 @@ def train_classifier(features, labels, config):
             n_jobs=-1  # Use all available cores
         )
         print(f"Using Random Forest with {model.n_estimators} trees")
-
     else:
         raise ValueError(f"Invalid iteration: {config.CURRENT_ITERATION}")
 
     # Train the model
     print("Training model...")
-    model.fit(X_train, y_train)
-
-    # Comprehensive evaluation with detailed performance metrics
-    y_pred = model.predict(X_test)
-    overall_accuracy = accuracy_score(y_test, y_pred)
-    print(f"Overall accuracy: {overall_accuracy:.3f}")
-
-    # Calculate and display detailed performance metrics
-    print_performance_metrics(y_test, y_pred)
-
-    # TODO: Students should add more advanced metrics:
-    # - Cohen's kappa (important for sleep scoring)
-    # - ROC-AUC for each class
-    # - Cross-validation scores
-    # - Feature importance analysis
-    print("\nTODO: Students should add Cohen's kappa and ROC-AUC metrics")
+    _LOGO_split_training(model, features, labels, record_ids)
 
     return model
 
@@ -193,3 +153,136 @@ def print_performance_metrics(y_true, y_pred):
     print("- Sleep stage imbalance is natural (more N2, less N1/REM)")
     print("- Consider Cohen's kappa for chance-corrected agreement")
     print("- Clinical focus: High sensitivity for REM and N3 stages")
+
+
+def _LOGO_split_training(model, features, labels, record_ids):
+    # Create LOSO cross-validation split
+    logo = LeaveOneGroupOut()
+    loso_results = []
+    smote = SMOTE(random_state=42)
+
+    for fold_idx, (train_idx, test_idx) in enumerate(logo.split(features, labels, groups=record_ids)):
+        X_train, X_test = features[train_idx], features[test_idx]
+        y_train, y_test = labels[train_idx], labels[test_idx]
+
+        # - Sleep stages are not equally distributed
+        # Sleep stages are naturally imbalanced (more N2, less N1/REM)
+        # - Consider SMOTE, class weights, or other techniques
+        X_train, y_train = smote.fit_resample(X_train, y_train)
+
+        # Which subject is held out in this fold?
+        test_subject = np.unique(record_ids[test_idx])[0]
+        print(f"\nFold {fold_idx+1}/10: Training on 9 subjects, testing on {test_subject}")
+
+        # Train classifier on 9 subjects
+        model.fit(X_train, y_train)
+
+        # Predict on held-out subject
+        y_pred = model.predict(X_test)
+        eva_results = _training_evaluation(y_test, y_pred)
+
+        loso_results.append({
+            'subject': test_subject,
+            **eva_results
+            })
+
+    # Report mean ± std across all 10 subjects
+    # TODO: Statistical comparison between iterations (t-test on kappa scores)
+    # Clinical plausibility check
+
+    mean_acc = np.mean([r['accuracy'] for r in loso_results])
+    std_acc = np.std([r['accuracy'] for r in loso_results])
+    mean_kappa = np.mean([r['kappa'] for r in loso_results])
+    std_kappa = np.std([r['kappa'] for r in loso_results])
+
+    print("\n" + "="*60)
+    print(f"LOSO Cross-Validation Results (10 subjects):")
+    print(f"  Accuracy = {mean_acc:.1%} ± {std_acc:.1%}")
+    print(f"  Kappa    = {mean_kappa:.3f} ± {std_kappa:.3f}")
+    print("="*60)
+
+
+def _training_evaluation(y_true, y_pred):
+    # TODO: ROC-AUC for each class
+
+    # Calculate metrics for this subject
+    stage_names = ['Wake', 'N1', 'N2', 'N3', 'REM']
+    stage_labels = list(range(5))
+
+    accuracy = accuracy_score(y_true, y_pred)
+    kappa = cohen_kappa_score(y_true, y_pred)
+
+    # Per-class metrics
+    precision, recall, f1, support = precision_recall_fscore_support(y_true, y_pred)
+
+    # Specificity - True Negative Rate
+    specificity = []
+    for i in range(len(stage_names)):
+        tn = np.sum((y_true != i) & (y_pred != i))
+        fp = np.sum((y_true != i) & (y_pred == i))
+        spec = tn / (tn + fp) if (tn + fp) > 0 else 0.0
+        specificity.append(spec)
+
+    # Macro and weighted averages
+    macro_precision = np.mean(precision)
+    macro_recall = np.mean(recall)
+    macro_f1 = np.mean(f1)
+
+    weighted_precision = np.sum(precision * support) / np.sum(support)
+    weighted_recall = np.sum(recall * support) / np.sum(support)
+    weighted_f1 = np.sum(f1 * support) / np.sum(support)
+
+    # Detailed report
+    print("Per-Class Performance Metrics:")
+    print("-" * 70)
+    print(f"{'Stage':<15} {'Precision':<10} {'Recall':<10} {'Specificity':<12} {'F1-Score':<10} {'Support':<8}")
+    print("-" * 70)
+    for i, stage_name in enumerate(stage_names):
+        print(f"{stage_name:<15} {precision[i]:<10.3f} {recall[i]:<10.3f} {specificity[i]:<12.3f} {f1[i]:<10.3f} {support[i]:<8}")
+    print("-" * 70)
+
+    print(f"{'Accuracy':<15} {accuracy:<10.3f} {'-':<10} {'-':<12} {'-':<10} {len(y_true):<8}")
+    print(f"{'Macro F1':<15} {macro_precision:<10.3f} {macro_recall:<10.3f} {'-':<12} {macro_f1:<10.3f} {np.sum(support):<8}")
+    print(f"{'Weighted F1':<15} {weighted_precision:<10.3f} {weighted_recall:<10.3f} {'-':<12} {weighted_f1:<10.3f} {np.sum(support):<8}")
+    print(f"{'Cohen Kappa':<15} {kappa:<10.3f}")
+    print("-" * 70)
+
+    # Confusion Matrix
+    print("\nConfusion Matrix:")
+    cm = confusion_matrix(y_true, y_pred, labels=stage_labels)
+
+    # Create a formatted confusion matrix
+    cm_df = pd.DataFrame(cm, index=stage_names, columns=stage_names)
+    print(cm_df.to_string())
+
+    result = {
+            'accuracy': accuracy,
+            'kappa': kappa,
+            'macro_f1': macro_f1,
+            'weighted_f1': weighted_f1,
+            'precision': precision,
+            'recall': recall,
+            'f1_per_class': f1,
+            'specificity': specificity
+        }
+    
+        # Class distribution in test set
+    
+    print("\nClass Distribution in Test Set:")
+    unique, counts = np.unique(y_true, return_counts=True)
+    total_samples = len(y_true)
+
+    for stage_idx, count in zip(unique, counts):
+        stage_name = stage_names[stage_idx]
+        percentage = count / total_samples * 100
+        print(f"{stage_name}: {count} samples ({percentage:.1f}%)")
+
+    # Sleep scoring specific notes
+    print("\nNotes for Sleep Scoring:")
+    print("- Sensitivity = Recall = True Positive Rate (correctly identified stages)")
+    print("- Specificity = True Negative Rate (correctly rejected stages)")
+    print("- Sleep stage imbalance is natural (more N2, less N1/REM)")
+    print("- Consider Cohen's kappa for chance-corrected agreement")
+    print("- Clinical focus: High sensitivity for REM and N3 stages")
+
+    return result
