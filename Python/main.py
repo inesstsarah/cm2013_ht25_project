@@ -1,5 +1,5 @@
 import config
-from src.data_loader import load_training_data
+from src.data_loader import load_training_data, load_all_training_data
 from src.preprocessing import preprocess
 from src.feature_extraction import extract_features
 from src.feature_selection import select_features
@@ -49,12 +49,9 @@ def main():
     # 1. Load Data
     # Example uses R1.edf and R1.xml - students should adapt for their dataset
     print("\n=== STEP 1: DATA LOADING ===")
-    edf_file = os.path.join(config.SAMPLE_DIR, "R1.edf")  # Example EDF file
-    xml_file = os.path.join(config.SAMPLE_DIR, "R1.xml")  # Corresponding annotation file
-
     # Handle both new multi-channel format and old single-channel format for compatibility
     try:
-        multi_channel_data, labels, channel_info = load_training_data(edf_file, xml_file)
+        multi_channel_data, labels, record_ids, channel_info = load_all_training_data(config.TRAINING_DIR)
         print(f"Multi-channel data loaded:")
         print(f"  EEG: {multi_channel_data['eeg'].shape}")
         print(f"  EOG: {multi_channel_data['eog'].shape}")
