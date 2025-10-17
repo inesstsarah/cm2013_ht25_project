@@ -7,3 +7,4 @@ python/__pycache__/
 python/cache/
 python/report.txt
 python/figure/
+*.png

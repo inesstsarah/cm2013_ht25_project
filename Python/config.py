@@ -5,7 +5,9 @@
 CURRENT_ITERATION = 1
 
 # Set to True to use cached data for preprocessing and feature extraction.
-USE_CACHE = False
+USE_CACHE = True
+USE_PARALLEL = True  # Use parallel processing where applicable
+PARALLEL_N_JOBS = -1  # Number of parallel jobs (-1 uses all available cores)
 
 # -- File Paths --
 import os

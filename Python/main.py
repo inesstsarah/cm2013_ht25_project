@@ -140,5 +140,8 @@ def main():
         print("⚠️  Students need to implement missing components!")
     print("="*50)
 
+from src.visualization import plot_sample_epoch
 if __name__ == "__main__":
     main()
+    # edf_file = os.path.join(config.SAMPLE_DIR, "R1.edf")  # Example EDF file
+    # plot_sample_epoch(edf_file, epoch_idx=150)
