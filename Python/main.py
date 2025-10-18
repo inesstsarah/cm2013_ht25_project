@@ -42,7 +42,7 @@ def main():
     # Redirect stdout to both terminal and buffer
     sys.stdout = TeeIO(original_stdout, stdout_buffer, show_terminal=True)
 
-    print("\n=== PROCESSING LOG ===")
+    print("=== PROCESSING LOG ===")
 
     print(f"--- Sleep Scoring Pipeline - Iteration {config.CURRENT_ITERATION} ---")
 

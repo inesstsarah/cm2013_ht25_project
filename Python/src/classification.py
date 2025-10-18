@@ -173,8 +173,9 @@ def _LOGO_split_training(model, features, labels, record_ids):
         X_train, y_train = smote.fit_resample(X_train, y_train)
 
         # Which subject is held out in this fold?
+        train_subjects = np.unique(record_ids[train_idx])
         test_subject = np.unique(record_ids[test_idx])[0]
-        print(f"\nFold {fold_idx+1}/10: Training on 9 subjects, testing on {test_subject}")
+        print(f"\nFold {fold_idx+1}/{len(train_subjects)+1}: Training on {len(train_subjects)} subjects, testing on {test_subject}")
 
         # Train classifier on 9 subjects
         model.fit(X_train, y_train)

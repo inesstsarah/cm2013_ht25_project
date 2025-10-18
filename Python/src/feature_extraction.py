@@ -1,6 +1,11 @@
 import numpy as np
 import scipy.stats
 import nolds
+try:
+    from joblib import Parallel, delayed
+    JOBLIB_AVAILABLE = True
+except ImportError:
+    JOBLIB_AVAILABLE = False
 
 def hjorth_mobility(signal):
     """Calculate the Hjorth Mobility of a signal."""
@@ -100,7 +105,6 @@ def extract_features(data, config):
         return extract_single_channel_features(data, config)
 
 
-from joblib import Parallel, delayed
 def extract_multi_channel_features(multi_channel_data, config):
     """
     Extract features from multi-channel data: 2 EEG + 2 EOG + 1 EMG channels.
@@ -133,6 +137,9 @@ def extract_multi_channel_features(multi_channel_data, config):
     all_features = []
     
     if config.USE_PARALLEL:
+        if not JOBLIB_AVAILABLE:
+            raise ImportError("joblib is required for parallel processing, but not installed.")
+        
         all_features = Parallel(n_jobs=config.PARALLEL_N_JOBS, backend='loky', verbose=10)(
             delayed(process_epoch)(i) for i in range(n_epochs))
     else:
