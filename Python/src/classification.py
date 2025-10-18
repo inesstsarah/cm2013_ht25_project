@@ -4,7 +4,7 @@ from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split, LeaveOneGroupOut
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, cohen_kappa_score
-from sklearn.metrics import precision_score, recall_score, f1_score, precision_recall_fscore_support
+from sklearn.metrics import precision_score, recall_score, f1_score, precision_recall_fscore_support, roc_auc_score
 import pandas as pd
 from imblearn.over_sampling import SMOTE
 
@@ -155,6 +155,8 @@ def print_performance_metrics(y_true, y_pred):
     print("- Clinical focus: High sensitivity for REM and N3 stages")
 
 
+# TODO: Statistical comparison between iterations (t-test on kappa scores)
+# Clinical plausibility check
 def _LOGO_split_training(model, features, labels, record_ids):
     # Create LOSO cross-validation split
     logo = LeaveOneGroupOut()
@@ -179,32 +181,28 @@ def _LOGO_split_training(model, features, labels, record_ids):
 
         # Predict on held-out subject
         y_pred = model.predict(X_test)
-        eva_results = _training_evaluation(y_test, y_pred)
+        y_pred_proba = model.predict_proba(X_test) if hasattr(model, "predict_proba") else None
+        eva_results = _training_evaluation(y_test, y_pred, y_pred_proba)
 
         loso_results.append({
             'subject': test_subject,
             **eva_results
             })
 
-    # Report mean ± std across all 10 subjects
-    # TODO: Statistical comparison between iterations (t-test on kappa scores)
-    # Clinical plausibility check
-
+    # Report mean ± std across all subjects
     mean_acc = np.mean([r['accuracy'] for r in loso_results])
     std_acc = np.std([r['accuracy'] for r in loso_results])
     mean_kappa = np.mean([r['kappa'] for r in loso_results])
     std_kappa = np.std([r['kappa'] for r in loso_results])
 
     print("\n" + "="*60)
-    print(f"LOSO Cross-Validation Results (10 subjects):")
+    print(f"LOSO Cross-Validation Results ({len(loso_results)} subjects):")
     print(f"  Accuracy = {mean_acc:.1%} ± {std_acc:.1%}")
     print(f"  Kappa    = {mean_kappa:.3f} ± {std_kappa:.3f}")
     print("="*60)
 
 
-def _training_evaluation(y_true, y_pred):
-    # TODO: ROC-AUC for each class
-
+def _training_evaluation(y_true, y_pred, y_pred_proba):
     # Calculate metrics for this subject
     stage_names = ['Wake', 'N1', 'N2', 'N3', 'REM']
     stage_labels = list(range(5))
@@ -226,26 +224,31 @@ def _training_evaluation(y_true, y_pred):
     # Macro and weighted averages
     macro_precision = np.mean(precision)
     macro_recall = np.mean(recall)
+    macro_specificity = np.mean(specificity)
     macro_f1 = np.mean(f1)
 
     weighted_precision = np.sum(precision * support) / np.sum(support)
     weighted_recall = np.sum(recall * support) / np.sum(support)
+    weighted_specificity = np.sum(np.array(specificity) * support) / np.sum(support)
     weighted_f1 = np.sum(f1 * support) / np.sum(support)
+
+    # AUC
+    auc_results = _compute_auc(y_true, y_pred_proba)
 
     # Detailed report
     print("Per-Class Performance Metrics:")
-    print("-" * 70)
-    print(f"{'Stage':<15} {'Precision':<10} {'Recall':<10} {'Specificity':<12} {'F1-Score':<10} {'Support':<8}")
-    print("-" * 70)
+    print("-" * 80)
+    print(f"{'Stage':<15} {'Precision':<10} {'Recall':<10} {'Specificity':<12} {'F1-Score':<10} {'ROC-AUC':<10} {'Support':<8}")
+    print("-" * 80)
     for i, stage_name in enumerate(stage_names):
-        print(f"{stage_name:<15} {precision[i]:<10.3f} {recall[i]:<10.3f} {specificity[i]:<12.3f} {f1[i]:<10.3f} {support[i]:<8}")
-    print("-" * 70)
+        print(f"{stage_name:<15} {precision[i]:<10.3f} {recall[i]:<10.3f} {specificity[i]:<12.3f} {f1[i]:<10.3f} {auc_results['auc_per_class'][i]:<10.3f} {support[i]:<8}")
+    print("-" * 80)
 
-    print(f"{'Accuracy':<15} {accuracy:<10.3f} {'-':<10} {'-':<12} {'-':<10} {len(y_true):<8}")
-    print(f"{'Macro F1':<15} {macro_precision:<10.3f} {macro_recall:<10.3f} {'-':<12} {macro_f1:<10.3f} {np.sum(support):<8}")
-    print(f"{'Weighted F1':<15} {weighted_precision:<10.3f} {weighted_recall:<10.3f} {'-':<12} {weighted_f1:<10.3f} {np.sum(support):<8}")
-    print(f"{'Cohen Kappa':<15} {kappa:<10.3f}")
-    print("-" * 70)
+    print(f"{'Accuracy':<15} {accuracy:<10.3f} {'-':<10} {'-':<12} {'-':<10} {'-':<10} {len(y_true):<8}")
+    print(f"{'Cohen Kappa':<15} {kappa:<10.3f} {'-':<10} {'-':<12} {'-':<10} {'-':<10} {np.sum(support):<8}")
+    print(f"{'Macro':<15} {macro_precision:<10.3f} {macro_recall:<10.3f} {macro_specificity:<12.3f} {macro_f1:<10.3f} {auc_results['macro_auc']:<10.3f} {np.sum(support):<8}")
+    print(f"{'Weighted':<15} {weighted_precision:<10.3f} {weighted_recall:<10.3f} {weighted_specificity:<12.3f} {weighted_f1:<10.3f} {auc_results['weighted_auc']:<10.3f} {np.sum(support):<8}")
+    print("-" * 80)
 
     # Confusion Matrix
     print("\nConfusion Matrix:")
@@ -286,3 +289,43 @@ def _training_evaluation(y_true, y_pred):
     print("- Clinical focus: High sensitivity for REM and N3 stages")
 
     return result
+
+
+def _compute_auc(y_true, y_pred_proba):
+    """
+    Compute per-class and macro ROC-AUC.
+
+    Args:
+        y_true (array): true labels
+        y_pred_proba (array): predicted probabilities for each class
+
+    Returns:
+        dict: containing per-class and macro ROC-AUC scores
+    """
+    # === Step 1: Translate to one-hot matrix ===
+    n_classes = y_pred_proba.shape[1]
+    y_true_onehot = np.eye(n_classes)[y_true]
+
+    # === Step 2: Compute ROC-AUC ===
+    auc_per_class = []
+    for i in range(n_classes):
+        try:
+            auc = roc_auc_score(y_true_onehot[:, i], y_pred_proba[:, i])
+        except ValueError:
+            auc = np.nan  # if class missing
+        auc_per_class.append(auc)
+
+    macro_auc = np.nanmean(auc_per_class)
+
+    unique, counts = np.unique(y_true, return_counts=True)
+    weights = np.zeros(n_classes)
+    weights[unique] = counts / np.sum(counts)
+
+    weighted_auc = np.nansum(auc_per_class * weights)
+
+    # === Step 3: Return ===
+    return {
+        'auc_per_class': auc_per_class,
+        'macro_auc': macro_auc,
+        'weighted_auc': weighted_auc
+    }
