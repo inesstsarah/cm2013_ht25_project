@@ -2,9 +2,9 @@ import numpy as np
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split, LeaveOneGroupOut
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, cohen_kappa_score
-from sklearn.metrics import precision_score, recall_score, f1_score, precision_recall_fscore_support, roc_auc_score
+from sklearn.model_selection import LeaveOneGroupOut
+from sklearn.metrics import accuracy_score, confusion_matrix, cohen_kappa_score
+from sklearn.metrics import precision_recall_fscore_support, roc_auc_score
 import pandas as pd
 from imblearn.over_sampling import SMOTE
 
@@ -71,90 +71,6 @@ def train_classifier(features, labels, record_ids, config):
     return model
 
 
-def print_performance_metrics(y_true, y_pred):
-    """
-    Print comprehensive performance metrics for sleep stage classification.
-
-    Includes accuracy, sensitivity (recall), specificity, and F1-score for each sleep stage.
-    """
-
-    # Sleep stage labels and names (0=Wake, 1=N1, 2=N2, 3=N3, 4=REM)
-    stage_names = ['Wake', 'N1', 'N2', 'N3', 'REM']
-    stage_labels = list(range(5))
-
-    print("\n" + "="*70)
-    print("SLEEP STAGE CLASSIFICATION PERFORMANCE METRICS")
-    print("="*70)
-
-    # Overall metrics
-    overall_accuracy = accuracy_score(y_true, y_pred)
-    macro_f1 = f1_score(y_true, y_pred, average='macro')
-    weighted_f1 = f1_score(y_true, y_pred, average='weighted')
-
-    print(f"Overall Accuracy: {overall_accuracy:.3f}")
-    print(f"Macro F1-Score: {macro_f1:.3f}")
-    print(f"Weighted F1-Score: {weighted_f1:.3f}")
-
-    # Confusion Matrix
-    print("\nConfusion Matrix:")
-    cm = confusion_matrix(y_true, y_pred, labels=stage_labels)
-
-    # Create a formatted confusion matrix
-    cm_df = pd.DataFrame(cm, index=stage_names, columns=stage_names)
-    print(cm_df.to_string())
-
-    # Per-class metrics
-    print("\nPer-Class Performance Metrics:")
-    print("-" * 70)
-    print(f"{'Stage':<8} {'Accuracy':<10} {'Sensitivity':<12} {'Specificity':<12} {'F1-Score':<10}")
-    print("-" * 70)
-
-    # Calculate metrics for each sleep stage
-    for i, stage_name in enumerate(stage_names):
-        if i in y_true:  # Only calculate if stage is present in test set
-            # Per-class accuracy (percentage of this class correctly classified)
-            class_mask = (y_true == i)
-            if np.sum(class_mask) > 0:
-                class_accuracy = np.sum((y_pred == i) & (y_true == i)) / np.sum(class_mask)
-            else:
-                class_accuracy = 0.0
-
-            # Sensitivity (Recall) - True Positive Rate
-            sensitivity = recall_score(y_true, y_pred, labels=[i], average=None, zero_division=0)[0]
-
-            # Specificity - True Negative Rate
-            tn = np.sum((y_true != i) & (y_pred != i))
-            fp = np.sum((y_true != i) & (y_pred == i))
-            specificity = tn / (tn + fp) if (tn + fp) > 0 else 0.0
-
-            # F1-Score
-            f1 = f1_score(y_true, y_pred, labels=[i], average=None, zero_division=0)[0]
-
-            print(f"{stage_name:<8} {class_accuracy:<10.3f} {sensitivity:<12.3f} {specificity:<12.3f} {f1:<10.3f}")
-        else:
-            print(f"{stage_name:<8} {'N/A':<10} {'N/A':<12} {'N/A':<12} {'N/A':<10}")
-
-    print("-" * 70)
-
-    # Class distribution in test set
-    print("\nClass Distribution in Test Set:")
-    unique, counts = np.unique(y_true, return_counts=True)
-    total_samples = len(y_true)
-
-    for stage_idx, count in zip(unique, counts):
-        stage_name = stage_names[stage_idx]
-        percentage = count / total_samples * 100
-        print(f"{stage_name}: {count} samples ({percentage:.1f}%)")
-
-    # Sleep scoring specific notes
-    print("\nNotes for Sleep Scoring:")
-    print("- Sensitivity = Recall = True Positive Rate (correctly identified stages)")
-    print("- Specificity = True Negative Rate (correctly rejected stages)")
-    print("- Sleep stage imbalance is natural (more N2, less N1/REM)")
-    print("- Consider Cohen's kappa for chance-corrected agreement")
-    print("- Clinical focus: High sensitivity for REM and N3 stages")
-
-
 # TODO: Statistical comparison between iterations (t-test on kappa scores)
 # Clinical plausibility check
 def _LOGO_split_training(model, features, labels, record_ids):
@@ -215,12 +131,7 @@ def _training_evaluation(y_true, y_pred, y_pred_proba):
     precision, recall, f1, support = precision_recall_fscore_support(y_true, y_pred)
 
     # Specificity - True Negative Rate
-    specificity = []
-    for i in range(len(stage_names)):
-        tn = np.sum((y_true != i) & (y_pred != i))
-        fp = np.sum((y_true != i) & (y_pred == i))
-        spec = tn / (tn + fp) if (tn + fp) > 0 else 0.0
-        specificity.append(spec)
+    specificity = _compute_specificity(y_true, y_pred, stage_labels)
 
     # Macro and weighted averages
     macro_precision = np.mean(precision)
@@ -252,12 +163,13 @@ def _training_evaluation(y_true, y_pred, y_pred_proba):
     print("-" * 80)
 
     # Confusion Matrix
-    print("\nConfusion Matrix:")
-    cm = confusion_matrix(y_true, y_pred, labels=stage_labels)
+    _print_confusion_matrix(y_true, y_pred, stage_names, stage_labels)
+    
+    # Class distribution in test set
+    _print_sleep_stage_distribution(y_true)
 
-    # Create a formatted confusion matrix
-    cm_df = pd.DataFrame(cm, index=stage_names, columns=stage_names)
-    print(cm_df.to_string())
+    # Sleep scoring specific notes
+    _print_scoring_notes()
 
     result = {
             'accuracy': accuracy,
@@ -268,27 +180,7 @@ def _training_evaluation(y_true, y_pred, y_pred_proba):
             'recall': recall,
             'f1_per_class': f1,
             'specificity': specificity
-        }
-    
-        # Class distribution in test set
-    
-    print("\nClass Distribution in Test Set:")
-    unique, counts = np.unique(y_true, return_counts=True)
-    total_samples = len(y_true)
-
-    for stage_idx, count in zip(unique, counts):
-        stage_name = stage_names[stage_idx]
-        percentage = count / total_samples * 100
-        print(f"{stage_name}: {count} samples ({percentage:.1f}%)")
-
-    # Sleep scoring specific notes
-    print("\nNotes for Sleep Scoring:")
-    print("- Sensitivity = Recall = True Positive Rate (correctly identified stages)")
-    print("- Specificity = True Negative Rate (correctly rejected stages)")
-    print("- Sleep stage imbalance is natural (more N2, less N1/REM)")
-    print("- Consider Cohen's kappa for chance-corrected agreement")
-    print("- Clinical focus: High sensitivity for REM and N3 stages")
-
+    }
     return result
 
 
@@ -330,3 +222,44 @@ def _compute_auc(y_true, y_pred_proba):
         'macro_auc': macro_auc,
         'weighted_auc': weighted_auc
     }
+
+
+def _compute_specificity(y_true, y_pred, stage_label):
+    specificity = []
+    for i in range(len(stage_label)):
+        tn = np.sum((y_true != i) & (y_pred != i))
+        fp = np.sum((y_true != i) & (y_pred == i))
+        spec = tn / (tn + fp) if (tn + fp) > 0 else 0.0
+        specificity.append(spec)
+    return specificity
+
+
+def _print_confusion_matrix(y_true, y_pred, stage_names, stage_labels):
+    print("\nConfusion Matrix:")
+    cm = confusion_matrix(y_true, y_pred, labels=stage_labels)
+
+    # Create a formatted confusion matrix
+    cm_df = pd.DataFrame(cm, index=stage_names, columns=stage_names)
+    print(cm_df.to_string())
+
+
+def _print_sleep_stage_distribution(y_true):
+    print("\nClass Distribution in Test Set:")
+    stage_names = ['Wake', 'N1', 'N2', 'N3', 'REM']
+    unique, counts = np.unique(y_true, return_counts=True)
+    total_samples = len(y_true)
+
+    for stage_idx, count in zip(unique, counts):
+        stage_name = stage_names[stage_idx]
+        percentage = count / total_samples * 100
+        print(f"{stage_name}: {count} samples ({percentage:.1f}%)")
+
+
+def _print_scoring_notes():
+    print("\nNotes for Sleep Scoring:")
+    print("- Sensitivity = Recall = True Positive Rate (correctly identified stages)")
+    print("- Specificity = True Negative Rate (correctly rejected stages)")
+    print("- Sleep stage imbalance is natural (more N2, less N1/REM)")
+    print("- Consider Cohen's kappa for chance-corrected agreement")
+    print("- Clinical focus: High sensitivity for REM and N3 stages")
+
