@@ -1,7 +1,8 @@
 import numpy as np
 import scipy
+import nolds
 
-def hjorth_activity(signal):
+def extract_hjorth_activity(epoch):
     """
     Computes the Hjorth Activity for one epoch of signal data.
 
@@ -11,9 +12,9 @@ def hjorth_activity(signal):
     Returns:
         float: A float representing the variance of the signal, also known as Hjorth Activity.
     """
-    return np.var(signal)
+    return np.var(epoch)
 
-def hjorth_mobility(signal):
+def extract_hjorth_mobility(epoch):
     """
     Computes the Hjorth Mobility for one epoch of signal data.
 
@@ -23,9 +24,9 @@ def hjorth_mobility(signal):
     Returns:
         float: A flaot representing the Hjorth Mobility.
     """
-    return np.sqrt(hjorth_activity(np.diff(signal)) / hjorth_activity(signal))
+    return np.sqrt(extract_hjorth_activity(np.diff(epoch)) / extract_hjorth_activity(epoch))
 
-def hjorth_complexity(signal):
+def extract_hjorth_complexity(epoch):
     """
     Computes the Hjorth Complexity for one epoch of signal data.
 
@@ -36,9 +37,9 @@ def hjorth_complexity(signal):
         float: A Float representing the Hjorth Complexity.
     """
 
-    return hjorth_mobility(np.diff(signal)) / hjorth_mobility(signal)
+    return extract_hjorth_mobility(np.diff(epoch)) / extract_hjorth_mobility(epoch)
 
-def simple_k_complex_extraction(epoch):
+def extract_simple_k_complex(epoch):
     """
     
     Simple K-complex detection i time domain.
@@ -48,7 +49,7 @@ def simple_k_complex_extraction(epoch):
 
     Returns:
         nb (int): Number of K-complexes detected
-        duration (float) : Total duration of K-complexes in epoch in seconds
+        float : Total duration of K-complexes in epoch in seconds
     """
     eeg_fs = 125
     min_delta = int(0.5*eeg_fs)
@@ -64,7 +65,6 @@ def simple_k_complex_extraction(epoch):
     for neg_idx in neg_peaks:
         while pos_idx < len(pos_peaks) and pos_peaks[pos_idx]<= neg_idx:
             pos_idx +=1
-
         for j in range(pos_idx,len(pos_peaks)):
             delta = pos_peaks[j]-neg_idx
             peak_to_peak = np.abs(epoch[pos_peaks[j]]-epoch[neg_idx])
@@ -83,10 +83,25 @@ def simple_k_complex_extraction(epoch):
         duration += complex['delta']
     return nb, duration/eeg_fs
 
+def extract_sample_entropy(epoch, m=2, r_factor=0.2):
+    """
+    Computes the Sample Entropy for one epoch of signal data.
+
+    Args:
+        epoch (np.ndarray): A 1D array representing one epoch of signal data.
+        m (int): Embedding dimension.
+        r_factor (float): Tolerance factor as a fraction of the standard deviation.
+
+    Returns:
+        float: Sample Entropy value.
+    """
+   
+    r = r_factor * np.std(epoch)
+    return nolds.sampen(epoch, m, r)
 
 def extract_time_domain_features(epoch):
     """
-    Extract 16 time-domain features from a single epoch.
+    Extract 17 time-domain features from a single epoch.
 
     Works for any signal type (EEG, EOG, EMG) but students should consider
     signal-specific features for optimal performance.
@@ -99,32 +114,35 @@ def extract_time_domain_features(epoch):
     """
     features = {}
 
-    # Basic statistical features:
+    # Statistical Moments:
     features['mean'] = np.mean(epoch)
     features['median'] = np.median(epoch)
     features['std'] = np.std(epoch)
     features['variance'] = np.var(epoch)
+    features['skewness'] = scipy.stats.skew(epoch)
+    features['kurtosis'] = scipy.stats.kurtosis(epoch)
+
+    # Amplitude Features:
     features['rms'] = np.sqrt(np.mean(epoch**2))
     features['min'] = np.min(epoch)
     features['max'] = np.max(epoch)
     features['range'] = np.max(epoch) - np.min(epoch)
-    features['skewness'] = scipy.stats.skew(epoch)
-    features['kurtosis'] = scipy.stats.kurtosis(epoch)
-
-    # Signal complexity features:
-    features['zero_crossings'] = np.sum(np.diff(np.sign(epoch)) != 0)
-    features['hjorth_activity'] = hjorth_activity(epoch)
-    features['hjorth_mobility'] = hjorth_mobility(epoch)
-    features['hjorth_complexity'] = hjorth_complexity(epoch)
-
-    # Signal energy and power:
     features['total_energy'] = np.sum(epoch**2)
     features['mean_power'] = np.mean(epoch**2)
 
-    #features['Entropy'] = nolds.sampen(epoch, 2, 0.2*np.std(epoch))
+    # Hjorth Parameters:
+    features['hjorth_activity'] = extract_hjorth_activity(epoch)
+    features['hjorth_mobility'] = extract_hjorth_mobility(epoch)
+    features['hjorth_complexity'] = extract_hjorth_complexity(epoch)
+
+    # Frequency-related Features:
+    features['zero_crossings'] = np.sum(np.diff(np.sign(epoch)) != 0)
+    
+    # Complexity Feature:
+    features['Entropy'] = extract_sample_entropy(epoch)
 
     #K-complex features:
-    features['nb_complexes'],  features['duration_complexes'] = simple_k_complex_extraction(epoch)
+    #features['nb_complexes'],  features['duration_complexes'] = simple_k_complex_extraction(epoch)
 
     return features
 
@@ -165,15 +183,17 @@ def extract_features(data, config):
 def extract_multi_channel_features(multi_channel_data, config):
     """
     Extract features from multi-channel data: 2 EEG + 2 EOG + 1 EMG channels.
-
-    Students should expand this significantly!
+    Args:
+        multi_channel_data (dict): Dictionary with keys 'eeg', 'eog', 'emg'.
+        config (module): The configuration module.
+    Returns:
+        np.ndarray: A 2D array of features (n_epochs, n_features).
     """
     n_epochs = multi_channel_data['eeg'].shape[0]
     all_features = []
 
     for epoch_idx in range(n_epochs):
         epoch_features = []
-
         # EEG features (2 channels)
         for ch in range(multi_channel_data['eeg'].shape[1]):
             eeg_signal = multi_channel_data['eeg'][epoch_idx, ch, :]
@@ -208,7 +228,12 @@ def extract_multi_channel_features(multi_channel_data, config):
 
 def extract_single_channel_features(data, config):
     """
-    Backward compatibility for single-channel data.
+    Extract features from single-channel data for backward compatibility.
+    Args:
+        data (np.ndarray): A 2D array of shape (n_epochs, n_samples).
+        config (module): The configuration module.  
+    Returns:
+        np.ndarray: A 2D array of features (n_epochs, n_features).
     """
     if config.CURRENT_ITERATION == 1:
         # Iteration 1: Time-domain features (TARGET: 16 features)

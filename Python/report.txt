@@ -5,7 +5,7 @@
 
 === STEP 1: DATA LOADING ===
 Loading all training data from ../data/training/...
-Found 4 recordings
+Found 1 recordings
 
 Loading R1...
 Loading training data from ../data/training\R1.edf and ../data/training\R1.xml...
@@ -28,155 +28,83 @@ Sleep stage distribution:
   N3: 145 epochs (13.4%)
   REM: 102 epochs (9.4%)
 
-Loading R2...
-Loading training data from ../data/training\R2.edf and ../data/training\R2.xml...
-Identified channels:
-  EEG: ['EEG(sec)', 'EEG']
-  EOG: ['EOG(L)', 'EOG(R)']
-  EMG: ['EMG']
-125.0
-  EEG: 2 channels, 3750 samples/epoch, 125.0 Hz
-125.0
-  EOG: 2 channels, 3750 samples/epoch, 125.0 Hz
-125.0
-  EMG: 1 channels, 3750 samples/epoch, 125.0 Hz
+Combined EEG shape: (1083, 2, 3750)
+Combined EOG shape: (1083, 2, 3750)
+Combined EMG shape: (1083, 1, 3750)
 
-Loaded 1078 epochs (8.98 hours)
+Total loaded: 1083 epochs from 1 recordings
 Sleep stage distribution:
-  Wake: 716 epochs (66.4%)
-  N1: 3 epochs (0.3%)
-  N2: 238 epochs (22.1%)
-  N3: 61 epochs (5.7%)
-  REM: 61 epochs (5.7%)
-
-Loading R3...
-Loading training data from ../data/training\R3.edf and ../data/training\R3.xml...
-Identified channels:
-  EEG: ['EEG(sec)', 'EEG']
-  EOG: ['EOG(L)', 'EOG(R)']
-  EMG: ['EMG']
-125.0
-  EEG: 2 channels, 3750 samples/epoch, 125.0 Hz
-125.0
-  EOG: 2 channels, 3750 samples/epoch, 125.0 Hz
-125.0
-  EMG: 1 channels, 3750 samples/epoch, 125.0 Hz
-
-Loaded 1048 epochs (8.73 hours)
-Sleep stage distribution:
-  Wake: 332 epochs (31.6%)
-  N1: 35 epochs (3.3%)
-  N2: 289 epochs (27.6%)
-  N3: 307 epochs (29.3%)
-  REM: 86 epochs (8.2%)
-
-Loading R4...
-Loading training data from ../data/training\R4.edf and ../data/training\R4.xml...
-Identified channels:
-  EEG: ['EEG(sec)', 'EEG']
-  EOG: ['EOG(L)', 'EOG(R)']
-  EMG: ['EMG']
-125.0
-  EEG: 2 channels, 3750 samples/epoch, 125.0 Hz
-125.0
-  EOG: 2 channels, 3750 samples/epoch, 125.0 Hz
-125.0
-  EMG: 1 channels, 3750 samples/epoch, 125.0 Hz
-
-Loaded 874 epochs (7.28 hours)
-Sleep stage distribution:
-  Wake: 273 epochs (31.2%)
-  N1: 18 epochs (2.1%)
-  N2: 177 epochs (20.2%)
-  N3: 315 epochs (36.0%)
-  REM: 92 epochs (10.5%)
-
-Combined EEG shape: (4083, 2, 3750)
-Combined EOG shape: (4083, 2, 3750)
-Combined EMG shape: (4083, 1, 3750)
-
-Total loaded: 4083 epochs from 4 recordings
-Sleep stage distribution:
-  Wake: 1650 epochs (40.4%)
-  N1: 103 epochs (2.5%)
-  N2: 1161 epochs (28.4%)
-  N3: 828 epochs (20.3%)
-  REM: 341 epochs (8.4%)
+  Wake: 332 epochs (30.7%)
+  N1: 47 epochs (4.3%)
+  N2: 457 epochs (42.2%)
+  N3: 145 epochs (13.4%)
+  REM: 102 epochs (9.4%)
 Multi-channel data loaded:
-  EEG: (4083, 2, 3750)
-  EOG: (4083, 2, 3750)
-  EMG: (4083, 1, 3750)
-Labels shape: (4083,)
+  EEG: (1083, 2, 3750)
+  EOG: (1083, 2, 3750)
+  EMG: (1083, 1, 3750)
+Labels shape: (1083,)
 
 === STEP 2: PREPROCESSING ===
 Preprocessing data for iteration 1...
 Processing multi-channel data (EEG + EOG + EMG)
-(4083, 2, 3750)
+(1083, 2, 3750)
 Iteration 1: Processing EEG channels only
 
 === STEP 3: FEATURE EXTRACTION ===
 Extracting features for iteration 1...
 Processing multi-channel data (EEG + EOG + EMG)
-Multi-channel Iteration 1: 36 features (target: 32+)
-Extracted features shape: (4083, 36)
-[ 8.78446452e-09 -1.83538084e-08  8.88479770e-06  7.89396301e-11
-  8.88480204e-06 -8.36572189e-05  7.40961379e-05  1.57753357e-04
- -1.39993939e-01  7.40236769e+00  1.15400000e+03  7.89396301e-11
-  8.91394653e-01  1.25192447e+00  2.96023902e-07  7.89397073e-11
-  0.00000000e+00  0.00000000e+00 -1.58598440e-08 -1.22717173e-07
-  1.83669972e-05  3.37346584e-10  1.83670040e-05 -1.08431645e-04
-  1.07858899e-04  2.16290545e-04  1.56228807e-02  1.88952609e+00
-  1.29400000e+03  3.37346584e-10  1.03875593e+00  1.13177002e+00
-  1.26505064e-06  3.37346836e-10  0.00000000e+00  0.00000000e+00]
+Multi-channel Iteration 1: 34 features (target: 32+)
+Extracted features shape: (1083, 34)
 
 === STEP 4: FEATURE SELECTION ===
 Selecting features for iteration 1...
-Input features shape: (4083, 36)
+Input features shape: (1083, 34)
 Early iteration - using all available features
-Selected features shape: (4083, 36)
-Selected features shape: (4083, 36)
+Selected features shape: (1083, 34)
+Selected features shape: (1083, 34)
 
 === STEP 5: CLASSIFICATION ===
 Training knn classifier...
-Features shape: (4083, 36), Labels shape: (4083,)
+Features shape: (1083, 34), Labels shape: (1083,)
 Using stratified train/test split to maintain class balance
-Training set: 3266 samples, Test set: 817 samples
+Training set: 866 samples, Test set: 217 samples
 Using k-NN with k=5
 Training model...
-Overall accuracy: 0.650
+Overall accuracy: 0.710
 
 ======================================================================
 SLEEP STAGE CLASSIFICATION PERFORMANCE METRICS
 ======================================================================
-Overall Accuracy: 0.650
-Macro F1-Score: 0.439
-Weighted F1-Score: 0.632
+Overall Accuracy: 0.710
+Macro F1-Score: 0.602
+Weighted F1-Score: 0.702
 
 Confusion Matrix:
-      Wake  N1   N2   N3  REM
-Wake   267   1   41   12    9
-N1      15   0    4    2    0
-N2      43   0  152   28    9
-N3       5   0   55  104    2
-REM     14   0   42    4    8
+      Wake  N1  N2  N3  REM
+Wake    54   1  12   0    0
+N1       4   2   3   0    0
+N2       9   2  70   6    5
+N3       0   0   9  20    0
+REM      0   0  12   0    8
 
 Per-Class Performance Metrics:
 ----------------------------------------------------------------------
 Stage    Accuracy   Sensitivity  Specificity  F1-Score  
 ----------------------------------------------------------------------
-Wake     0.809      0.809        0.842        0.792     
-N1       0.000      0.000        0.999        0.000     
-N2       0.655      0.655        0.757        0.578     
-N3       0.627      0.627        0.929        0.658     
-REM      0.118      0.118        0.973        0.167     
+Wake     0.806      0.806        0.913        0.806     
+N1       0.222      0.222        0.986        0.286     
+N2       0.761      0.761        0.712        0.707     
+N3       0.690      0.690        0.968        0.727     
+REM      0.400      0.400        0.975        0.485     
 ----------------------------------------------------------------------
 
 Class Distribution in Test Set:
-Wake: 330 samples (40.4%)
-N1: 21 samples (2.6%)
-N2: 232 samples (28.4%)
-N3: 166 samples (20.3%)
-REM: 68 samples (8.3%)
+Wake: 67 samples (30.9%)
+N1: 9 samples (4.1%)
+N2: 92 samples (42.4%)
+N3: 29 samples (13.4%)
+REM: 20 samples (9.2%)
 
 Notes for Sleep Scoring:
 - Sensitivity = Recall = True Positive Rate (correctly identified stages)

@@ -5,24 +5,28 @@ import numpy as np
 
 def highpass_filter(data,cutoff,fs,order=5):
     """
-    Simple highpass filter for baseline wander removal"""
+    Simple highpass filter for baseline wander removal.
+
+    Args:
+        data (np.ndarray): The input signal.    
+        cutoff (float): The cutoff frequency of the filter.
+        fs (int): The sampling frequency of the signal.
+        order (int): The order of the filter.
+
+    Returns:
+        np.ndarray: The filtered signal.
+    """
     nyquist = 0.5 * fs
     normal_cutoff = cutoff / nyquist
     b, a = butter(order, normal_cutoff, btype='high', analog=False)
-    y = filtfilt(b, a, data)
+    y = filtfilt(b, a, data, padlen = 3*order, padtype="odd")
     
     #, padlen = 3*order, padtype="odd"
     return y,b,a
 
 def lowpass_filter(data, cutoff, fs, order=5):
     """
-    EXAMPLE IMPLEMENTATION: Simple low-pass Butterworth filter.
-
-    Students should understand this basic filter and consider:
-    - Is 40Hz the right cutoff for EEG?
-    - What about high-pass filtering?
-    - Should you use bandpass instead?
-    - What about notch filtering for powerline interference?
+    Simple low-pass Butterworth filter.
 
     Args:
         data (np.ndarray): The input signal.
@@ -33,20 +37,16 @@ def lowpass_filter(data, cutoff, fs, order=5):
     Returns:
         np.ndarray: The filtered signal.
     """
-    # TODO: Students may want to implement additional filtering:
-    # - High-pass filter to remove DC drift
-    # - Notch filter for 50/60 Hz powerline noise
-    # - Bandpass filter (e.g., 0.5-40 Hz for EEG)
 
     nyquist = 0.5 * fs
     normal_cutoff = cutoff / nyquist
     b, a = butter(order, normal_cutoff, btype='low', analog=False)
-    y = lfilter(b, a, data)
+    y = lfilter(b, a, data, padlen = 3*order, padtype="odd")
     return y,b,a
 
 def notch_filter(data, f0, Q, fs):
     b, a = iirnotch(f0, Q, fs)       
-    y = filtfilt(b,a,data) 
+    y = filtfilt(b,a,data, padlen = 15, padtype="odd") 
     freqz(b,a)
     return y,b,a
 
@@ -55,7 +55,7 @@ def bandpass_filter(data, lowcut , highcut, fs, order):
     normal_lowcut = lowcut / nyquist
     normal_highcut = highcut / nyquist
     b, a = butter(order, [normal_lowcut, normal_highcut], btype='band', analog=False)
-    y = filtfilt(b, a, data)
+    y = filtfilt(b, a, data, padlen = 3*order, padtype="odd")
     freqz(b,a)
     return y,b,a
 
@@ -89,13 +89,19 @@ def preprocess(data, channel_info, config):
 def preprocess_multi_channel(multi_channel_data,channel_info, config):
     """
     Preprocess multi-channel data: 2 EEG + 2 EOG + 1 EMG channels.
-    Each channel type may have different sampling rates and require different processing.
+
+    Args:        
+        multi_channel_data (dict): Dictionary with keys 'eeg', 'eog', 'emg'.
+        config (module): The configuration module.
+
+    Returns:
+        dict: Preprocessed multi-channel data with same keys.
     """
     preprocessed_data = {}
 
     # Process EEG channels (2 channels)
     eeg_data = multi_channel_data['eeg']
-    eeg_fs = channel_info['eeg_fs']  # Actual sampling rate: 125 Hz (TODO: Get from channel_info)
+    eeg_fs = channel_info['eeg_fs'] 
     preprocessed_eeg = np.zeros_like(eeg_data)
 
     for ch in range(eeg_data.shape[1]):
@@ -105,7 +111,6 @@ def preprocess_multi_channel(multi_channel_data,channel_info, config):
         filtered_signal,_,_ = highpass_filter(signal, config.HIGHPASS_FILTER_FREQ,eeg_fs)
         filtered_signal,_,_ = notch_filter(filtered_signal, config.NOTCH_FILTER_FREQ, config.NOTCH_FILTER_Q, eeg_fs)
         filtered_signal,_,_ = bandpass_filter(filtered_signal, config.BANDPASS_FILTER_LOWER_FREQ, config.BANDPASS_FILTER_HIGHER_FREQ, eeg_fs, config.BANDPASS_FILTER_ORDER)
-        # TODO: Students should add bandpass filter, artifact removal
         for epoch in range(sh[0]):
             preprocessed_eeg[epoch, ch, :] = filtered_signal[3750*epoch:3750*(epoch+1)]
 
@@ -159,6 +164,13 @@ def preprocess_multi_channel(multi_channel_data,channel_info, config):
 def preprocess_single_channel(data, config):
     """
     Backward compatibility for single-channel preprocessing.
+
+    Args:
+        data (np.ndarray): A 2D array of shape (n_epochs, n_samples).
+        config (module): The configuration module.    
+
+    Returns:
+        np.ndarray: A 2D array of preprocessed data (n_epochs, n_samples
     """
     if config.CURRENT_ITERATION == 1:
         # EXAMPLE: Very basic low-pass filter (students should expand)
