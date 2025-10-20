@@ -2,6 +2,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import xml.etree.ElementTree as ET
+import os
+import matplotlib.patches as mpatches
 
 # Try to import MNE for EDF reading (more lenient than pyedflib)
 try:
@@ -15,20 +17,6 @@ except ImportError:
     except ImportError:
         HAS_PYEDFLIB = False
 
-def plot_confusion_matrix(y_true, y_pred, class_names):
-    """
-    Plots a confusion matrix.
-
-    Args:
-        y_true (np.ndarray): The true labels.
-        y_pred (np.ndarray): The predicted labels.
-        class_names (list): The names of the classes.
-    """
-    cm = confusion_matrix(y_true, y_pred)
-    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=class_names)
-    disp.plot()
-    plt.title("Confusion Matrix")
-    plt.show()
 
 def plot_sample_epoch(edf_path, epoch_idx=0, epoch_duration=30):
     """
@@ -150,6 +138,7 @@ def plot_sample_epoch(edf_path, epoch_idx=0, epoch_duration=30):
         print(f"Error reading EDF file: {str(e)}")
         import traceback
         traceback.print_exc()
+
 
 def plot_hypnogram(xml_path, edf_path=None):
     """
@@ -284,7 +273,8 @@ def plot_hypnogram(xml_path, edf_path=None):
         import traceback
         traceback.print_exc()
 
-def visualize_results(model, features, labels, config):
+
+def visualize_results(model, features, labels, record_ids, config):
     """
     Visualizes the results of the classification.
 
@@ -298,7 +288,19 @@ def visualize_results(model, features, labels, config):
     # TODO: Add more visualizations as needed (e.g., feature importance).
     class_names = ['Wake', 'N1', 'N2', 'N3', 'REM']
     y_pred = model.predict(features)
-    plot_confusion_matrix(labels, y_pred, class_names)
+    
+    # visualize confusion matrix
+    print("Visualizing confusion matrix...")
+    _plot_confusion_matrix(labels, y_pred, class_names, config)
+
+    # visualize hypnograms side by side
+    print("Visualizing hypnograms side by side...")
+    _visualize_sidebyside_hypnograms(labels, y_pred, record_ids, config)
+
+    # visualize stage percentage comparison
+    print("Visualizing stage percentage comparison...")
+    _visualize_stage_percentage_comparison(labels, y_pred, config, record_ids)
+
 
 def visualize_fft(signal, fs, ax=None, title="FFT of Signal"):
     """
@@ -325,6 +327,7 @@ def visualize_fft(signal, fs, ax=None, title="FFT of Signal"):
     ax.set_ylabel("Magnitude")
     ax.grid(True)
 
+
 def visualize_signal(signal, fs, ax=None, title="Time-domain Signal"):
     """
     Plot the time-domain waveform of a signal on a given matplotlib Axes.
@@ -347,3 +350,238 @@ def visualize_signal(signal, fs, ax=None, title="Time-domain Signal"):
     ax.set_xlabel("Time (s)")
     ax.set_ylabel("Amplitude")
     ax.grid(True)
+
+
+def _plot_confusion_matrix(y_true, y_pred, class_names, config):
+    """
+    Plots a confusion matrix.
+
+    Args:
+        y_true (np.ndarray): The true labels.
+        y_pred (np.ndarray): The predicted labels.
+        class_names (list): The names of the classes.
+    """
+    plt.figure(figsize=(20, 20))
+    cm = confusion_matrix(y_true, y_pred)
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=class_names)
+    disp.plot()
+    plt.title("Confusion Matrix")
+    # plt.show(block=False)
+    save_path = os.path.join(config.FIGURES_CLASSIFICATION_DIR, "confusion matrix.png")
+    plt.gcf().savefig(save_path, dpi=300, bbox_inches='tight')
+    plt.close(plt.gcf()) # release memory
+
+
+def _visualize_sidebyside_hypnograms(y_true, y_pred, record_ids, config):
+    # Plot as step function
+    # find ids
+    unique_records = np.unique(record_ids)
+
+    # Reuse a single figure for all records to reduce overhead
+    fig = plt.figure(figsize=(15, 5))
+
+    for target_id in unique_records:
+        print(f"Visualizing hypnogram for record {target_id}...")
+        # Clear previous content and create a fresh Axes on the same figure
+        fig.clf()
+        ax = fig.add_subplot(111)
+
+        indices = np.where(record_ids == target_id)[0]
+        nepochs = len(indices)
+        stage_label_list_true = y_true[indices]
+        stage_label_list_pred = y_pred[indices]
+
+        # Create step plot - ground truth
+        x = np.arange(nepochs)
+        offset = 0.3 
+        # Plot ground truth as scatter
+        true_colors = np.asarray(config.STAGE_COLORS)[stage_label_list_true.astype(int)] # color mapping
+        ax.scatter(x, stage_label_list_true + offset, c=true_colors, s=2, marker='s', alpha=1.0, label='Ground Truth')
+        
+        # Prediction
+        pred_colors = np.asarray(config.LIGHT_STAGE_COLORS)[stage_label_list_pred.astype(int)]
+        ax.scatter(x, stage_label_list_pred - offset, c=pred_colors, s=2, marker='s', alpha=0.4, label='Prediction')
+
+        # Styling
+        ax.set_yticks(range(5))
+        ax.set_yticklabels(config.STAGE_NAMES)
+        ax.set_ylabel('Sleep Stage', fontsize=12, fontweight='bold')
+        ax.set_xlabel('Epoch Number (30s epochs)', fontsize=12, fontweight='bold')
+        ax.set_title(f'Side-by-Side Hypnogram - {target_id}', fontsize=14, fontweight='bold')
+        ax.grid(True, alpha=0.3, axis='x')
+        ax.set_ylim(-0.5, 4.5)
+        patch_truth = mpatches.Patch(color=config.STAGE_COLORS[0], label='Ground Truth')
+        patch_pred  = mpatches.Patch(color=config.LIGHT_STAGE_COLORS[0], alpha=0.4, label='Prediction')
+        ax.legend(handles=[patch_truth, patch_pred],
+                loc='upper right',
+                frameon=False)
+
+        # Add time axis on top
+        ax2 = ax.twiny()
+        ax2.set_xlim(ax.get_xlim())
+        ax2.set_xlabel('Time (hours)', fontsize=12, fontweight='bold')
+        # Convert epochs to hours
+        max_epoch = nepochs
+        hour_ticks = np.arange(0, max_epoch, 120)  # 120 epochs = 1 hour
+        ax2.set_xticks(hour_ticks)
+        ax2.set_xticklabels([f'{h/120:.1f}' for h in hour_ticks])
+
+        fig.tight_layout()
+        save_path = os.path.join(config.FIGURES_CLASSIFICATION_DIR, f"sidebyde_hypnograms_{target_id}.png")
+        fig.savefig(save_path, dpi=300, bbox_inches='tight')
+    
+    plt.close(fig)  # release memory for the reused figure after all saves
+
+
+def _compute_percentages(labels, config):
+    counts = np.bincount(labels.astype(int), minlength=len(config.STAGE_NAMES))
+    total = counts.sum()
+    if total == 0:
+        return np.zeros(len(config.STAGE_NAMES), dtype=float)
+    return counts / total * 100.0
+
+
+def _print_stage_percentage_table(y_true, y_pred, config, record_id=None):
+    """
+    Print a table showing stage percentage comparison with error column.
+    
+    Args:
+        y_true (np.ndarray): Ground-truth labels.
+        y_pred (np.ndarray): Predicted labels.
+        config (module): Config module providing STAGE_NAMES.
+        record_id (str | None): Optional record identifier for table title.
+    """
+
+    true_pct = _compute_percentages(y_true, config)
+    pred_pct = _compute_percentages(y_pred, config)
+    error = np.abs(true_pct - pred_pct)
+    
+    title = f"Stage Percentage Comparison - {record_id}" if record_id else "Stage Percentage Comparison (Overall)"
+    print(f"\n{title}")
+    print("=" * 60)
+    print(f"{'Stage':<8} {'Ground Truth':<12} {'Predicted':<12} {'Error':<8}")
+    print("-" * 60)
+    
+    for i, stage in enumerate(config.STAGE_NAMES):
+        print(f"{stage:<8} {true_pct[i]:>10.1f}% {pred_pct[i]:>10.1f}% {error[i]:>6.1f}%")
+    
+    print("-" * 60)
+    print(f"{'Total':<8} {true_pct.sum():>10.1f}% {pred_pct.sum():>10.1f}% {error.sum():>6.1f}%")
+    print("=" * 60)
+
+
+def _visualize_stage_percentage_comparison(y_true, y_pred, config, record_ids=None):
+    """
+    Plot bar charts comparing sleep stage percentage distributions (Ground Truth vs Prediction).
+
+    Args:
+        y_true (np.ndarray): Ground-truth labels, shape (N,), values in [0..4].
+        y_pred (np.ndarray): Predicted labels, shape (N,), values in [0..4].
+        config (module): Config module providing FIGURES_CLASSIFICATION_DIR, STAGE_NAMES,
+                         STAGE_COLORS, LIGHT_STAGE_COLORS.
+        record_ids (np.ndarray | None): Optional, shape (N,). If provided, save one figure per
+                                        unique record id; otherwise save a single overall figure.
+    """
+
+    # Reuse a single figure to reduce overhead
+    fig = plt.figure(figsize=(10, 6))
+
+    if record_ids is None:
+        print("Visualizing stage percentage comparison for overall...")
+        fig.clf()
+        ax = fig.add_subplot(111)
+
+        true_pct = _compute_percentages(y_true, config)
+        pred_pct = _compute_percentages(y_pred, config)
+
+        x = np.arange(len(config.STAGE_NAMES))
+        width = 0.38
+
+        bars_true = ax.bar(
+            x - width/2,
+            true_pct,
+            width,
+            label='Ground Truth',
+            color=config.STAGE_COLORS,
+            alpha=0.9
+        )
+        bars_pred = ax.bar(
+            x + width/2,
+            pred_pct,
+            width,
+            label='Prediction',
+            color=config.LIGHT_STAGE_COLORS,
+            alpha=0.7
+        )
+
+        ax.set_xticks(x)
+        ax.set_xticklabels(config.STAGE_NAMES)
+        ax.set_ylabel('Percentage (%)', fontsize=12, fontweight='bold')
+        ax.set_title('Stage Percentage Comparison (Overall)', fontsize=14, fontweight='bold')
+        ax.grid(True, axis='y', alpha=0.3)
+        ax.legend()
+
+        # Add numeric labels on the top of bars
+        ax.bar_label(bars_true, fmt='%.1f%%', padding=3)
+        ax.bar_label(bars_pred, fmt='%.1f%%', padding=3)
+
+        fig.tight_layout()
+        save_path = os.path.join(config.FIGURES_CLASSIFICATION_DIR, 'stage_percentage_comparison_overall.png')
+        fig.savefig(save_path, dpi=300, bbox_inches='tight')
+        
+        # Print table for overall comparison
+        _print_stage_percentage_table(y_true, y_pred, config)
+    else:
+        unique_records = np.unique(record_ids)
+
+        for rid in unique_records:
+            print(f"\nVisualizing stage percentage comparison for record {rid}...")
+            fig.clf()
+            ax = fig.add_subplot(111)
+
+            idx = np.where(record_ids == rid)[0]
+            if idx.size == 0:
+                continue
+
+            true_pct = _compute_percentages(y_true[idx], config)
+            pred_pct = _compute_percentages(y_pred[idx], config)
+
+            x = np.arange(len(config.STAGE_NAMES))
+            width = 0.38
+
+            bars_true = ax.bar(
+                x - width/2,
+                true_pct,
+                width,
+                label='Ground Truth',
+                color=config.STAGE_COLORS,
+                alpha=0.9
+            )
+            bars_pred = ax.bar(
+                x + width/2,
+                pred_pct,
+                width,
+                label='Prediction',
+                color=config.LIGHT_STAGE_COLORS,
+                alpha=0.7
+            )
+
+            ax.set_xticks(x)
+            ax.set_xticklabels(config.STAGE_NAMES)
+            ax.set_ylabel('Percentage (%)', fontsize=12, fontweight='bold')
+            ax.set_title(f'Stage Percentage Comparison - {rid}', fontsize=14, fontweight='bold')
+            ax.grid(True, axis='y', alpha=0.3)
+            ax.legend()
+
+            ax.bar_label(bars_true, fmt='%.1f%%', padding=3)
+            ax.bar_label(bars_pred, fmt='%.1f%%', padding=3)
+
+            fig.tight_layout()
+            save_path = os.path.join(config.FIGURES_CLASSIFICATION_DIR, f'stage_percentage_comparison_{rid}.png')
+            fig.savefig(save_path, dpi=300, bbox_inches='tight')
+            
+            # Print table for this record
+            _print_stage_percentage_table(y_true[idx], y_pred[idx], config, record_id=rid)
+
+    plt.close(fig)
+

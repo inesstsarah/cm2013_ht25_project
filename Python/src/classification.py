@@ -85,7 +85,7 @@ def _LOGO_split_training(model, features, labels, record_ids):
 
         # - Sleep stages are not equally distributed
         # Sleep stages are naturally imbalanced (more N2, less N1/REM)
-        # - Consider SMOTE, class weights, or other techniques
+        # TODO：Use class weighting method in next iterations
         X_train, y_train = smote.fit_resample(X_train, y_train)
 
         # Which subject is held out in this fold?
@@ -156,10 +156,10 @@ def _training_evaluation(y_true, y_pred, y_pred_proba):
         print(f"{stage_name:<15} {precision[i]:<10.3f} {recall[i]:<10.3f} {specificity[i]:<12.3f} {f1[i]:<10.3f} {auc_results['auc_per_class'][i]:<10.3f} {support[i]:<8}")
     print("-" * 80)
 
-    print(f"{'Accuracy':<15} {accuracy:<10.3f} {'-':<10} {'-':<12} {'-':<10} {'-':<10} {len(y_true):<8}")
-    print(f"{'Cohen Kappa':<15} {kappa:<10.3f} {'-':<10} {'-':<12} {'-':<10} {'-':<10} {np.sum(support):<8}")
     print(f"{'Macro':<15} {macro_precision:<10.3f} {macro_recall:<10.3f} {macro_specificity:<12.3f} {macro_f1:<10.3f} {auc_results['macro_auc']:<10.3f} {np.sum(support):<8}")
     print(f"{'Weighted':<15} {weighted_precision:<10.3f} {weighted_recall:<10.3f} {weighted_specificity:<12.3f} {weighted_f1:<10.3f} {auc_results['weighted_auc']:<10.3f} {np.sum(support):<8}")
+    print(f"{'Accuracy':<15} {accuracy:<10.3f} {'-':<10} {'-':<12} {'-':<10} {'-':<10} {len(y_true):<8}")
+    print(f"{'Cohen Kappa':<15} {kappa:<10.3f} {'-':<10} {'-':<12} {'-':<10} {'-':<10} {np.sum(support):<8}")
     print("-" * 80)
 
     # Confusion Matrix

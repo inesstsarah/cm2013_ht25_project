@@ -166,7 +166,7 @@ def _preprocess_eeg_channel(eeg_data, config):
         axes[0,1].set_ylim(y_range_signal)
         visualize_fft(filtered_signal, eeg_fs, ax=axes[1,1], title=f"EEG Channel {ch+1} - Filtered Signal FFT")
         plt.tight_layout()
-        fig.savefig(os.path.join(config.FIGURES_PREPROCESSING_DIR, f"preprocessing_EEG_filtering_channel_{ch+1}.png"))
+        fig.savefig(os.path.join(config.FIGURES_PREPROCESSING_DIR, f"EEG_filtering_channel_{ch+1}.png"))
         preprocessed_eeg[:, ch, :] = filtered_signal.reshape(nepochs, -1)
 
     return preprocessed_eeg
