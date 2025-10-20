@@ -2,11 +2,11 @@ data/
 PROJECT_GUIDE.md
 README.md
 VISUALIZATION_GUIDE.md
+Python/report.txt
 Python/__pycache__/
-Python/*.pyc
 Python/cache/
 Python/.pytest_cache/
 Python/tests/__pycache__/
 Python/src/__pycache__/
-Python/report.txt
 Python/*.png
+Python/src/__pycache__/*.pyc
