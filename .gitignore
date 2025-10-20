@@ -3,10 +3,9 @@ PROJECT_GUIDE.md
 README.md
 VISUALIZATION_GUIDE.md
 Python/report.txt
-Python/__pycache__/
 Python/cache/
-Python/.pytest_cache/
-Python/tests/__pycache__/
-Python/src/__pycache__/
+*.pyc
+__pycache__/
+**/__pycache__/
 Python/*.png
-Python/src/__pycache__/*.pyc
+Python/.pytest_cache/
