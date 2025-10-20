@@ -30,7 +30,7 @@ def main():
     # 1. Load Data
     # Example uses R1.edf and R1.xml from training directory
     print("\n=== STEP 1: DATA LOADING ===")
-    edf_file = os.path.join(config.TRAINING_DIR, "R1.edf")  # Example EDF file
+    edf_file = os.path.join(config.TRAINING_DIR, "R1.edf")  # EDF file
     xml_file = os.path.join(config.TRAINING_DIR, "R1.xml")  # Corresponding annotation file
 
     # Handle both new multi-channel format and old single-channel format for compatibility
@@ -41,10 +41,6 @@ def main():
         print(f"  EOG: {multi_channel_data['eog'].shape}")
         print(f"  EMG: {multi_channel_data['emg'].shape}")
         print(f"Labels shape: {labels.shape}")
-
-        # For pipeline compatibility, use EEG data as primary signal
-        #eeg_data = multi_channel_data  # Use first EEG channel for now
-        #print(f"Using EEG channel 1 for pipeline: {eeg_data.shape}")
 
     except (ValueError, TypeError):
         # Fallback to old format if multi-channel not implemented
