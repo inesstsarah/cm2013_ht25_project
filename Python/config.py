@@ -9,7 +9,7 @@ USE_CACHE = False
 
 # -- File Paths --
 import os
-DATA_DIR = '../data/'
+DATA_DIR = 'data/'
 TRAINING_DIR = f'{DATA_DIR}training/'
 HOLDOUT_DIR = f'{DATA_DIR}holdout/'
 SAMPLE_DIR = f'{DATA_DIR}sample/'

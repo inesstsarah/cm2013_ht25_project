@@ -139,7 +139,7 @@ def extract_time_domain_features(epoch):
     features['zero_crossings'] = np.sum(np.diff(np.sign(epoch)) != 0)
     
     # Complexity Feature:
-    features['Entropy'] = extract_sample_entropy(epoch)
+    #features['Entropy'] = extract_sample_entropy(epoch)
 
     #K-complex features:
     #features['nb_complexes'],  features['duration_complexes'] = simple_k_complex_extraction(epoch)
