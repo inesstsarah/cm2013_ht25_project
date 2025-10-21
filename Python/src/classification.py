@@ -124,9 +124,6 @@ def train_classifier(features, labels, config):
         model = KNeighborsClassifier(**best_hyperparameters)
         model.fit(X_train, y_train)
 
-
-
-
     # Comprehensive evaluation with detailed performance metrics
     y_pred = model.predict(X_test)
     overall_accuracy = accuracy_score(y_test, y_pred)
