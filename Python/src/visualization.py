@@ -459,7 +459,7 @@ def _print_stage_percentage_table(y_true, y_pred, config, record_id=None):
     title = f"Stage Percentage Comparison - {record_id}" if record_id else "Stage Percentage Comparison (Overall)"
     print(f"\n{title}")
     print("=" * 60)
-    print(f"{'Stage':<8} {'Ground Truth':<12} {'Predicted':<12} {'Error':<8}")
+    print(f"{'Stage':<8} {'Ground Truth':<12} {' Predicted':<12} {'Error':<8}")
     print("-" * 60)
     
     for i, stage in enumerate(config.STAGE_NAMES):

@@ -89,7 +89,7 @@ def compare_sleep_metrics(y_true, y_pred, record_ids=None, epoch_duration=30):
         true_metrics = _calculate_sleep_metrics(y_true, epoch_duration)
         pred_metrics = _calculate_sleep_metrics(y_pred, epoch_duration)
         
-        print("\nSleep Architecture Metrics Comparison (Overall)")
+        print("\nSleep Architecture Metrics Comparison")
         print("=" * 80)
         _print_metrics_comparison_table(true_metrics, pred_metrics)
         
@@ -226,7 +226,7 @@ def _training_evaluation(y_true, y_pred, y_pred_proba):
     # Sleep scoring specific notes
     _print_scoring_notes()
 
-    # Sleep architecture metrics
+    # Clinical plausibility check
     compare_sleep_metrics(y_true, y_pred)
 
     result = {
