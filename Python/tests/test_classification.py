@@ -6,10 +6,13 @@ import pytest
 import os
 import sys
 from src.classification import hyperparameter_optimization
+from sklearn import datasets
 
 def test_hyperparameter_optimization():
     # TODO: Add to this test by using artificial data and using the hyperparameter optimization function
-    X_train = [[0,1,2,3,4],[9,1,2,3,4],[9,9,8,5,6],[9,9,8,5,6],[9,9,8,5,6]]
-    y_train = [[0,1,0,1,1]]
+    X_train, y_train = datasets.make_classification(
+    n_samples=100)
+    '''X_train = [[4, 5, 10, 4, 3, 11, 14 , 8, 10, 12]]
+    y_train = [21, 21, 24, 24, 21, 24, 24, 21, 21, 21]'''
     hyperparameter_optimization(X_train, y_train)
     
