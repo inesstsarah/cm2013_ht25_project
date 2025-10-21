@@ -8,31 +8,48 @@ from src.classification import train_classifier
 from src.visualization import visualize_results
 from src.report import generate_report
 from src.utils import save_cache, load_cache
-import os
 import sys
 import io
 
 
+class TeeIO:
+    """ 
+        A class to duplicate stdout to both terminal and a string buffer.
+    """
+    def __init__(self, original_stdout, string_buffer, show_terminal=True):
+        self.original_stdout = original_stdout
+        self.string_buffer = string_buffer
+        self.show_terminal = show_terminal
+
+    def write(self, text):
+        if self.show_terminal:
+            self.original_stdout.write(text)
+        self.string_buffer.write(text)
+
+    def flush(self):
+        if self.show_terminal:
+            self.original_stdout.flush()
+        self.string_buffer.flush()
+
 def main():
     # Create a string buffer
     stdout_buffer = io.StringIO()
-
     # Save the original stdout
     original_stdout = sys.stdout
 
     # Redirect stdout to the buffer
-    sys.stdout = stdout_buffer 
+    # sys.stdout = stdout_buffer
 
-    print("\n=== PROCESSING LOG ===")
+    # Redirect stdout to both terminal and buffer
+    sys.stdout = TeeIO(original_stdout, stdout_buffer, show_terminal=True)
+
+    print("=== PROCESSING LOG ===")
 
     print(f"--- Sleep Scoring Pipeline - Iteration {config.CURRENT_ITERATION} ---")
 
     # 1. Load Data
     # Example uses R1.edf and R1.xml from training directory
     print("\n=== STEP 1: DATA LOADING ===")
-    edf_file = os.path.join(config.TRAINING_DIR, "R1.edf")  # EDF file
-    xml_file = os.path.join(config.TRAINING_DIR, "R1.xml")  # Corresponding annotation file
-
     # Handle both new multi-channel format and old single-channel format for compatibility
     try:
         multi_channel_data, labels, record_ids, channel_info = load_all_training_data(config.TRAINING_DIR)
@@ -43,9 +60,7 @@ def main():
         print(f"Labels shape: {labels.shape}")
 
     except (ValueError, TypeError):
-        # Fallback to old format if multi-channel not implemented
-        eeg_data, labels = load_training_data(edf_file, xml_file)
-        print(f"Single-channel data loaded: {eeg_data.shape}, Labels: {labels.shape}")
+        print("Fail to load multi-channel data, closely check the error message above.")
 
     # 2. Preprocessing
     print("\n=== STEP 2: PREPROCESSING ===")
@@ -57,8 +72,8 @@ def main():
             print("Loaded preprocessed data from cache")
 
     if preprocessed_data is None:
-        preprocessed_data = preprocess(multi_channel_data, channel_info, config)
-        #print(f"Preprocessed data shape: {preprocessed_data.shape}")
+        preprocessed_data = preprocess(multi_channel_data, config)
+        print(f"Preprocessed EEG shape: {preprocessed_data['eeg'].shape}")
         if config.USE_CACHE:
             save_cache(preprocessed_data, cache_filename_preprocess, config.CACHE_DIR)
             print("Saved preprocessed data to cache")
@@ -89,7 +104,7 @@ def main():
     # 5. Classification
     print("\n=== STEP 5: CLASSIFICATION ===")
     if selected_features.shape[1] > 0:
-        model = train_classifier(selected_features, labels, config)
+        model = train_classifier(selected_features, labels, record_ids, config)
         print(f"Trained {config.CLASSIFIER_TYPE} classifier")
     else:
         print("⚠️  WARNING: Cannot train classifier - no features available!")
@@ -99,7 +114,7 @@ def main():
     # 6. Visualization
     print("\n=== STEP 6: VISUALIZATION ===")
     if model is not None:
-        visualize_results(model, selected_features, labels, config)
+        visualize_results(model, selected_features, labels, record_ids, config)
     else:
         print("Skipping visualization - no trained model")
 
@@ -123,5 +138,6 @@ def main():
         print("⚠️  Students need to implement missing components!")
     print("="*50)
 
+from src.visualization import plot_sample_epoch
 if __name__ == "__main__":
     main()

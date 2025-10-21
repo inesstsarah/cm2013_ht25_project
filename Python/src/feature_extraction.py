@@ -1,7 +1,9 @@
 import numpy as np
-import scipy
-import nolds
-
+try:
+    from joblib import Parallel, delayed
+    JOBLIB_AVAILABLE = True
+except ImportError:
+    JOBLIB_AVAILABLE = False
 def extract_hjorth_activity(epoch):
     """
     Computes the Hjorth Activity for one epoch of signal data.
@@ -146,8 +148,6 @@ def extract_time_domain_features(epoch):
 
     return features
 
-
-
 def extract_features(data, config):
     """
     STUDENT IMPLEMENTATION AREA: Extract features based on current iteration.
@@ -189,10 +189,8 @@ def extract_multi_channel_features(multi_channel_data, config):
     Returns:
         np.ndarray: A 2D array of features (n_epochs, n_features).
     """
-    n_epochs = multi_channel_data['eeg'].shape[0]
-    all_features = []
-
-    for epoch_idx in range(n_epochs):
+    print("selecting multi-channel features...")
+    def process_epoch(epoch_idx):
         epoch_features = []
         # EEG features (2 channels)
         for ch in range(multi_channel_data['eeg'].shape[1]):
@@ -211,8 +209,22 @@ def extract_multi_channel_features(multi_channel_data, config):
             emg_signal = multi_channel_data['emg'][epoch_idx, 0, :]
             emg_features = extract_emg_features(emg_signal)
             epoch_features.extend(list(emg_features.values()))
+        return epoch_features
 
-        all_features.append(epoch_features)
+    n_epochs = multi_channel_data['eeg'].shape[0]
+    all_features = []
+    
+    if config.USE_PARALLEL:
+        if not JOBLIB_AVAILABLE:
+            raise ImportError("joblib is required for parallel processing, but not installed.")
+        
+        all_features = Parallel(n_jobs=config.PARALLEL_N_JOBS, backend='loky', verbose=10)(
+            delayed(process_epoch)(i) for i in range(n_epochs))
+    else:
+        for epoch_idx in range(n_epochs):
+            print(f"Extracting EEG features for epoch {epoch_idx+1}/{n_epochs}")
+            epoch_features = process_epoch(epoch_idx)
+            all_features.append(epoch_features)
 
     features = np.array(all_features)
 
@@ -222,7 +234,6 @@ def extract_multi_channel_features(multi_channel_data, config):
     elif config.CURRENT_ITERATION >= 3:
         print(f"Multi-channel features extracted: {features.shape[1]} total")
         print("(2 EEG + 2 EOG + 1 EMG channels)")
-
     return features
 
 
@@ -237,14 +248,13 @@ def extract_single_channel_features(data, config):
     """
     if config.CURRENT_ITERATION == 1:
         # Iteration 1: Time-domain features (TARGET: 16 features)
-        expected = 1 * 16  # 1 EEG channels × 16 features
         all_features = []
         for epoch in data:
             features = extract_time_domain_features(epoch)
             all_features.append(list(features.values()))
         features = np.array(all_features)
-        print(f"Single-channel Iteration 1: {features.shape[1]} features (target: {expected}+)")
-    
+        expected = 2 * 16
+        print(f"2 EEG channels Iteration 1: {features.shape[1]} features (target: {expected}+)")
 
     elif config.CURRENT_ITERATION == 2:
         # TODO: Students must implement frequency-domain features

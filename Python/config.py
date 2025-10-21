@@ -5,7 +5,9 @@
 CURRENT_ITERATION = 1
 
 # Set to True to use cached data for preprocessing and feature extraction.
-USE_CACHE = False
+USE_CACHE = True
+USE_PARALLEL = True  # Use parallel processing where applicable
+PARALLEL_N_JOBS = -1  # Number of parallel jobs (-1 uses all available cores)
 
 # -- File Paths --
 import os
@@ -14,13 +16,27 @@ TRAINING_DIR = f'{DATA_DIR}training/'
 HOLDOUT_DIR = f'{DATA_DIR}holdout/'
 SAMPLE_DIR = f'{DATA_DIR}sample/'
 CACHE_DIR = 'cache/'
+FIGURE_DATA_DIR = 'figure/Data/'
+FIGURES_PREPROCESSING_DIR = 'figure/Preprocessing/'
+FIGURES_FEATURE_EXTRACTION_DIR = 'figure/Feature Extraction/'
+FIGURES_CLASSIFICATION_DIR = 'figure/Classification/'
 
 # Validate and create directories if needed
+def _create_dir_if_not_exists(directory):
+    if not os.path.exists(directory):
+        print(f"Creating directory: {directory}")
+        os.makedirs(directory, exist_ok=True)
+
 if not os.path.exists(DATA_DIR):
     raise FileNotFoundError(f"Data directory not found: {DATA_DIR}\nPlease ensure you are running from the correct directory.")
 if not os.path.exists(CACHE_DIR):
     print(f"Creating cache directory: {CACHE_DIR}")
     os.makedirs(CACHE_DIR, exist_ok=True)
+
+_create_dir_if_not_exists(FIGURE_DATA_DIR)
+_create_dir_if_not_exists(FIGURES_PREPROCESSING_DIR)
+_create_dir_if_not_exists(FIGURES_FEATURE_EXTRACTION_DIR)
+_create_dir_if_not_exists(FIGURES_CLASSIFICATION_DIR)
 
 # -- Preprocessing --
 LOW_PASS_FILTER_FREQ = 40  # Hz
@@ -58,6 +74,19 @@ elif CURRENT_ITERATION == 4:
     RF_MIN_SAMPLES_SPLIT = 5
 else:
     raise ValueError(f"Invalid CURRENT_ITERATION: {CURRENT_ITERATION}. Must be 1-4.")
+
+
+# -- Visualization --
+import matplotlib.colors as mcolors
+import numpy as np
+
+def _lighten(color, amount=0.5):
+    c = np.array(mcolors.to_rgb(color))
+    return mcolors.to_hex(np.clip(c + (1 - c) * amount, 0, 1))
+
+STAGE_NAMES = ['Wake', 'N1', 'N2', 'N3', 'REM']
+STAGE_COLORS = ['red', 'orange', 'green', 'blue', 'purple'] # truth colors
+LIGHT_STAGE_COLORS = [_lighten(c, 0.6) for c in STAGE_COLORS] # prediction colors
 
 # -- Submission --
 SUBMISSION_FILE = 'submission.csv'
