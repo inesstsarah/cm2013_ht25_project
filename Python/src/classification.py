@@ -2,10 +2,33 @@ import numpy as np
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
-from sklearn.metrics import precision_score, recall_score, f1_score, cohen_kappa_score
+from sklearn.metrics import precision_score, recall_score, f1_score, cohen_kappa_score, roc_auc_score, roc_curve
+import matplotlib.pyplot as plt
 import pandas as pd
+
+def hyperparameter_optimization(X_train, y_train):
+    """Function to search for the optimal parameters in a hyperparameter space"""
+    
+    grid_params = { 'n_neighbors' : [5,7,9,11,13,15],
+               'weights' : ['uniform','distance'],
+               'metric' : ['minkowski','euclidean','manhattan']}
+    
+    gs = GridSearchCV(KNeighborsClassifier(), grid_params, verbose = 1, cv=3, n_jobs = -1)
+    # fit the model on our train set
+    g_res = gs.fit(X_train, y_train)
+    # find the best score
+    best_score = g_res.best_score_
+
+    # Get dictionary of best params
+    best_params = g_res.best_params_
+    return(best_score, best_params)
+
+
+
+    
+    
 
 def train_classifier(features, labels, config):
     """
@@ -91,21 +114,44 @@ def train_classifier(features, labels, config):
 
     # Train the model
     print("Training model...")
-    model.fit(X_train, y_train)
+    if (config.USE_HYPERPARAMETER_OPT == False):
+        model.fit(X_train, y_train)
+
+    else: # Do hyperparameter optimization
+        # Hyperparameter optimization 
+        _, best_hyperparameters = hyperparameter_optimization(X_train, y_train)
+        # Unpack results of best_hyperparameters
+        model = KNeighborsClassifier(**best_hyperparameters)
+        model.fit(X_train, y_train)
+
+
+
 
     # Comprehensive evaluation with detailed performance metrics
     y_pred = model.predict(X_test)
     overall_accuracy = accuracy_score(y_test, y_pred)
     print(f"Overall accuracy: {overall_accuracy:.3f}")
 
+    # Getting probabilities for AUC-ROC score
+    y_probs = model.predict_proba(X_test)
+
     # Calculate and display detailed performance metrics
     print_performance_metrics(y_test, y_pred)
 
     # TODO: Students should add more advanced metrics:
-    # - Cohen's kappa (important for sleep scoring)
-    cohen_res = cohen_kappa_score(y_test, y_pred)
 
     # - ROC-AUC for each class
+    roc_auc = roc_auc_score(y_test, y_probs)
+
+    # NOTE: not sure whether to print it here or if we have to print it in the print_performance_metrics function
+    print(f"ROC-AUC score: {roc_auc}")
+    # Generate plot for ROC-AUC
+
+    fpr, tpr, _ = roc_curve(y_test, y_probs)
+    plt.plot(fpr, tpr)
+
+
+
     # - Cross-validation scores
     # - Feature importance analysis
     print("\nTODO: Students should add Cohen's kappa and ROC-AUC metrics")
@@ -139,15 +185,17 @@ def print_performance_metrics(y_true, y_pred):
     print(f"Weighted F1-Score: {weighted_f1:.3f}")
     print(f"Cohen's Kappa Score: {cohen_res:.3f}")
 
-    # Confusion Matrix
-    print("\nConfusion Matrix:")
+    # Confusion Matrix and print
+    
     cm = confusion_matrix(y_true, y_pred, labels=stage_labels)
+    print(f"Confusion Matrix: {cm}")
+
 
     # Create a formatted confusion matrix
     cm_df = pd.DataFrame(cm, index=stage_names, columns=stage_names)
     print(cm_df.to_string())
 
-    # Per-class metrics
+    # Per-class metrics NOTE: Not sure where we should put the metrics?
     print("\nPer-Class Performance Metrics:")
     print("-" * 70)
     print(f"{'Stage':<8} {'Accuracy':<10} {'Sensitivity':<12} {'Specificity':<12} {'F1-Score':<10}")
