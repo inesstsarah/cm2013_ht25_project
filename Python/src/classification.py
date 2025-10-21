@@ -71,8 +71,63 @@ def train_classifier(features, labels, record_ids, config):
     return model
 
 
+def compare_sleep_metrics(y_true, y_pred, record_ids=None, epoch_duration=30):
+    """
+    Compare sleep architecture metrics between ground truth and predictions.
+    
+    Args:
+        y_true (np.ndarray): Ground truth labels
+        y_pred (np.ndarray): Predicted labels  
+        record_ids (np.ndarray): Optional record identifiers
+        epoch_duration (int): Duration of each epoch in seconds
+        
+    Returns:
+        dict: Comparison results for each record
+    """
+    if record_ids is None:
+        # Overall comparison
+        true_metrics = _calculate_sleep_metrics(y_true, epoch_duration)
+        pred_metrics = _calculate_sleep_metrics(y_pred, epoch_duration)
+        
+        print("\nSleep Architecture Metrics Comparison (Overall)")
+        print("=" * 80)
+        _print_metrics_comparison_table(true_metrics, pred_metrics)
+        
+        return {
+            'overall': {
+                'true_metrics': true_metrics,
+                'pred_metrics': pred_metrics
+            }
+        }
+    else:
+        # Per-record comparison
+        unique_records = np.unique(record_ids)
+        results = {}
+        
+        for record_id in unique_records:
+            indices = np.where(record_ids == record_id)[0]
+            if len(indices) == 0:
+                continue
+                
+            true_labels = y_true[indices]
+            pred_labels = y_pred[indices]
+            
+            true_metrics = _calculate_sleep_metrics(true_labels, epoch_duration)
+            pred_metrics = _calculate_sleep_metrics(pred_labels, epoch_duration)
+            
+            print(f"\nSleep Architecture Metrics Comparison - {record_id}")
+            print("=" * 80)
+            _print_metrics_comparison_table(true_metrics, pred_metrics)
+            
+            results[record_id] = {
+                'true_metrics': true_metrics,
+                'pred_metrics': pred_metrics
+            }
+            
+        return results
+
+
 # TODO: Statistical comparison between iterations (t-test on kappa scores)
-# Clinical plausibility check
 def _LOGO_split_training(model, features, labels, record_ids):
     # Create LOSO cross-validation split
     logo = LeaveOneGroupOut()
@@ -171,6 +226,9 @@ def _training_evaluation(y_true, y_pred, y_pred_proba):
     # Sleep scoring specific notes
     _print_scoring_notes()
 
+    # Sleep architecture metrics
+    compare_sleep_metrics(y_true, y_pred)
+
     result = {
             'accuracy': accuracy,
             'kappa': kappa,
@@ -262,4 +320,214 @@ def _print_scoring_notes():
     print("- Sleep stage imbalance is natural (more N2, less N1/REM)")
     print("- Consider Cohen's kappa for chance-corrected agreement")
     print("- Clinical focus: High sensitivity for REM and N3 stages")
+
+
+# Clinical plausibility check
+def _calculate_sleep_metrics(labels, epoch_duration=30):
+    """
+    Calculate sleep architecture metrics from epoch labels.
+
+    Args:
+        labels: array of sleep stage labels (0=Wake, 1=N1, 2=N2, 3=N3, 4=REM)
+        epoch_duration: seconds per epoch (default 30)
+
+    Returns:
+        metrics: dict of sleep architecture values
+    """
+    if len(labels) == 0:
+        return {}
+    
+    # Convert to numpy array for easier manipulation
+    labels = np.array(labels)
+    n_epochs = len(labels)
+    total_time_minutes = n_epochs * epoch_duration / 60  # Total time in bed (minutes)
+    
+    metrics = {}
+    
+    # 1. Find sleep onset (first non-wake epoch)
+    sleep_epochs = np.where(labels != 0)[0]  # Non-wake epochs
+    if len(sleep_epochs) == 0:
+        # No sleep detected
+        metrics['sleep_onset_latency'] = None
+        metrics['total_sleep_time'] = 0
+        metrics['sleep_efficiency'] = 0
+        metrics['wake_after_sleep_onset'] = 0
+        metrics['rem_latency'] = None
+        metrics['n_awakenings'] = 0
+        metrics['stage_percentages'] = {'N1': 0, 'N2': 0, 'N3': 0, 'REM': 0}
+        metrics['rem_cycles'] = 0
+        return metrics
+    
+    first_sleep_epoch = sleep_epochs[0]
+    sleep_onset_latency = first_sleep_epoch * epoch_duration / 60  # minutes
+    
+    # 2. Calculate Total Sleep Time (TST) - sum of all sleep epochs
+    sleep_epochs_mask = labels != 0  # Non-wake epochs
+    total_sleep_epochs = np.sum(sleep_epochs_mask)
+    total_sleep_time = total_sleep_epochs * epoch_duration / 60  # minutes
+    
+    # 3. Sleep Efficiency = (TST / Time in Bed) × 100%
+    sleep_efficiency = (total_sleep_time / total_time_minutes) * 100 if total_time_minutes > 0 else 0
+    
+    # 4. Wake After Sleep Onset (WASO) - wake epochs after first sleep
+    wake_after_sleep = labels[first_sleep_epoch:]
+    waso_epochs = np.sum(wake_after_sleep == 0)
+    wake_after_sleep_onset = waso_epochs * epoch_duration / 60  # minutes
+    
+    # 5. REM Latency - time from sleep onset to first REM
+    rem_epochs = np.where(labels == 4)[0]  # REM epochs
+    if len(rem_epochs) == 0:
+        rem_latency = None
+    else:
+        first_rem_epoch = rem_epochs[0]
+        if first_rem_epoch >= first_sleep_epoch:
+            rem_latency = (first_rem_epoch - first_sleep_epoch) * epoch_duration / 60  # minutes
+        else:
+            rem_latency = None
+    
+    # 6. Number of Awakenings - count wake periods after sleep onset
+    wake_after_sleep_binary = (wake_after_sleep == 0).astype(int)
+    # Count transitions from sleep (0) to wake (1)
+    awakenings = 0
+    if len(wake_after_sleep_binary) > 1:
+        for i in range(1, len(wake_after_sleep_binary)):
+            if wake_after_sleep_binary[i-1] == 0 and wake_after_sleep_binary[i] == 1:
+                awakenings += 1
+    
+    # 7. Sleep Stage Percentages (relative to TST)
+    stage_counts = np.bincount(labels[labels != 0], minlength=5)  # Count non-wake stages
+    stage_percentages = {}
+    if total_sleep_epochs > 0:
+        stage_percentages = {
+            'N1': (stage_counts[1] / total_sleep_epochs) * 100,
+            'N2': (stage_counts[2] / total_sleep_epochs) * 100,
+            'N3': (stage_counts[3] / total_sleep_epochs) * 100,
+            'REM': (stage_counts[4] / total_sleep_epochs) * 100
+        }
+    else:
+        stage_percentages = {'N1': 0, 'N2': 0, 'N3': 0, 'REM': 0}
+    
+    # 8. REM Cycle Count and Duration
+    rem_cycles = 0
+    if len(rem_epochs) > 0:
+        # Find consecutive REM periods
+        rem_binary = np.zeros(len(labels), dtype=int)
+        rem_binary[rem_epochs] = 1
+        rem_duration = np.sum(rem_binary) * epoch_duration / 60  # minutes
+        # Count transitions from non-REM to REM
+        for i in range(1, len(rem_binary)):
+            if rem_binary[i-1] == 0 and rem_binary[i] == 1:
+                rem_cycles += 1
+    
+    # Store all metrics
+    metrics = {
+        'SOL': sleep_onset_latency,  # minutes
+        'TST': total_sleep_time,  # minutes
+        'SE': sleep_efficiency,  # percentage
+        'WASO': wake_after_sleep_onset,  # minutes
+        'REM_latency': rem_latency,  # minutes
+        'n_awakenings': awakenings,
+        'sleep_stage_percentages': stage_percentages,
+        'REM_cycles': rem_cycles,
+        'REM_duration': rem_duration,  # minutes
+        'total_time_in_bed': total_time_minutes,  # minutes
+        'n_epochs': n_epochs
+    }
+    
+    return metrics
+
+
+def _print_metrics_comparison_table(true_metrics, pred_metrics):
+    """
+    Print formatted comparison table for sleep metrics.
+    
+    Args:
+        true_metrics (dict): Ground truth sleep metrics
+        pred_metrics (dict): Predicted sleep metrics
+    """
+    # Define metric display names and units
+    metric_info = {
+        'SOL': ('Sleep Onset Latency', 'min'),
+        'TST': ('Total Sleep Time', 'min'),
+        'SE': ('Sleep Efficiency', '%'),
+        'WASO': ('Wake After Sleep Onset', 'min'),
+        'REM_latency': ('REM Latency', 'min'),
+        'n_awakenings': ('Number of Awakenings', 'count'),
+        'REM_cycles': ('REM Cycles', 'count'),
+        'REM_duration': ('REM Duration', 'min')
+    }
+    
+    # Print basic metrics
+    print(f"{'Metric':<25} {'Ground Truth':<15} {'Predicted':<15} {'Error':<10} {'Unit':<8}")
+    print("-" * 80)
+    
+    for metric_key, (display_name, unit) in metric_info.items():
+        if metric_key in true_metrics and metric_key in pred_metrics:
+            true_val = true_metrics[metric_key]
+            pred_val = pred_metrics[metric_key]
+            
+            # Handle None values
+            if true_val is None or pred_val is None:
+                true_str = "N/A" if true_val is None else f"{true_val:.1f}"
+                pred_str = "N/A" if pred_val is None else f"{pred_val:.1f}"
+                error_str = "N/A"
+            else:
+                true_str = f"{true_val:.1f}"
+                pred_str = f"{pred_val:.1f}"
+                error = abs(pred_val - true_val)
+                error_str = f"{error:.1f}"
+            
+            print(f"{display_name:<25} {true_str:<15} {pred_str:<15} {error_str:<10} {unit:<8}")
+    
+    # Print sleep stage percentages
+    print("\nSleep Stage Percentages (relative to TST):")
+    print("-" * 60)
+    print(f"{'Stage':<10} {'Ground Truth':<15} {'Predicted':<15} {'Error':<10}")
+    print("-" * 60)
+    
+    if 'sleep_stage_percentages' in true_metrics and 'sleep_stage_percentages' in pred_metrics:
+        true_stages = true_metrics['sleep_stage_percentages']
+        pred_stages = pred_metrics['sleep_stage_percentages']
+        
+        for stage in ['N1', 'N2', 'N3', 'REM']:
+            if stage in true_stages and stage in pred_stages:
+                true_pct = true_stages[stage]
+                pred_pct = pred_stages[stage]
+                error = abs(pred_pct - true_pct)
+                
+                print(f"{stage:<10} {true_pct:<15.1f} {pred_pct:<15.1f} {error:<10.1f}")
+    
+    # Calculate and print summary statistics
+    print("\nSummary Statistics:")
+    print("-" * 40)
+    
+    # Calculate mean absolute error for numeric metrics
+    numeric_metrics = ['SOL', 'TST', 'SE', 'WASO', 'REM_latency', 'n_awakenings', 'REM_cycles', 'REM_duration']
+    mae_values = []
+    
+    for metric in numeric_metrics:
+        if (metric in true_metrics and metric in pred_metrics and 
+            true_metrics[metric] is not None and pred_metrics[metric] is not None):
+            error = abs(pred_metrics[metric] - true_metrics[metric])
+            mae_values.append(error)
+    
+    if mae_values:
+        mean_mae = np.mean(mae_values)
+        print(f"Mean Absolute Error (numeric metrics): {mean_mae:.2f}")
+    
+    # Calculate MAE for stage percentages
+    if ('sleep_stage_percentages' in true_metrics and 
+        'sleep_stage_percentages' in pred_metrics):
+        stage_errors = []
+        for stage in ['N1', 'N2', 'N3', 'REM']:
+            if stage in true_metrics['sleep_stage_percentages'] and stage in pred_metrics['sleep_stage_percentages']:
+                error = abs(pred_metrics['sleep_stage_percentages'][stage] - 
+                           true_metrics['sleep_stage_percentages'][stage])
+                stage_errors.append(error)
+        
+        if stage_errors:
+            mean_stage_mae = np.mean(stage_errors)
+            print(f"Mean Absolute Error (stage percentages): {mean_stage_mae:.2f}%")
+    
+    print("=" * 80)
 
