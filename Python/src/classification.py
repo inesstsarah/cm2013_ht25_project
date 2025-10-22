@@ -86,12 +86,12 @@ def compare_sleep_metrics(y_true, y_pred, record_ids=None, epoch_duration=30):
     """
     if record_ids is None:
         # Overall comparison
-        true_metrics = _calculate_sleep_metrics(y_true, epoch_duration)
-        pred_metrics = _calculate_sleep_metrics(y_pred, epoch_duration)
+        true_metrics = calculate_sleep_metrics(y_true, epoch_duration)
+        pred_metrics = calculate_sleep_metrics(y_pred, epoch_duration)
         
         print("\nSleep Architecture Metrics Comparison")
         print("=" * 80)
-        _print_metrics_comparison_table(true_metrics, pred_metrics)
+        print_metrics_comparison_table(true_metrics, pred_metrics)
         
         return {
             'overall': {
@@ -112,12 +112,12 @@ def compare_sleep_metrics(y_true, y_pred, record_ids=None, epoch_duration=30):
             true_labels = y_true[indices]
             pred_labels = y_pred[indices]
             
-            true_metrics = _calculate_sleep_metrics(true_labels, epoch_duration)
-            pred_metrics = _calculate_sleep_metrics(pred_labels, epoch_duration)
+            true_metrics = calculate_sleep_metrics(true_labels, epoch_duration)
+            pred_metrics = calculate_sleep_metrics(pred_labels, epoch_duration)
             
             print(f"\nSleep Architecture Metrics Comparison - {record_id}")
             print("=" * 80)
-            _print_metrics_comparison_table(true_metrics, pred_metrics)
+            print_metrics_comparison_table(true_metrics, pred_metrics)
             
             results[record_id] = {
                 'true_metrics': true_metrics,
@@ -128,7 +128,7 @@ def compare_sleep_metrics(y_true, y_pred, record_ids=None, epoch_duration=30):
 
 
 # TODO: Statistical comparison between iterations (t-test on kappa scores)
-def _LOGO_split_training(model, features, labels, record_ids):
+def LOGO_split_training(model, features, labels, record_ids):
     # Create LOSO cross-validation split
     logo = LeaveOneGroupOut()
     loso_results = []
@@ -224,7 +224,7 @@ def training_evaluation(y_true, y_pred, y_pred_proba):
     print_sleep_stage_distribution(y_true)
 
     # Sleep scoring specific notes
-    _print_scoring_notes()
+    print_scoring_notes()
 
     # Clinical plausibility check
     compare_sleep_metrics(y_true, y_pred)
@@ -322,7 +322,7 @@ def print_scoring_notes():
 
 
 # Clinical plausibility check
-def _calculate_sleep_metrics(labels, epoch_duration=30):
+def calculate_sleep_metrics(labels, epoch_duration=30):
     """
     Calculate sleep architecture metrics from epoch labels.
 
@@ -436,7 +436,7 @@ def _calculate_sleep_metrics(labels, epoch_duration=30):
     return metrics
 
 
-def _print_metrics_comparison_table(true_metrics, pred_metrics):
+def print_metrics_comparison_table(true_metrics, pred_metrics):
     """
     Print formatted comparison table for sleep metrics.
     
