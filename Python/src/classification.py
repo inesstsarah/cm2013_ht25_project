@@ -157,11 +157,7 @@ def LOGO_split_training(model, features, labels, record_ids, config):
         # Sleep stages are naturally imbalanced (more N2, less N1/REM)
         # TODO：Use class weighting method in next iterations
         X_train, y_train = smote.fit_resample(X_train, y_train)
-        if config.CURRENT_ITERATION == 1 and config.USE_HYPERPARAMETER_OPT:
-            # Hyperparameter optimization 
-            _, best_hyperparameters = hyperparameter_optimization(X_train, y_train)
-            # Unpack results of best_hyperparameters
-            model = KNeighborsClassifier(**best_hyperparameters)
+       
         # Which subject is held out in this fold?
         train_subjects = np.unique(record_ids[train_idx])
         test_subject = np.unique(record_ids[test_idx])[0]
