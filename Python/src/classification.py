@@ -2,14 +2,35 @@ import numpy as np
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import LeaveOneGroupOut
-from sklearn.metrics import accuracy_score, confusion_matrix, cohen_kappa_score
-from sklearn.metrics import precision_recall_fscore_support, roc_auc_score
+from sklearn.model_selection import GridSearchCV, LeaveOneGroupOut
+from sklearn.metrics import accuracy_score, confusion_matrix,precision_recall_fscore_support,roc_auc_score, cohen_kappa_score
 import pandas as pd
 from imblearn.over_sampling import SMOTE
 
 
-def train_classifier(features, labels, record_ids, config):
+def hyperparameter_optimization(X_train, y_train):
+    """Function to search for the optimal parameters in a hyperparameter space"""
+    
+    grid_params = { 'n_neighbors' : [5,7,9,11,13,15],
+               'weights' : ['uniform','distance'],
+               'metric' : ['minkowski','euclidean','manhattan']}
+    
+    gs = GridSearchCV(KNeighborsClassifier(), grid_params, verbose = 1, cv=3, n_jobs = -1)
+    # fit the model on our train set
+    g_res = gs.fit(X_train, y_train)
+    # find the best score
+    best_score = g_res.best_score_
+
+    # Get dictionary of best params
+    best_params = g_res.best_params_
+    return(best_score, best_params)
+
+
+
+    
+    
+
+def train_classifier(features, labels, config):
     """
     STUDENT IMPLEMENTATION AREA: Train classifier based on iteration.
 
@@ -39,7 +60,14 @@ def train_classifier(features, labels, record_ids, config):
     # Select classifier based on iteration (using config parameters)
     if config.CURRENT_ITERATION == 1:
         # Iteration 1: Simple k-NN
-        model = KNeighborsClassifier(n_neighbors=config.KNN_N_NEIGHBORS)
+        if (config.USE_HYPERPARAMETER_OPT == False):
+            model = KNeighborsClassifier(n_neighbors=config.KNN_N_NEIGHBORS)
+    
+        else: # Do hyperparameter optimization
+            # Hyperparameter optimization 
+            _, best_hyperparameters = hyperparameter_optimization(X_train, y_train)
+            # Unpack results of best_hyperparameters
+            model = KNeighborsClassifier(**best_hyperparameters)
         print(f"Using k-NN with k={config.KNN_N_NEIGHBORS}")
     elif config.CURRENT_ITERATION == 2:
         # Iteration 2: SVM
@@ -67,7 +95,6 @@ def train_classifier(features, labels, record_ids, config):
     # Train the model
     print("Training model...")
     LOGO_split_training(model, features, labels, record_ids)
-
     return model
 
 
@@ -294,6 +321,8 @@ def compute_specificity(y_true, y_pred, stage_label):
 def print_confusion_matrix(y_true, y_pred, stage_names, stage_labels):
     print("\nConfusion Matrix:")
     cm = confusion_matrix(y_true, y_pred, labels=stage_labels)
+    print(f"Confusion Matrix: {cm}")
+
 
     # Create a formatted confusion matrix
     cm_df = pd.DataFrame(cm, index=stage_names, columns=stage_names)

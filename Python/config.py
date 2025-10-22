@@ -56,6 +56,7 @@ if CURRENT_ITERATION == 1: # TODO: add more hyperparameters for the hyperparamet
     # Iteration 1: Basic pipeline with k-NN
     CLASSIFIER_TYPE = 'knn'
     KNN_N_NEIGHBORS = 5
+    USE_HYPERPARAMETER_OPT = True
 elif CURRENT_ITERATION == 2:
     # Iteration 2: Enhanced EEG processing with SVM
     CLASSIFIER_TYPE = 'svm'
