@@ -66,14 +66,14 @@ def train_classifier(features, labels, record_ids, config):
 
     # Train the model
     print("Training model...")
-    _LOGO_split_training(model, features, labels, record_ids)
+    LOGO_split_training(model, features, labels, record_ids)
 
     return model
 
 
 # TODO: Statistical comparison between iterations (t-test on kappa scores)
 # Clinical plausibility check
-def _LOGO_split_training(model, features, labels, record_ids):
+def LOGO_split_training(model, features, labels, record_ids):
     # Create LOSO cross-validation split
     logo = LeaveOneGroupOut()
     loso_results = []
@@ -99,7 +99,7 @@ def _LOGO_split_training(model, features, labels, record_ids):
         # Predict on held-out subject
         y_pred = model.predict(X_test)
         y_pred_proba = model.predict_proba(X_test) if hasattr(model, "predict_proba") else None
-        eva_results = _training_evaluation(y_test, y_pred, y_pred_proba)
+        eva_results = training_evaluation(y_test, y_pred, y_pred_proba)
 
         loso_results.append({
             'subject': test_subject,
@@ -119,7 +119,7 @@ def _LOGO_split_training(model, features, labels, record_ids):
     print("="*60)
 
 
-def _training_evaluation(y_true, y_pred, y_pred_proba):
+def training_evaluation(y_true, y_pred, y_pred_proba):
     # Calculate metrics for this subject
     stage_names = ['Wake', 'N1', 'N2', 'N3', 'REM']
     stage_labels = list(range(5))
@@ -131,7 +131,7 @@ def _training_evaluation(y_true, y_pred, y_pred_proba):
     precision, recall, f1, support = precision_recall_fscore_support(y_true, y_pred)
 
     # Specificity - True Negative Rate
-    specificity = _compute_specificity(y_true, y_pred, stage_labels)
+    specificity = compute_specificity(y_true, y_pred, stage_labels)
 
     # Macro and weighted averages
     macro_precision = np.mean(precision)
@@ -145,7 +145,7 @@ def _training_evaluation(y_true, y_pred, y_pred_proba):
     weighted_f1 = np.sum(f1 * support) / np.sum(support)
 
     # AUC
-    auc_results = _compute_auc(y_true, y_pred_proba)
+    auc_results = compute_auc(y_true, y_pred_proba)
 
     # Detailed report
     print("Per-Class Performance Metrics:")
@@ -163,13 +163,13 @@ def _training_evaluation(y_true, y_pred, y_pred_proba):
     print("-" * 80)
 
     # Confusion Matrix
-    _print_confusion_matrix(y_true, y_pred, stage_names, stage_labels)
+    print_confusion_matrix(y_true, y_pred, stage_names, stage_labels)
     
     # Class distribution in test set
-    _print_sleep_stage_distribution(y_true)
+    print_sleep_stage_distribution(y_true)
 
     # Sleep scoring specific notes
-    _print_scoring_notes()
+    print_scoring_notes()
 
     result = {
             'accuracy': accuracy,
@@ -184,7 +184,7 @@ def _training_evaluation(y_true, y_pred, y_pred_proba):
     return result
 
 
-def _compute_auc(y_true, y_pred_proba):
+def compute_auc(y_true, y_pred_proba):
     """
     Compute per-class and macro ROC-AUC.
 
@@ -195,11 +195,11 @@ def _compute_auc(y_true, y_pred_proba):
     Returns:
         dict: containing per-class and macro ROC-AUC scores
     """
-    # === Step 1: Translate to one-hot matrix ===
+    # Translate to one-hot matrix
     n_classes = y_pred_proba.shape[1]
     y_true_onehot = np.eye(n_classes)[y_true]
 
-    # === Step 2: Compute ROC-AUC ===
+    #  Compute ROC-AUC
     auc_per_class = []
     for i in range(n_classes):
         try:
@@ -215,8 +215,7 @@ def _compute_auc(y_true, y_pred_proba):
     weights[unique] = counts / np.sum(counts)
 
     weighted_auc = np.nansum(auc_per_class * weights)
-
-    # === Step 3: Return ===
+    
     return {
         'auc_per_class': auc_per_class,
         'macro_auc': macro_auc,
@@ -224,7 +223,7 @@ def _compute_auc(y_true, y_pred_proba):
     }
 
 
-def _compute_specificity(y_true, y_pred, stage_label):
+def compute_specificity(y_true, y_pred, stage_label):
     specificity = []
     for i in range(len(stage_label)):
         tn = np.sum((y_true != i) & (y_pred != i))
@@ -234,7 +233,7 @@ def _compute_specificity(y_true, y_pred, stage_label):
     return specificity
 
 
-def _print_confusion_matrix(y_true, y_pred, stage_names, stage_labels):
+def print_confusion_matrix(y_true, y_pred, stage_names, stage_labels):
     print("\nConfusion Matrix:")
     cm = confusion_matrix(y_true, y_pred, labels=stage_labels)
 
@@ -243,7 +242,7 @@ def _print_confusion_matrix(y_true, y_pred, stage_names, stage_labels):
     print(cm_df.to_string())
 
 
-def _print_sleep_stage_distribution(y_true):
+def print_sleep_stage_distribution(y_true):
     print("\nClass Distribution in Test Set:")
     stage_names = ['Wake', 'N1', 'N2', 'N3', 'REM']
     unique, counts = np.unique(y_true, return_counts=True)
@@ -255,7 +254,7 @@ def _print_sleep_stage_distribution(y_true):
         print(f"{stage_name}: {count} samples ({percentage:.1f}%)")
 
 
-def _print_scoring_notes():
+def print_scoring_notes():
     print("\nNotes for Sleep Scoring:")
     print("- Sensitivity = Recall = True Positive Rate (correctly identified stages)")
     print("- Specificity = True Negative Rate (correctly rejected stages)")

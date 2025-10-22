@@ -1,9 +1,8 @@
 import numpy as np
-try:
-    from joblib import Parallel, delayed
-    JOBLIB_AVAILABLE = True
-except ImportError:
-    JOBLIB_AVAILABLE = False
+import scipy.stats, scipy.signal
+import nolds
+from joblib import Parallel, delayed
+
 def extract_hjorth_activity(epoch):
     """
     Computes the Hjorth Activity for one epoch of signal data.
@@ -215,9 +214,6 @@ def extract_multi_channel_features(multi_channel_data, config):
     all_features = []
     
     if config.USE_PARALLEL:
-        if not JOBLIB_AVAILABLE:
-            raise ImportError("joblib is required for parallel processing, but not installed.")
-        
         all_features = Parallel(n_jobs=config.PARALLEL_N_JOBS, backend='loky', verbose=10)(
             delayed(process_epoch)(i) for i in range(n_epochs))
     else:

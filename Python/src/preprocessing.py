@@ -108,7 +108,7 @@ def preprocess(data,channel_info, config):
         return preprocess_multi_channel(data,channel_info, config)
     else:
         print("Processing single-channel data (backward compatibility)")
-        return preprocess_single_channel(data,channel_info config)
+        return preprocess_single_channel(data,channel_info, config)
 
 
 def preprocess_multi_channel(multi_channel_data,channel_info, config):

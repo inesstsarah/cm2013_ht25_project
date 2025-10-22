@@ -340,14 +340,13 @@ def visualize_signal(signal, fs, ax=None, title="Time-domain Signal"):
         title (str, optional): Plot title.
     """
     n = len(signal)
-    t = np.arange(n) / fs  # 时间轴
-
+    t = np.arange(n) / fs / 3600 # Convert to hours
     if ax is None:
         fig, ax = plt.subplots(figsize=(10, 5))
 
     ax.plot(t, signal)
     ax.set_title(title)
-    ax.set_xlabel("Time (s)")
+    ax.set_xlabel("Time (h)")
     ax.set_ylabel("Amplitude")
     ax.grid(True)
 

@@ -12,25 +12,6 @@ import sys
 import io
 
 
-class TeeIO:
-    """ 
-        A class to duplicate stdout to both terminal and a string buffer.
-    """
-    def __init__(self, original_stdout, string_buffer, show_terminal=True):
-        self.original_stdout = original_stdout
-        self.string_buffer = string_buffer
-        self.show_terminal = show_terminal
-
-    def write(self, text):
-        if self.show_terminal:
-            self.original_stdout.write(text)
-        self.string_buffer.write(text)
-
-    def flush(self):
-        if self.show_terminal:
-            self.original_stdout.flush()
-        self.string_buffer.flush()
-
 def main():
     # Create a string buffer
     stdout_buffer = io.StringIO()
@@ -38,11 +19,7 @@ def main():
     original_stdout = sys.stdout
 
     # Redirect stdout to the buffer
-    # sys.stdout = stdout_buffer
-
-    # Redirect stdout to both terminal and buffer
-    sys.stdout = TeeIO(original_stdout, stdout_buffer, show_terminal=True)
-
+    sys.stdout = stdout_buffer
     print("=== PROCESSING LOG ===")
 
     print(f"--- Sleep Scoring Pipeline - Iteration {config.CURRENT_ITERATION} ---")
@@ -72,7 +49,7 @@ def main():
             print("Loaded preprocessed data from cache")
 
     if preprocessed_data is None:
-        preprocessed_data = preprocess(multi_channel_data, config)
+        preprocessed_data = preprocess(multi_channel_data,channel_info, config)
         print(f"Preprocessed EEG shape: {preprocessed_data['eeg'].shape}")
         if config.USE_CACHE:
             save_cache(preprocessed_data, cache_filename_preprocess, config.CACHE_DIR)
