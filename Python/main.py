@@ -115,6 +115,5 @@ def main():
         print("⚠️  Students need to implement missing components!")
     print("="*50)
 
-from src.visualization import plot_sample_epoch
 if __name__ == "__main__":
     main()

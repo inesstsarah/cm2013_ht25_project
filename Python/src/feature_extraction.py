@@ -189,37 +189,18 @@ def extract_multi_channel_features(multi_channel_data, config):
         np.ndarray: A 2D array of features (n_epochs, n_features).
     """
     print("selecting multi-channel features...")
-    def process_epoch(epoch_idx):
-        epoch_features = []
-        # EEG features (2 channels)
-        for ch in range(multi_channel_data['eeg'].shape[1]):
-            eeg_signal = multi_channel_data['eeg'][epoch_idx, ch, :]
-            eeg_features = extract_time_domain_features(eeg_signal)
-            epoch_features.extend(list(eeg_features.values()))
-
-        if config.CURRENT_ITERATION >= 3:
-            # Add EOG features (2 channels)
-            for ch in range(multi_channel_data['eog'].shape[1]):
-                eog_signal = multi_channel_data['eog'][epoch_idx, ch, :]
-                eog_features = extract_eog_features(eog_signal)
-                epoch_features.extend(list(eog_features.values()))
-
-            # Add EMG features (1 channel)
-            emg_signal = multi_channel_data['emg'][epoch_idx, 0, :]
-            emg_features = extract_emg_features(emg_signal)
-            epoch_features.extend(list(emg_features.values()))
-        return epoch_features
+    
 
     n_epochs = multi_channel_data['eeg'].shape[0]
     all_features = []
     
     if config.USE_PARALLEL:
         all_features = Parallel(n_jobs=config.PARALLEL_N_JOBS, backend='loky', verbose=10)(
-            delayed(process_epoch)(i) for i in range(n_epochs))
+            delayed(process_epoch)(i,multi_channel_data,config) for i in range(n_epochs))
     else:
         for epoch_idx in range(n_epochs):
             print(f"Extracting EEG features for epoch {epoch_idx+1}/{n_epochs}")
-            epoch_features = process_epoch(epoch_idx)
+            epoch_features = process_epoch(epoch_idx,multi_channel_data,config)
             all_features.append(epoch_features)
 
     features = np.array(all_features)
@@ -314,3 +295,23 @@ def extract_emg_features(emg_signal):
     # - Muscle tone quantification
 
     return features
+def process_epoch(epoch_idx, multi_channel_data, config):
+    epoch_features = []
+    # EEG features (2 channels)
+    for ch in range(multi_channel_data['eeg'].shape[1]):
+        eeg_signal = multi_channel_data['eeg'][epoch_idx, ch, :]
+        eeg_features = extract_time_domain_features(eeg_signal)
+        epoch_features.extend(list(eeg_features.values()))
+
+    if config.CURRENT_ITERATION >= 3:
+        # Add EOG features (2 channels)
+        for ch in range(multi_channel_data['eog'].shape[1]):
+            eog_signal = multi_channel_data['eog'][epoch_idx, ch, :]
+            eog_features = extract_eog_features(eog_signal)
+            epoch_features.extend(list(eog_features.values()))
+
+        # Add EMG features (1 channel)
+        emg_signal = multi_channel_data['emg'][epoch_idx, 0, :]
+        emg_features = extract_emg_features(emg_signal)
+        epoch_features.extend(list(emg_features.values()))
+    return epoch_features

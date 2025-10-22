@@ -59,5 +59,5 @@ def select_features(features, labels, config):
         # Placeholder - students must replace:
         selected_features = features  # No selection implemented yet
 
-    print(f"Selected features shape: {selected_features.shape}")
+    #print(f"Selected features shape: {selected_features.shape}")
     return selected_features
