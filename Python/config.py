@@ -45,7 +45,7 @@ NOTCH_FILTER_Q = 30
 BANDPASS_FILTER_LOWER_FREQ = 0.5 # Hz
 BANDPASS_FILTER_HIGHER_FREQ = 33 # Hz
 BANDPASS_FILTER_ORDER = 5
-HIGHPASS_FILTER_FREQ = 4
+HIGHPASS_FILTER_FREQ = 0.2 # Hz
 
 # -- Feature Extraction --
 # (Add feature-specific parameters here)

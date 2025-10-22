@@ -86,7 +86,7 @@ def train_classifier(features, labels,record_ids, config):
     return model
 
 
-def compare_sleep_metrics(y_true, y_pred, record_ids=None, epoch_duration=30):
+def compare_sleep_metrics(y_true, y_pred, record_ids, epoch_duration=30):
     """
     Compare sleep architecture metrics between ground truth and predictions.
     
@@ -169,7 +169,7 @@ def LOGO_split_training(model, features, labels, record_ids, config):
         # Predict on held-out subject
         y_pred = model.predict(X_test)
         y_pred_proba = model.predict_proba(X_test) if hasattr(model, "predict_proba") else None
-        eva_results = training_evaluation(y_test, y_pred, y_pred_proba)
+        eva_results = training_evaluation(y_test, y_pred, y_pred_proba,record_ids[test_idx])
 
         loso_results.append({
             'subject': test_subject,
@@ -190,7 +190,7 @@ def LOGO_split_training(model, features, labels, record_ids, config):
    
 
 
-def training_evaluation(y_true, y_pred, y_pred_proba):
+def training_evaluation(y_true, y_pred, y_pred_proba,record_ids):
     # Calculate metrics for this subject
     stage_names = ['Wake', 'N1', 'N2', 'N3', 'REM']
     stage_labels = list(range(5))
@@ -243,7 +243,7 @@ def training_evaluation(y_true, y_pred, y_pred_proba):
     print_scoring_notes()
 
     # Clinical plausibility check
-    compare_sleep_metrics(y_true, y_pred)
+    compare_sleep_metrics(y_true, y_pred,record_ids)
 
     result = {
             'accuracy': accuracy,
@@ -394,10 +394,7 @@ def calculate_sleep_metrics(labels, epoch_duration=30):
         rem_latency = None
     else:
         first_rem_epoch = rem_epochs[0]
-        if first_rem_epoch >= first_sleep_epoch:
-            rem_latency = (first_rem_epoch - first_sleep_epoch) * epoch_duration / 60  # minutes
-        else:
-            rem_latency = None
+        rem_latency = (first_rem_epoch - first_sleep_epoch) * epoch_duration / 60  # minutes
     
     # 6. Number of Awakenings - count wake periods after sleep onset
     wake_after_sleep_binary = (wake_after_sleep == 0).astype(int)

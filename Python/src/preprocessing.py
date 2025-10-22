@@ -25,29 +25,6 @@ def highpass_filter(data,cutoff,fs,order=5):
     y = filtfilt(b, a, data)
     
     #, padlen = 3*order, padtype="odd"
-    return y,b,a
-
-
-
-def highpass_filter(data,cutoff,fs,order=5):
-    """
-    Simple highpass filter for baseline wander removal.
-
-    Args:
-        data (np.ndarray): The input signal.    
-        cutoff (float): The cutoff frequency of the filter.
-        fs (int): The sampling frequency of the signal.
-        order (int): The order of the filter.
-
-    Returns:
-        np.ndarray: The filtered signal.
-    """
-    nyquist = 0.5 * fs
-    normal_cutoff = cutoff / nyquist
-    b, a = butter(order, normal_cutoff, btype='high', analog=False)
-    y = filtfilt(b, a, data)
-    
-    #, padlen = 3*order, padtype="odd"
     return y
 
 def lowpass_filter(data, cutoff, fs, order=5):
@@ -196,6 +173,7 @@ def _preprocess_eeg_channel(eeg_data,channel_info, config):
     """
     # Process EEG channels (2 channels)
     eeg_fs = channel_info['eeg_fs'] 
+    print(f"EEG sampling frequency: {eeg_fs} Hz")
     preprocessed_eeg = np.zeros_like(eeg_data)
 
     for ch in range(eeg_data.shape[1]):
