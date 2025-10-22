@@ -22,6 +22,11 @@ def generate_report(model, features, labels, config, processing_log):
     # Sleep Scoring Report - Iteration {config.CURRENT_ITERATION}
     ## Model
     {type(model).__name__}
+    {model.get_params() if hasattr(model, 'get_params') else 'No parameters available'}
+    ## Features
+    Number of features: {features.shape[1]}
+    ## Labels
+    Number of samples: {labels.shape[0]}
     """)
 
     with open("report.txt", "w", encoding="utf-8") as f:

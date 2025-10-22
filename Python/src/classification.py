@@ -25,12 +25,7 @@ def hyperparameter_optimization(X_train, y_train):
     best_params = g_res.best_params_
     return(best_score, best_params)
 
-
-
-    
-    
-
-def train_classifier(features, labels, config):
+def train_classifier(features, labels,record_ids, config):
     """
     STUDENT IMPLEMENTATION AREA: Train classifier based on iteration.
 
@@ -60,14 +55,7 @@ def train_classifier(features, labels, config):
     # Select classifier based on iteration (using config parameters)
     if config.CURRENT_ITERATION == 1:
         # Iteration 1: Simple k-NN
-        if (config.USE_HYPERPARAMETER_OPT == False):
-            model = KNeighborsClassifier(n_neighbors=config.KNN_N_NEIGHBORS)
-    
-        else: # Do hyperparameter optimization
-            # Hyperparameter optimization 
-            _, best_hyperparameters = hyperparameter_optimization(X_train, y_train)
-            # Unpack results of best_hyperparameters
-            model = KNeighborsClassifier(**best_hyperparameters)
+        model = KNeighborsClassifier(n_neighbors=config.KNN_N_NEIGHBORS)
         print(f"Using k-NN with k={config.KNN_N_NEIGHBORS}")
     elif config.CURRENT_ITERATION == 2:
         # Iteration 2: SVM
@@ -94,7 +82,7 @@ def train_classifier(features, labels, config):
 
     # Train the model
     print("Training model...")
-    LOGO_split_training(model, features, labels, record_ids)
+    LOGO_split_training(model, features, labels, record_ids, config)
     return model
 
 
@@ -155,7 +143,7 @@ def compare_sleep_metrics(y_true, y_pred, record_ids=None, epoch_duration=30):
 
 
 # TODO: Statistical comparison between iterations (t-test on kappa scores)
-def LOGO_split_training(model, features, labels, record_ids):
+def LOGO_split_training(model, features, labels, record_ids, config):
     # Create LOSO cross-validation split
     logo = LeaveOneGroupOut()
     loso_results = []
@@ -169,7 +157,11 @@ def LOGO_split_training(model, features, labels, record_ids):
         # Sleep stages are naturally imbalanced (more N2, less N1/REM)
         # TODO：Use class weighting method in next iterations
         X_train, y_train = smote.fit_resample(X_train, y_train)
-
+        if config.CURRENT_ITERATION == 1 and config.USE_HYPERPARAMETER_OPT:
+            # Hyperparameter optimization 
+            _, best_hyperparameters = hyperparameter_optimization(X_train, y_train)
+            # Unpack results of best_hyperparameters
+            model = KNeighborsClassifier(**best_hyperparameters)
         # Which subject is held out in this fold?
         train_subjects = np.unique(record_ids[train_idx])
         test_subject = np.unique(record_ids[test_idx])[0]
@@ -187,8 +179,7 @@ def LOGO_split_training(model, features, labels, record_ids):
             'subject': test_subject,
             **eva_results
             })
-
-    # Report mean ± std across all subjects
+         # Report mean ± std across all subjects
     mean_acc = np.mean([r['accuracy'] for r in loso_results])
     std_acc = np.std([r['accuracy'] for r in loso_results])
     mean_kappa = np.mean([r['kappa'] for r in loso_results])
@@ -199,6 +190,8 @@ def LOGO_split_training(model, features, labels, record_ids):
     print(f"  Accuracy = {mean_acc:.1%} ± {std_acc:.1%}")
     print(f"  Kappa    = {mean_kappa:.3f} ± {std_kappa:.3f}")
     print("="*60)
+
+   
 
 
 def training_evaluation(y_true, y_pred, y_pred_proba):
@@ -320,10 +313,7 @@ def compute_specificity(y_true, y_pred, stage_label):
 
 def print_confusion_matrix(y_true, y_pred, stage_names, stage_labels):
     print("\nConfusion Matrix:")
-    cm = confusion_matrix(y_true, y_pred, labels=stage_labels)
-    print(f"Confusion Matrix: {cm}")
-
-
+    cm = confusion_matrix(y_true, y_pred, labels=stage_labels) 
     # Create a formatted confusion matrix
     cm_df = pd.DataFrame(cm, index=stage_names, columns=stage_names)
     print(cm_df.to_string())
