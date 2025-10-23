@@ -14,5 +14,7 @@ def test_hyperparameter_optimization():
     n_samples=100)
     '''X_train = [[4, 5, 10, 4, 3, 11, 14 , 8, 10, 12]]
     y_train = [21, 21, 24, 24, 21, 24, 24, 21, 21, 21]'''
-    hyperparameter_optimization(X_train, y_train)
+    best_score, best_params = hyperparameter_optimization(X_train, y_train)
+    print(f"Best score: {best_score}")
+    print(f"Best params: {best_params}")
     
