@@ -2,31 +2,36 @@ import numpy as np
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import LeaveOneGroupOut
+from sklearn.model_selection import LeaveOneGroupOut, GridSearchCV
 from sklearn.metrics import accuracy_score, confusion_matrix, cohen_kappa_score
 from sklearn.metrics import precision_recall_fscore_support, roc_auc_score
 import pandas as pd
 from imblearn.over_sampling import SMOTE
 from src.utils import calculate_sleep_metrics
 
-from sklearn.model_selection import train_test_split, GridSearchCV
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
-from sklearn.metrics import precision_score, recall_score, f1_score, cohen_kappa_score, roc_auc_score, roc_curve
-import matplotlib.pyplot as plt
-import pandas as pd
+
+def get_model_from_config(config):
+    """Get model instance based on config CLASSIFIER_TYPE"""
+    if config.CLASSIFIER_TYPE == 'knn':
+        return KNeighborsClassifier()
+    elif config.CLASSIFIER_TYPE == 'svm':
+        return SVC(random_state=42)
+    elif config.CLASSIFIER_TYPE == 'random_forest':
+        return RandomForestClassifier(random_state=42, n_jobs=-1)
+    else:
+        raise ValueError(f"Unknown classifier type: {config.CLASSIFIER_TYPE}")
+
 
 def hyperparameter_optimization(X_train, y_train, config):
     """Function to search for the optimal parameters in a hyperparameter space"""
     
-    '''grid_params = { 'n_neighbors' : [5,7,9,11,13,15],
-               'weights' : ['uniform','distance'],
-               'metric' : ['minkowski','euclidean','manhattan']}'''
+    # Get model and parameters from config
+    base_model = get_model_from_config(config)
     grid_params = config.GRID_PARAMS
 
-    if (config.CURRENT_ITERATION == 1):
-        gs = GridSearchCV(KNeighborsClassifier(), grid_params, verbose = 1, cv=3, n_jobs = -1)
-        # fit the model on our train set
-        g_res = gs.fit(X_train, y_train)
+    # Perform grid search
+    gs = GridSearchCV(base_model, grid_params, verbose=1, cv=3, n_jobs=-1)
+    g_res = gs.fit(X_train, y_train)
 
     # find the best score
     best_score = g_res.best_score_
@@ -34,6 +39,7 @@ def hyperparameter_optimization(X_train, y_train, config):
     # Get dictionary of best params
     best_params = g_res.best_params_
     return(best_score, best_params)
+
 
 def train_classifier(features, labels, record_ids, config):
     """
@@ -62,98 +68,10 @@ def train_classifier(features, labels, record_ids, config):
     if features.shape[0] == 0 or features.shape[1] == 0:
         raise ValueError("No features available for training!")
 
-    # Select classifier based on iteration (using config parameters)
-    if config.CURRENT_ITERATION == 1:
-        # Train the model
-        print("Training model...")
-        # Iteration 1: Simple k-NN
-        # model = KNeighborsClassifier(n_neighbors=config.KNN_N_NEIGHBORS)
-        #print(f"Using k-NN with k={config.KNN_N_NEIGHBORS}")
-        print("Using KNN")
-        _LOGO_split_training(features, labels, record_ids, config)
-
-    elif config.CURRENT_ITERATION == 2:
-        # Iteration 2: SVM
-        # TODO: Students should tune hyperparameters (C, kernel, gamma)
-        model = SVC(
-            C=getattr(config, 'SVM_C', 1.0),
-            kernel=getattr(config, 'SVM_KERNEL', 'rbf'),
-            random_state=42
-        )
-        print(f"Using SVM with C={model.C}, kernel={model.kernel}")
-    elif config.CURRENT_ITERATION >= 3:
-        # Iteration 3+: Random Forest
-        # TODO: Students should tune hyperparameters (n_estimators, max_depth, etc.)
-        model = RandomForestClassifier(
-            n_estimators=getattr(config, 'RF_N_ESTIMATORS', 100),
-            max_depth=getattr(config, 'RF_MAX_DEPTH', None),
-            min_samples_split=getattr(config, 'RF_MIN_SAMPLES_SPLIT', 2),
-            random_state=42,
-            n_jobs=-1  # Use all available cores
-        )
-        print(f"Using Random Forest with {model.n_estimators} trees")
-    else:
-        raise ValueError(f"Invalid iteration: {config.CURRENT_ITERATION}")
-
+    # Use LOSO cross-validation for training
+    _LOGO_split_training(features, labels, record_ids, config)
     
-
-    return model
-
-
-def _compare_sleep_metrics(y_true, y_pred, record_ids=None, epoch_duration=30):
-    """
-    Compare sleep architecture metrics between ground truth and predictions.
-    
-    Args:
-        y_true (np.ndarray): Ground truth labels
-        y_pred (np.ndarray): Predicted labels  
-        record_ids (np.ndarray): Optional record identifiers
-        epoch_duration (int): Duration of each epoch in seconds
-        
-    Returns:
-        dict: Comparison results for each record
-    """
-    if record_ids is None:
-        # Overall comparison
-        true_metrics = calculate_sleep_metrics(y_true, epoch_duration)
-        pred_metrics = calculate_sleep_metrics(y_pred, epoch_duration)
-        
-        print("\nSleep Architecture Metrics Comparison")
-        print("=" * 80)
-        _print_sleep_metrics_comparison_table(true_metrics, pred_metrics)
-        
-        return {
-            'overall': {
-                'true_metrics': true_metrics,
-                'pred_metrics': pred_metrics
-            }
-        }
-    else:
-        # Per-record comparison
-        unique_records = np.unique(record_ids)
-        results = {}
-        
-        for record_id in unique_records:
-            indices = np.where(record_ids == record_id)[0]
-            if len(indices) == 0:
-                continue
-                
-            true_labels = y_true[indices]
-            pred_labels = y_pred[indices]
-            
-            true_metrics = calculate_sleep_metrics(true_labels, epoch_duration)
-            pred_metrics = calculate_sleep_metrics(pred_labels, epoch_duration)
-            
-            print(f"\nSleep Architecture Metrics Comparison - {record_id}")
-            print("=" * 80)
-            _print_sleep_metrics_comparison_table(true_metrics, pred_metrics)
-            
-            results[record_id] = {
-                'true_metrics': true_metrics,
-                'pred_metrics': pred_metrics
-            }
-            
-        return results
+    return None  # LOSO training doesn't return a single model
 
 
 # TODO: Statistical comparison between iterations (t-test on kappa scores)
@@ -169,14 +87,17 @@ def _LOGO_split_training(features, labels, record_ids, config):
 
         # - Sleep stages are not equally distributed
         # Sleep stages are naturally imbalanced (more N2, less N1/REM)
-        # TODO：Use class weighting method in next iterations
+        # TODO: Use class weighting method in next iterations
         X_train, y_train = smote.fit_resample(X_train, y_train)
 
-        if (config.CURRENT_ITERATION == 1):
-            best_score, best_params = hyperparameter_optimization(X_train, y_train, config)
-            model = KNeighborsClassifier(**best_params)
+        # Hyperparameter optimization and model creation
+        best_score, best_params = hyperparameter_optimization(X_train, y_train, config)
         
-
+        # Create fresh model instance with best parameters for each fold
+        model = get_model_from_config(config)
+        model.set_params(**best_params)
+        print(f"  Model instance ID: {id(model)}, Params: {best_params}")
+        
         # Which subject is held out in this fold?
         train_subjects = np.unique(record_ids[train_idx])
         test_subject = np.unique(record_ids[test_idx])[0]
@@ -195,7 +116,7 @@ def _LOGO_split_training(features, labels, record_ids, config):
             **eva_results
             })
 
-    # Report mean ± std across all subjects
+    # Report mean +/- std across all subjects
     mean_acc = np.mean([r['accuracy'] for r in loso_results])
     std_acc = np.std([r['accuracy'] for r in loso_results])
     mean_kappa = np.mean([r['kappa'] for r in loso_results])
@@ -203,8 +124,8 @@ def _LOGO_split_training(features, labels, record_ids, config):
 
     print("\n" + "="*60)
     print(f"LOSO Cross-Validation Results ({len(loso_results)} subjects):")
-    print(f"  Accuracy = {mean_acc:.1%} ± {std_acc:.1%}")
-    print(f"  Kappa    = {mean_kappa:.3f} ± {std_kappa:.3f}")
+    print(f"  Accuracy = {mean_acc:.1%} +/- {std_acc:.1%}")
+    print(f"  Kappa    = {mean_kappa:.3f} +/- {std_kappa:.3f}")
     print("="*60)
 
 
@@ -450,3 +371,58 @@ def _print_sleep_metrics_comparison_table(true_metrics, pred_metrics):
     
     print("=" * 80)
 
+
+def _compare_sleep_metrics(y_true, y_pred, record_ids=None, epoch_duration=30):
+    """
+    Compare sleep architecture metrics between ground truth and predictions.
+    
+    Args:
+        y_true (np.ndarray): Ground truth labels
+        y_pred (np.ndarray): Predicted labels  
+        record_ids (np.ndarray): Optional record identifiers
+        epoch_duration (int): Duration of each epoch in seconds
+        
+    Returns:
+        dict: Comparison results for each record
+    """
+    if record_ids is None:
+        # Overall comparison
+        true_metrics = calculate_sleep_metrics(y_true, epoch_duration)
+        pred_metrics = calculate_sleep_metrics(y_pred, epoch_duration)
+        
+        print("\nSleep Architecture Metrics Comparison")
+        print("=" * 80)
+        _print_sleep_metrics_comparison_table(true_metrics, pred_metrics)
+        
+        return {
+            'overall': {
+                'true_metrics': true_metrics,
+                'pred_metrics': pred_metrics
+            }
+        }
+    else:
+        # Per-record comparison
+        unique_records = np.unique(record_ids)
+        results = {}
+        
+        for record_id in unique_records:
+            indices = np.where(record_ids == record_id)[0]
+            if len(indices) == 0:
+                continue
+                
+            true_labels = y_true[indices]
+            pred_labels = y_pred[indices]
+            
+            true_metrics = calculate_sleep_metrics(true_labels, epoch_duration)
+            pred_metrics = calculate_sleep_metrics(pred_labels, epoch_duration)
+            
+            print(f"\nSleep Architecture Metrics Comparison - {record_id}")
+            print("=" * 80)
+            _print_sleep_metrics_comparison_table(true_metrics, pred_metrics)
+            
+            results[record_id] = {
+                'true_metrics': true_metrics,
+                'pred_metrics': pred_metrics
+            }
+            
+        return results
