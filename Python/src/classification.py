@@ -23,7 +23,7 @@ def hyperparameter_optimization(X_train, y_train, config):
                'metric' : ['minkowski','euclidean','manhattan']}'''
     grid_params = config.GRID_PARAMS
 
-    if (config.CURRENT_ITERATIONS == 1):
+    if (config.CURRENT_ITERATION == 1):
         gs = GridSearchCV(KNeighborsClassifier(), grid_params, verbose = 1, cv=3, n_jobs = -1)
         # fit the model on our train set
         g_res = gs.fit(X_train, y_train)
@@ -64,6 +64,8 @@ def train_classifier(features, labels, record_ids, config):
 
     # Select classifier based on iteration (using config parameters)
     if config.CURRENT_ITERATION == 1:
+        # Train the model
+        print("Training model...")
         # Iteration 1: Simple k-NN
         # model = KNeighborsClassifier(n_neighbors=config.KNN_N_NEIGHBORS)
         #print(f"Using k-NN with k={config.KNN_N_NEIGHBORS}")
@@ -93,9 +95,7 @@ def train_classifier(features, labels, record_ids, config):
     else:
         raise ValueError(f"Invalid iteration: {config.CURRENT_ITERATION}")
 
-    # Train the model
-    print("Training model...")
-    _LOGO_split_training(model, features, labels, record_ids)
+    
 
     return model
 
@@ -173,7 +173,7 @@ def _LOGO_split_training(features, labels, record_ids, config):
         X_train, y_train = smote.fit_resample(X_train, y_train)
 
         if (config.CURRENT_ITERATION == 1):
-            best_score, best_params = hyperparameter_optimization(X_train, y_train)
+            best_score, best_params = hyperparameter_optimization(X_train, y_train, config)
             model = KNeighborsClassifier(**best_params)
         
 
