@@ -67,7 +67,7 @@ def train_classifier(features, labels,record_ids, config):
         # Iteration 1: Simple k-NN
         # model = KNeighborsClassifier(n_neighbors=config.KNN_N_NEIGHBORS)
         print(f"Using k-NN with k={config.KNN_N_NEIGHBORS}")
-        _LOGO_split_training(features, labels, record_ids, config)
+        model = LOSO_split_training(features, labels, record_ids, config)
 
     elif config.CURRENT_ITERATION == 2:
         # Iteration 2: SVM
@@ -94,7 +94,6 @@ def train_classifier(features, labels,record_ids, config):
 
     # Train the model
     print("Training model...")
-    model = LOSO_split_training(model, features, labels, record_ids, config)
     return model
 
 
@@ -144,14 +143,13 @@ def compare_sleep_metrics(y_true, y_pred, record_ids, epoch_duration=30):
             
             print(f"\nSleep Architecture Metrics Comparison - {record_id}")
             print("=" * 80)
-            print_metrics_comparison_table(true_metrics, pred_metrics)
+            _print_sleep_metrics_comparison_table(true_metrics, pred_metrics)
             
             results[record_id] = {
                 'true_metrics': true_metrics,
                 'pred_metrics': pred_metrics
-            }
-            
-        return results
+            }   
+    return results
 
 
 # TODO: Statistical comparison between iterations (t-test on kappa scores)
@@ -173,7 +171,7 @@ def LOSO_split_training(model, features, labels, record_ids, config):
         X_train, y_train = smote.fit_resample(X_train, y_train)
 
         if (config.CURRENT_ITERATION == 1):
-            best_score, best_params = hyperparameter_optimization(X_train, y_train)
+            best_score, best_params = hyperparameter_optimization(X_train, y_train, config)
             model = KNeighborsClassifier(**best_params)
         
 
