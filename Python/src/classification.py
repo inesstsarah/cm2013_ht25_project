@@ -22,7 +22,7 @@ def hyperparameter_optimization(X_train, y_train, config):
                'metric' : ['minkowski','euclidean','manhattan']}'''
     grid_params = config.GRID_PARAMS
 
-    if (config.CURRENT_ITERATIONS == 1):
+    if (config.CURRENT_ITERATION == 1):
         gs = GridSearchCV(KNeighborsClassifier(), grid_params, verbose = 1, cv=3, n_jobs = -1)
         # fit the model on our train set
         g_res = gs.fit(X_train, y_train)
@@ -66,8 +66,8 @@ def train_classifier(features, labels,record_ids, config):
     if config.CURRENT_ITERATION == 1:
         # Iteration 1: Simple k-NN
         # model = KNeighborsClassifier(n_neighbors=config.KNN_N_NEIGHBORS)
-        print(f"Using k-NN with k={config.KNN_N_NEIGHBORS}")
-        model = LOSO_split_training(features, labels, record_ids, config)
+        #print(f"Using k-NN with k={config.KNN_N_NEIGHBORS}")
+        model = LOSO_split_training(features, features, labels, record_ids, config)
 
     elif config.CURRENT_ITERATION == 2:
         # Iteration 2: SVM

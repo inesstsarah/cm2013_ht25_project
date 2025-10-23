@@ -188,10 +188,10 @@ def _preprocess_eeg_channel(eeg_data,channel_info, config):
         # FFT visualization
         y_range_signal = [-0.0002, 0.0002]
         fig, axes = plt.subplots(2, 2, figsize=(8, 6))
-        visualize_signal(signal, eeg_fs, ax=axes[0,0], title=f"EEG Channel {ch+1} - Original Signal")
+        visualize_signal(signal[0:3750], eeg_fs, ax=axes[0,0], title=f"EEG Channel {ch+1} - Original Signal")
         axes[0,0].set_ylim(y_range_signal)
         visualize_fft(signal, eeg_fs, ax=axes[1,0], title=f"EEG Channel {ch+1} - Original Signal FFT")
-        visualize_signal(filtered_signal, eeg_fs, ax=axes[0,1], title=f"EEG Channel {ch+1} - Filtered Signal")
+        visualize_signal(filtered_signal[0:3750], eeg_fs, ax=axes[0,1], title=f"EEG Channel {ch+1} - Filtered Signal")
         axes[0,1].set_ylim(y_range_signal)
         visualize_fft(filtered_signal, eeg_fs, ax=axes[1,1], title=f"EEG Channel {ch+1} - Filtered Signal FFT")
         plt.tight_layout()
