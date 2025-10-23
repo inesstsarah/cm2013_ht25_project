@@ -66,7 +66,8 @@ def train_classifier(features, labels, record_ids, config):
     if config.CURRENT_ITERATION == 1:
         # Iteration 1: Simple k-NN
         # model = KNeighborsClassifier(n_neighbors=config.KNN_N_NEIGHBORS)
-        print(f"Using k-NN with k={config.KNN_N_NEIGHBORS}")
+        #print(f"Using k-NN with k={config.KNN_N_NEIGHBORS}")
+        print("Using KNN")
         _LOGO_split_training(features, labels, record_ids, config)
 
     elif config.CURRENT_ITERATION == 2:
