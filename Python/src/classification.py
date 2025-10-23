@@ -65,8 +65,10 @@ def train_classifier(features, labels, record_ids, config):
     # Select classifier based on iteration (using config parameters)
     if config.CURRENT_ITERATION == 1:
         # Iteration 1: Simple k-NN
-        model = KNeighborsClassifier(n_neighbors=config.KNN_N_NEIGHBORS)
+        # model = KNeighborsClassifier(n_neighbors=config.KNN_N_NEIGHBORS)
         print(f"Using k-NN with k={config.KNN_N_NEIGHBORS}")
+        _LOGO_split_training(features, labels, record_ids, config)
+
     elif config.CURRENT_ITERATION == 2:
         # Iteration 2: SVM
         # TODO: Students should tune hyperparameters (C, kernel, gamma)
@@ -154,7 +156,7 @@ def _compare_sleep_metrics(y_true, y_pred, record_ids=None, epoch_duration=30):
 
 
 # TODO: Statistical comparison between iterations (t-test on kappa scores)
-def _LOGO_split_training(model, features, labels, record_ids):
+def _LOGO_split_training(features, labels, record_ids, config):
     # Create LOSO cross-validation split
     logo = LeaveOneGroupOut()
     loso_results = []
@@ -168,6 +170,11 @@ def _LOGO_split_training(model, features, labels, record_ids):
         # Sleep stages are naturally imbalanced (more N2, less N1/REM)
         # TODO：Use class weighting method in next iterations
         X_train, y_train = smote.fit_resample(X_train, y_train)
+
+        if (config.CURRENT_ITERATION == 1):
+            best_score, best_params = hyperparameter_optimization(X_train, y_train)
+            model = KNeighborsClassifier(**best_params)
+        
 
         # Which subject is held out in this fold?
         train_subjects = np.unique(record_ids[train_idx])
