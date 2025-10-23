@@ -82,7 +82,7 @@ def train_classifier(features, labels,record_ids, config):
 
     # Train the model
     print("Training model...")
-    LOGO_split_training(model, features, labels, record_ids, config)
+    model = LOSO_split_training(model, features, labels, record_ids, config)
     return model
 
 
@@ -143,11 +143,13 @@ def compare_sleep_metrics(y_true, y_pred, record_ids, epoch_duration=30):
 
 
 # TODO: Statistical comparison between iterations (t-test on kappa scores)
-def LOGO_split_training(model, features, labels, record_ids, config):
+def LOSO_split_training(model, features, labels, record_ids, config):
     # Create LOSO cross-validation split
     logo = LeaveOneGroupOut()
     loso_results = []
     smote = SMOTE(random_state=42)
+    all_y_test = []
+    all_y_pred = []
 
     for fold_idx, (train_idx, test_idx) in enumerate(logo.split(features, labels, groups=record_ids)):
         X_train, X_test = features[train_idx], features[test_idx]
@@ -170,6 +172,8 @@ def LOGO_split_training(model, features, labels, record_ids, config):
         y_pred = model.predict(X_test)
         y_pred_proba = model.predict_proba(X_test) if hasattr(model, "predict_proba") else None
         eva_results = training_evaluation(y_test, y_pred, y_pred_proba,record_ids[test_idx])
+        all_y_test.extend(y_test)
+        all_y_pred.extend(y_pred)
 
         loso_results.append({
             'subject': test_subject,
@@ -187,6 +191,16 @@ def LOGO_split_training(model, features, labels, record_ids, config):
     print(f"  Kappa    = {mean_kappa:.3f} ± {std_kappa:.3f}")
     print("="*60)
 
+    final_model_params = model.get_params() 
+    final_model = KNeighborsClassifier(**final_model_params)
+    X_full, y_full = SMOTE(random_state=42).fit_resample(features, labels)
+    final_model.fit(X_full, y_full)
+
+    return {
+    'model': final_model,
+    'y_true_aggregate': np.array(all_y_test),
+    'y_pred_aggregate': np.array(all_y_pred)
+    }
    
 
 

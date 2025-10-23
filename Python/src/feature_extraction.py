@@ -119,7 +119,7 @@ def extract_time_domain_features(epoch):
     features['mean'] = np.mean(epoch)
     features['median'] = np.median(epoch)
     features['std'] = np.std(epoch)
-    features['variance'] = np.var(epoch)
+    #features['variance'] = np.var(epoch)
     features['skewness'] = scipy.stats.skew(epoch)
     features['kurtosis'] = scipy.stats.kurtosis(epoch)
 

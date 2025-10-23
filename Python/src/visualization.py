@@ -274,7 +274,7 @@ def plot_hypnogram(xml_path, edf_path=None):
         traceback.print_exc()
 
 
-def visualize_results(model, features, labels, record_ids, config):
+def visualize_results(results, record_ids, config):
     """
     Visualizes the results of the classification.
 
@@ -287,19 +287,19 @@ def visualize_results(model, features, labels, record_ids, config):
     print("Visualizing results...")
     # TODO: Add more visualizations as needed (e.g., feature importance).
     class_names = ['Wake', 'N1', 'N2', 'N3', 'REM']
-    y_pred = model.predict(features)
+    #y_pred = model.predict(features)
     
     # visualize confusion matrix
     print("Visualizing confusion matrix...")
-    _plot_confusion_matrix(labels, y_pred, class_names, config)
+    _plot_confusion_matrix(results['y_true_aggregate'], results['y_pred_aggregate'], class_names, config)
 
     # visualize hypnograms side by side
     print("Visualizing hypnograms side by side...")
-    _visualize_sidebyside_hypnograms(labels, y_pred, record_ids, config)
+    _visualize_sidebyside_hypnograms(results['y_true_aggregate'], results['y_pred_aggregate'], record_ids, config)
 
     # visualize stage percentage comparison
     print("Visualizing stage percentage comparison...")
-    _visualize_stage_percentage_comparison(labels, y_pred, config, record_ids)
+    _visualize_stage_percentage_comparison(results['y_true_aggregate'], results['y_pred_aggregate'], config, record_ids)
 
 
 def visualize_fft(signal, fs, ax=None, title="FFT of Signal"):
