@@ -2,9 +2,14 @@ import numpy as np
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier
+<<<<<<< HEAD
 from sklearn.model_selection import LeaveOneGroupOut, GridSearchCV
 from sklearn.metrics import accuracy_score, confusion_matrix, cohen_kappa_score
 from sklearn.metrics import precision_recall_fscore_support, roc_auc_score
+=======
+from sklearn.model_selection import GridSearchCV, LeaveOneGroupOut
+from sklearn.metrics import accuracy_score, confusion_matrix,precision_recall_fscore_support,roc_auc_score, cohen_kappa_score
+>>>>>>> branch_filip
 import pandas as pd
 from imblearn.over_sampling import SMOTE
 from src.utils import calculate_sleep_metrics
@@ -41,9 +46,16 @@ def hyperparameter_optimization(X_train, y_train, config):
     base_model = get_model_from_config(config)
     grid_params = config.GRID_PARAMS
 
+<<<<<<< HEAD
     # Perform grid search
     gs = GridSearchCV(base_model, grid_params, verbose=1, cv=3, n_jobs=-1)
     g_res = gs.fit(X_train, y_train)
+=======
+    if (config.CURRENT_ITERATION == 1):
+        gs = GridSearchCV(KNeighborsClassifier(), grid_params, verbose = 1, cv=3, n_jobs = -1)
+        # fit the model on our train set
+        g_res = gs.fit(X_train, y_train)
+>>>>>>> branch_filip
 
     # find the best score
     best_score = g_res.best_score_
@@ -53,7 +65,11 @@ def hyperparameter_optimization(X_train, y_train, config):
     return(best_score, best_params)
 
 
+<<<<<<< HEAD
 def train_classifier(features, labels, record_ids, config):
+=======
+def train_classifier(features, labels,record_ids, config):
+>>>>>>> branch_filip
     """
     STUDENT IMPLEMENTATION AREA: Train classifier based on iteration.
 
@@ -80,18 +96,111 @@ def train_classifier(features, labels, record_ids, config):
     if features.shape[0] == 0 or features.shape[1] == 0:
         raise ValueError("No features available for training!")
 
+<<<<<<< HEAD
     # Use LOSO cross-validation for training
     _LOGO_split_training(features, labels, record_ids, config)
     
     return None  # LOSO training doesn't return a single model
+=======
+    # Select classifier based on iteration (using config parameters)
+    if config.CURRENT_ITERATION == 1:
+        # Iteration 1: Simple k-NN
+        # model = KNeighborsClassifier(n_neighbors=config.KNN_N_NEIGHBORS)
+        #print(f"Using k-NN with k={config.KNN_N_NEIGHBORS}")
+        model = LOSO_split_training(features, features, labels, record_ids, config)
+
+    elif config.CURRENT_ITERATION == 2:
+        # Iteration 2: SVM
+        # TODO: Students should tune hyperparameters (C, kernel, gamma)
+        model = SVC(
+            C=getattr(config, 'SVM_C', 1.0),
+            kernel=getattr(config, 'SVM_KERNEL', 'rbf'),
+            random_state=42
+        )
+        print(f"Using SVM with C={model.C}, kernel={model.kernel}")
+    elif config.CURRENT_ITERATION >= 3:
+        # Iteration 3+: Random Forest
+        # TODO: Students should tune hyperparameters (n_estimators, max_depth, etc.)
+        model = RandomForestClassifier(
+            n_estimators=getattr(config, 'RF_N_ESTIMATORS', 100),
+            max_depth=getattr(config, 'RF_MAX_DEPTH', None),
+            min_samples_split=getattr(config, 'RF_MIN_SAMPLES_SPLIT', 2),
+            random_state=42,
+            n_jobs=-1  # Use all available cores
+        )
+        print(f"Using Random Forest with {model.n_estimators} trees")
+    else:
+        raise ValueError(f"Invalid iteration: {config.CURRENT_ITERATION}")
+
+    # Train the model
+    print("Training model...")
+    return model
+
+
+def compare_sleep_metrics(y_true, y_pred, record_ids, epoch_duration=30):
+    """
+    Compare sleep architecture metrics between ground truth and predictions.
+    
+    Args:
+        y_true (np.ndarray): Ground truth labels
+        y_pred (np.ndarray): Predicted labels  
+        record_ids (np.ndarray): Optional record identifiers
+        epoch_duration (int): Duration of each epoch in seconds
+        
+    Returns:
+        dict: Comparison results for each record
+    """
+    if record_ids is None:
+        # Overall comparison
+        true_metrics = calculate_sleep_metrics(y_true, epoch_duration)
+        pred_metrics = calculate_sleep_metrics(y_pred, epoch_duration)
+        
+        print("\nSleep Architecture Metrics Comparison")
+        print("=" * 80)
+        _print_sleep_metrics_comparison_table(true_metrics, pred_metrics)
+        
+        return {
+            'overall': {
+                'true_metrics': true_metrics,
+                'pred_metrics': pred_metrics
+            }
+        }
+    else:
+        # Per-record comparison
+        unique_records = np.unique(record_ids)
+        results = {}
+        
+        for record_id in unique_records:
+            indices = np.where(record_ids == record_id)[0]
+            if len(indices) == 0:
+                continue
+                
+            true_labels = y_true[indices]
+            pred_labels = y_pred[indices]
+            
+            true_metrics = calculate_sleep_metrics(true_labels, epoch_duration)
+            pred_metrics = calculate_sleep_metrics(pred_labels, epoch_duration)
+            
+            print(f"\nSleep Architecture Metrics Comparison - {record_id}")
+            print("=" * 80)
+            _print_sleep_metrics_comparison_table(true_metrics, pred_metrics)
+            
+            results[record_id] = {
+                'true_metrics': true_metrics,
+                'pred_metrics': pred_metrics
+            }   
+    return results
+>>>>>>> branch_filip
 
 
 # TODO: Statistical comparison between iterations (t-test on kappa scores)
-def _LOGO_split_training(features, labels, record_ids, config):
+def LOSO_split_training(model, features, labels, record_ids, config):
     # Create LOSO cross-validation split
     logo = LeaveOneGroupOut()
     loso_results = []
     smote = SMOTE(random_state=42)
+    all_y_test = []
+    all_y_pred = []
 
     for fold_idx, (train_idx, test_idx) in enumerate(logo.split(features, labels, groups=record_ids)):
         X_train, X_test = features[train_idx], features[test_idx]
@@ -102,6 +211,7 @@ def _LOGO_split_training(features, labels, record_ids, config):
         # TODO: Use class weighting method in next iterations
         X_train, y_train = smote.fit_resample(X_train, y_train)
 
+<<<<<<< HEAD
         # Hyperparameter optimization and model creation
         best_score, best_params = hyperparameter_optimization(X_train, y_train, config)
         
@@ -109,6 +219,11 @@ def _LOGO_split_training(features, labels, record_ids, config):
         model = get_model_from_config(config)
         model.set_params(**best_params)
         print(f"Model instance ID: {id(model)}, Params: {best_params}")
+=======
+        if (config.CURRENT_ITERATION == 1):
+            best_score, best_params = hyperparameter_optimization(X_train, y_train, config)
+            model = KNeighborsClassifier(**best_params)
+>>>>>>> branch_filip
         
         # Which subject is held out in this fold?
         train_subjects = np.unique(record_ids[train_idx])
@@ -121,14 +236,20 @@ def _LOGO_split_training(features, labels, record_ids, config):
         # Predict on held-out subject
         y_pred = model.predict(X_test)
         y_pred_proba = model.predict_proba(X_test) if hasattr(model, "predict_proba") else None
-        eva_results = _training_evaluation(y_test, y_pred, y_pred_proba)
+        eva_results = training_evaluation(y_test, y_pred, y_pred_proba,record_ids[test_idx])
+        all_y_test.extend(y_test)
+        all_y_pred.extend(y_pred)
 
         loso_results.append({
             'subject': test_subject,
             **eva_results
             })
+<<<<<<< HEAD
 
     # Report mean +/- std across all subjects
+=======
+         # Report mean ± std across all subjects
+>>>>>>> branch_filip
     mean_acc = np.mean([r['accuracy'] for r in loso_results])
     std_acc = np.std([r['accuracy'] for r in loso_results])
     mean_kappa = np.mean([r['kappa'] for r in loso_results])
@@ -140,8 +261,20 @@ def _LOGO_split_training(features, labels, record_ids, config):
     print(f"  Kappa    = {mean_kappa:.3f} +/- {std_kappa:.3f}")
     print("="*60)
 
+    final_model_params = model.get_params() 
+    final_model = KNeighborsClassifier(**final_model_params)
+    X_full, y_full = SMOTE(random_state=42).fit_resample(features, labels)
+    final_model.fit(X_full, y_full)
 
-def _training_evaluation(y_true, y_pred, y_pred_proba):
+    return {
+    'model': final_model,
+    'y_true_aggregate': np.array(all_y_test),
+    'y_pred_aggregate': np.array(all_y_pred)
+    }
+   
+
+
+def training_evaluation(y_true, y_pred, y_pred_proba,record_ids):
     # Calculate metrics for this subject
     stage_names = ['Wake', 'N1', 'N2', 'N3', 'REM']
     stage_labels = list(range(5))
@@ -153,7 +286,7 @@ def _training_evaluation(y_true, y_pred, y_pred_proba):
     precision, recall, f1, support = precision_recall_fscore_support(y_true, y_pred)
 
     # Specificity - True Negative Rate
-    specificity = _compute_specificity(y_true, y_pred, stage_labels)
+    specificity = compute_specificity(y_true, y_pred, stage_labels)
 
     # Macro and weighted averages
     macro_precision = np.mean(precision)
@@ -167,7 +300,7 @@ def _training_evaluation(y_true, y_pred, y_pred_proba):
     weighted_f1 = np.sum(f1 * support) / np.sum(support)
 
     # AUC
-    auc_results = _compute_auc(y_true, y_pred_proba)
+    auc_results = compute_auc(y_true, y_pred_proba)
 
     # Detailed report
     print("Per-Class Performance Metrics:")
@@ -185,16 +318,16 @@ def _training_evaluation(y_true, y_pred, y_pred_proba):
     print("-" * 80)
 
     # Confusion Matrix
-    _print_confusion_matrix(y_true, y_pred, stage_names, stage_labels)
+    print_confusion_matrix(y_true, y_pred, stage_names, stage_labels)
     
     # Class distribution in test set
-    _print_sleep_stage_distribution(y_true)
+    print_sleep_stage_distribution(y_true)
 
     # Sleep scoring specific notes
-    _print_scoring_notes()
+    print_scoring_notes()
 
     # Clinical plausibility check
-    _compare_sleep_metrics(y_true, y_pred)
+    compare_sleep_metrics(y_true, y_pred,record_ids)
 
     result = {
             'accuracy': accuracy,
@@ -209,7 +342,7 @@ def _training_evaluation(y_true, y_pred, y_pred_proba):
     return result
 
 
-def _compute_auc(y_true, y_pred_proba):
+def compute_auc(y_true, y_pred_proba):
     """
     Compute per-class and macro ROC-AUC.
 
@@ -220,11 +353,11 @@ def _compute_auc(y_true, y_pred_proba):
     Returns:
         dict: containing per-class and macro ROC-AUC scores
     """
-    # === Step 1: Translate to one-hot matrix ===
+    # Translate to one-hot matrix
     n_classes = y_pred_proba.shape[1]
     y_true_onehot = np.eye(n_classes)[y_true]
 
-    # === Step 2: Compute ROC-AUC ===
+    #  Compute ROC-AUC
     auc_per_class = []
     for i in range(n_classes):
         try:
@@ -240,8 +373,7 @@ def _compute_auc(y_true, y_pred_proba):
     weights[unique] = counts / np.sum(counts)
 
     weighted_auc = np.nansum(auc_per_class * weights)
-
-    # === Step 3: Return ===
+    
     return {
         'auc_per_class': auc_per_class,
         'macro_auc': macro_auc,
@@ -249,7 +381,7 @@ def _compute_auc(y_true, y_pred_proba):
     }
 
 
-def _compute_specificity(y_true, y_pred, stage_label):
+def compute_specificity(y_true, y_pred, stage_label):
     specificity = []
     for i in range(len(stage_label)):
         tn = np.sum((y_true != i) & (y_pred != i))
@@ -259,16 +391,15 @@ def _compute_specificity(y_true, y_pred, stage_label):
     return specificity
 
 
-def _print_confusion_matrix(y_true, y_pred, stage_names, stage_labels):
+def print_confusion_matrix(y_true, y_pred, stage_names, stage_labels):
     print("\nConfusion Matrix:")
-    cm = confusion_matrix(y_true, y_pred, labels=stage_labels)
-
+    cm = confusion_matrix(y_true, y_pred, labels=stage_labels) 
     # Create a formatted confusion matrix
     cm_df = pd.DataFrame(cm, index=stage_names, columns=stage_names)
     print(cm_df.to_string())
 
 
-def _print_sleep_stage_distribution(y_true):
+def print_sleep_stage_distribution(y_true):
     print("\nClass Distribution in Test Set:")
     stage_names = ['Wake', 'N1', 'N2', 'N3', 'REM']
     unique, counts = np.unique(y_true, return_counts=True)
@@ -280,7 +411,7 @@ def _print_sleep_stage_distribution(y_true):
         print(f"{stage_name}: {count} samples ({percentage:.1f}%)")
 
 
-def _print_scoring_notes():
+def print_scoring_notes():
     print("\nNotes for Sleep Scoring:")
     print("- Sensitivity = Recall = True Positive Rate (correctly identified stages)")
     print("- Specificity = True Negative Rate (correctly rejected stages)")

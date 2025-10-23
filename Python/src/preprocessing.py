@@ -4,15 +4,32 @@ import os
 import matplotlib.pyplot as plt
 from src.visualization import visualize_fft, visualize_signal
 
+
+
+def highpass_filter(data,cutoff,fs,order=5):
+    """
+    Simple highpass filter for baseline wander removal.
+
+    Args:
+        data (np.ndarray): The input signal.    
+        cutoff (float): The cutoff frequency of the filter.
+        fs (int): The sampling frequency of the signal.
+        order (int): The order of the filter.
+
+    Returns:
+        np.ndarray: The filtered signal.
+    """
+    nyquist = 0.5 * fs
+    normal_cutoff = cutoff / nyquist
+    b, a = butter(order, normal_cutoff, btype='high', analog=False)
+    y = filtfilt(b, a, data)
+    
+    #, padlen = 3*order, padtype="odd"
+    return y
+
 def lowpass_filter(data, cutoff, fs, order=5):
     """
-    EXAMPLE IMPLEMENTATION: Simple low-pass Butterworth filter.
-
-    Students should understand this basic filter and consider:
-    - Is 40Hz the right cutoff for EEG?
-    - What about high-pass filtering?
-    - Should you use bandpass instead?
-    - What about notch filtering for powerline interference?
+    Simple low-pass Butterworth filter.
 
     Args:
         data (np.ndarray): The input signal.
@@ -23,10 +40,6 @@ def lowpass_filter(data, cutoff, fs, order=5):
     Returns:
         np.ndarray: The filtered signal.
     """
-    # TODO: Students may want to implement additional filtering:
-    # - High-pass filter to remove DC drift
-    # - Notch filter for 50/60 Hz powerline noise
-    # - Bandpass filter (e.g., 0.5-40 Hz for EEG)
 
     nyquist = 0.5 * fs
     normal_cutoff = cutoff / nyquist
@@ -48,7 +61,7 @@ def bandpass_filter(data, lowcut , highcut, fs, order):
     return y
 
 
-def preprocess(data, config):
+def preprocess(data,channel_info, config):
     """
     STUDENT IMPLEMENTATION AREA: Preprocess data based on current iteration.
 
@@ -69,18 +82,25 @@ def preprocess(data, config):
 
     if is_multi_channel:
         print("Processing multi-channel data (EEG + EOG + EMG)")
-        return preprocess_multi_channel(data, config)
+        return preprocess_multi_channel(data,channel_info, config)
     else:
         print("Processing single-channel data (backward compatibility)")
-        return preprocess_multi_channel(data, config)
+        return preprocess_single_channel(data,channel_info, config)
 
-def preprocess_multi_channel(multi_channel_data, config):
+
+def preprocess_multi_channel(multi_channel_data,channel_info, config):
     """
     Preprocess multi-channel data: 2 EEG + 2 EOG + 1 EMG channels.
-    Each channel type may have different sampling rates and require different processing.
+
+    Args:        
+        multi_channel_data (dict): Dictionary with keys 'eeg', 'eog', 'emg'.
+        config (module): The configuration module.
+
+    Returns:
+        dict: Preprocessed multi-channel data with same keys.
     """
     preprocessed_data = {}
-    preprocessed_data['eeg'] = _preprocess_eeg_channel(multi_channel_data['eeg'], config)
+    preprocessed_data['eeg'] = _preprocess_eeg_channel(multi_channel_data['eeg'],channel_info, config)
 
     if config.CURRENT_ITERATION >= 2:  # EOG starts in iteration 2
         # Process EOG channels (2 channels) - may need different filtering
@@ -119,12 +139,19 @@ def preprocess_multi_channel(multi_channel_data, config):
     return preprocessed_data
 
 
-def preprocess_single_channel(data, config):
+def preprocess_single_channel(data, channel_info, config):
     """
     Backward compatibility for single-channel preprocessing.
+
+    Args:
+        data (np.ndarray): A 2D array of shape (n_epochs, n_samples).
+        config (module): The configuration module.    
+
+    Returns:
+        np.ndarray: A 2D array of preprocessed data (n_epochs, n_samples
     """
     if config.CURRENT_ITERATION == 1:
-        preprocessed_data = _preprocess_eeg_channel(data, config)
+        preprocessed_data = _preprocess_eeg_channel(data, channel_info, config)
 
     elif config.CURRENT_ITERATION == 2:
         print("TODO: Implement enhanced preprocessing for iteration 2")
@@ -140,12 +167,13 @@ def preprocess_single_channel(data, config):
     return preprocessed_data
 
 
-def _preprocess_eeg_channel(eeg_data, config):
+def _preprocess_eeg_channel(eeg_data,channel_info, config):
     """
     Preprocess single EEG channel data.
     """
     # Process EEG channels (2 channels)
-    eeg_fs = 125
+    eeg_fs = channel_info['eeg_fs'] 
+    print(f"EEG sampling frequency: {eeg_fs} Hz")
     preprocessed_eeg = np.zeros_like(eeg_data)
 
     for ch in range(eeg_data.shape[1]):
@@ -153,16 +181,17 @@ def _preprocess_eeg_channel(eeg_data, config):
         nepochs = eeg_data.shape[0]
         signal = eeg_data[:, ch, :].flatten()
         # Apply EEG-specific preprocessing
-        filtered_signal = notch_filter(signal, config.NOTCH_FILTER_FREQ, config.NOTCH_FILTER_Q, eeg_fs)
+        filtered_signal = highpass_filter(signal, config.HIGHPASS_FILTER_FREQ,eeg_fs)
+        filtered_signal = notch_filter(filtered_signal, config.NOTCH_FILTER_FREQ, config.NOTCH_FILTER_Q, eeg_fs)
         filtered_signal = bandpass_filter(filtered_signal, config.BANDPASS_FILTER_LOWER_FREQ, config.BANDPASS_FILTER_HIGHER_FREQ, eeg_fs, config.BANDPASS_FILTER_ORDER)
         
         # FFT visualization
         y_range_signal = [-0.0002, 0.0002]
         fig, axes = plt.subplots(2, 2, figsize=(8, 6))
-        visualize_signal(signal, eeg_fs, ax=axes[0,0], title=f"EEG Channel {ch+1} - Original Signal")
+        visualize_signal(signal[0:3750], eeg_fs, ax=axes[0,0], title=f"EEG Channel {ch+1} - Original Signal")
         axes[0,0].set_ylim(y_range_signal)
         visualize_fft(signal, eeg_fs, ax=axes[1,0], title=f"EEG Channel {ch+1} - Original Signal FFT")
-        visualize_signal(filtered_signal, eeg_fs, ax=axes[0,1], title=f"EEG Channel {ch+1} - Filtered Signal")
+        visualize_signal(filtered_signal[0:3750], eeg_fs, ax=axes[0,1], title=f"EEG Channel {ch+1} - Filtered Signal")
         axes[0,1].set_ylim(y_range_signal)
         visualize_fft(filtered_signal, eeg_fs, ax=axes[1,1], title=f"EEG Channel {ch+1} - Filtered Signal FFT")
         plt.tight_layout()

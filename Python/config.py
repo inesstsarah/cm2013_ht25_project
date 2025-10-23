@@ -5,13 +5,13 @@
 CURRENT_ITERATION = 1
 
 # Set to True to use cached data for preprocessing and feature extraction.
-USE_CACHE = True
+USE_CACHE = False
 USE_PARALLEL = True  # Use parallel processing where applicable
 PARALLEL_N_JOBS = -1  # Number of parallel jobs (-1 uses all available cores)
 
 # -- File Paths --
 import os
-DATA_DIR = './data/'
+DATA_DIR = 'data/'
 TRAINING_DIR = f'{DATA_DIR}training/'
 HOLDOUT_DIR = f'{DATA_DIR}holdout/'
 SAMPLE_DIR = f'{DATA_DIR}sample/'
@@ -40,18 +40,19 @@ _create_dir_if_not_exists(FIGURES_CLASSIFICATION_DIR)
 
 # -- Preprocessing --
 LOW_PASS_FILTER_FREQ = 40  # Hz
-NOTCH_FILTER_FREQ = 50 # Hz
+NOTCH_FILTER_FREQ = 60 # Hz
 NOTCH_FILTER_Q = 30
 BANDPASS_FILTER_LOWER_FREQ = 0.5 # Hz
-BANDPASS_FILTER_HIGHER_FREQ = 30 # Hz
+BANDPASS_FILTER_HIGHER_FREQ = 33 # Hz
 BANDPASS_FILTER_ORDER = 5
+HIGHPASS_FILTER_FREQ = 0.2 # Hz
 
 # -- Feature Extraction --
 # (Add feature-specific parameters here)
 
 # -- Classification --
 # Iteration-specific parameters - students should modify these based on current iteration
-if CURRENT_ITERATION == 1:
+if CURRENT_ITERATION == 1: # TODO: add more hyperparameters for the hyperparameter optimization
     # Iteration 1: Basic pipeline with k-NN
     CLASSIFIER_TYPE = 'knn'
     #KNN_N_NEIGHBORS = 5
