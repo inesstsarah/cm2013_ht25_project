@@ -6,24 +6,34 @@ from sklearn.model_selection import GridSearchCV, LeaveOneGroupOut
 from sklearn.metrics import accuracy_score, confusion_matrix,precision_recall_fscore_support,roc_auc_score, cohen_kappa_score
 import pandas as pd
 from imblearn.over_sampling import SMOTE
+from src.utils import calculate_sleep_metrics
 
+from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.metrics import precision_score, recall_score, f1_score, cohen_kappa_score, roc_auc_score, roc_curve
+import matplotlib.pyplot as plt
+import pandas as pd
 
-def hyperparameter_optimization(X_train, y_train):
+def hyperparameter_optimization(X_train, y_train, config):
     """Function to search for the optimal parameters in a hyperparameter space"""
     
-    grid_params = { 'n_neighbors' : [5,7,9,11,13,15],
+    '''grid_params = { 'n_neighbors' : [5,7,9,11,13,15],
                'weights' : ['uniform','distance'],
-               'metric' : ['minkowski','euclidean','manhattan']}
-    
-    gs = GridSearchCV(KNeighborsClassifier(), grid_params, verbose = 1, cv=3, n_jobs = -1)
-    # fit the model on our train set
-    g_res = gs.fit(X_train, y_train)
+               'metric' : ['minkowski','euclidean','manhattan']}'''
+    grid_params = config.GRID_PARAMS
+
+    if (config.CURRENT_ITERATIONS == 1):
+        gs = GridSearchCV(KNeighborsClassifier(), grid_params, verbose = 1, cv=3, n_jobs = -1)
+        # fit the model on our train set
+        g_res = gs.fit(X_train, y_train)
+
     # find the best score
     best_score = g_res.best_score_
 
     # Get dictionary of best params
     best_params = g_res.best_params_
     return(best_score, best_params)
+
 
 def train_classifier(features, labels,record_ids, config):
     """
@@ -55,8 +65,10 @@ def train_classifier(features, labels,record_ids, config):
     # Select classifier based on iteration (using config parameters)
     if config.CURRENT_ITERATION == 1:
         # Iteration 1: Simple k-NN
-        model = KNeighborsClassifier(n_neighbors=config.KNN_N_NEIGHBORS)
+        # model = KNeighborsClassifier(n_neighbors=config.KNN_N_NEIGHBORS)
         print(f"Using k-NN with k={config.KNN_N_NEIGHBORS}")
+        _LOGO_split_training(features, labels, record_ids, config)
+
     elif config.CURRENT_ITERATION == 2:
         # Iteration 2: SVM
         # TODO: Students should tune hyperparameters (C, kernel, gamma)
@@ -106,7 +118,7 @@ def compare_sleep_metrics(y_true, y_pred, record_ids, epoch_duration=30):
         
         print("\nSleep Architecture Metrics Comparison")
         print("=" * 80)
-        print_metrics_comparison_table(true_metrics, pred_metrics)
+        _print_sleep_metrics_comparison_table(true_metrics, pred_metrics)
         
         return {
             'overall': {
@@ -159,7 +171,12 @@ def LOSO_split_training(model, features, labels, record_ids, config):
         # Sleep stages are naturally imbalanced (more N2, less N1/REM)
         # TODO：Use class weighting method in next iterations
         X_train, y_train = smote.fit_resample(X_train, y_train)
-       
+
+        if (config.CURRENT_ITERATION == 1):
+            best_score, best_params = hyperparameter_optimization(X_train, y_train)
+            model = KNeighborsClassifier(**best_params)
+        
+
         # Which subject is held out in this fold?
         train_subjects = np.unique(record_ids[train_idx])
         test_subject = np.unique(record_ids[test_idx])[0]
@@ -350,119 +367,7 @@ def print_scoring_notes():
     print("- Clinical focus: High sensitivity for REM and N3 stages")
 
 
-# Clinical plausibility check
-def calculate_sleep_metrics(labels, epoch_duration=30):
-    """
-    Calculate sleep architecture metrics from epoch labels.
-
-    Args:
-        labels: array of sleep stage labels (0=Wake, 1=N1, 2=N2, 3=N3, 4=REM)
-        epoch_duration: seconds per epoch (default 30)
-
-    Returns:
-        metrics: dict of sleep architecture values
-    """
-    if len(labels) == 0:
-        return {}
-    
-    # Convert to numpy array for easier manipulation
-    labels = np.array(labels)
-    n_epochs = len(labels)
-    total_time_minutes = n_epochs * epoch_duration / 60  # Total time in bed (minutes)
-    
-    metrics = {}
-    
-    # 1. Find sleep onset (first non-wake epoch)
-    sleep_epochs = np.where(labels != 0)[0]  # Non-wake epochs
-    if len(sleep_epochs) == 0:
-        # No sleep detected
-        metrics['sleep_onset_latency'] = None
-        metrics['total_sleep_time'] = 0
-        metrics['sleep_efficiency'] = 0
-        metrics['wake_after_sleep_onset'] = 0
-        metrics['rem_latency'] = None
-        metrics['n_awakenings'] = 0
-        metrics['stage_percentages'] = {'N1': 0, 'N2': 0, 'N3': 0, 'REM': 0}
-        metrics['rem_cycles'] = 0
-        return metrics
-    
-    first_sleep_epoch = sleep_epochs[0]
-    sleep_onset_latency = first_sleep_epoch * epoch_duration / 60  # minutes
-    
-    # 2. Calculate Total Sleep Time (TST) - sum of all sleep epochs
-    sleep_epochs_mask = labels != 0  # Non-wake epochs
-    total_sleep_epochs = np.sum(sleep_epochs_mask)
-    total_sleep_time = total_sleep_epochs * epoch_duration / 60  # minutes
-    
-    # 3. Sleep Efficiency = (TST / Time in Bed) × 100%
-    sleep_efficiency = (total_sleep_time / total_time_minutes) * 100 if total_time_minutes > 0 else 0
-    
-    # 4. Wake After Sleep Onset (WASO) - wake epochs after first sleep
-    wake_after_sleep = labels[first_sleep_epoch:]
-    waso_epochs = np.sum(wake_after_sleep == 0)
-    wake_after_sleep_onset = waso_epochs * epoch_duration / 60  # minutes
-    
-    # 5. REM Latency - time from sleep onset to first REM
-    rem_epochs = np.where(labels == 4)[0]  # REM epochs
-    if len(rem_epochs) == 0:
-        rem_latency = None
-    else:
-        first_rem_epoch = rem_epochs[0]
-        rem_latency = (first_rem_epoch - first_sleep_epoch) * epoch_duration / 60  # minutes
-    
-    # 6. Number of Awakenings - count wake periods after sleep onset
-    wake_after_sleep_binary = (wake_after_sleep == 0).astype(int)
-    # Count transitions from sleep (0) to wake (1)
-    awakenings = 0
-    if len(wake_after_sleep_binary) > 1:
-        for i in range(1, len(wake_after_sleep_binary)):
-            if wake_after_sleep_binary[i-1] == 0 and wake_after_sleep_binary[i] == 1:
-                awakenings += 1
-    
-    # 7. Sleep Stage Percentages (relative to TST)
-    stage_counts = np.bincount(labels[labels != 0], minlength=5)  # Count non-wake stages
-    stage_percentages = {}
-    if total_sleep_epochs > 0:
-        stage_percentages = {
-            'N1': (stage_counts[1] / total_sleep_epochs) * 100,
-            'N2': (stage_counts[2] / total_sleep_epochs) * 100,
-            'N3': (stage_counts[3] / total_sleep_epochs) * 100,
-            'REM': (stage_counts[4] / total_sleep_epochs) * 100
-        }
-    else:
-        stage_percentages = {'N1': 0, 'N2': 0, 'N3': 0, 'REM': 0}
-    
-    # 8. REM Cycle Count and Duration
-    rem_cycles = 0
-    if len(rem_epochs) > 0:
-        # Find consecutive REM periods
-        rem_binary = np.zeros(len(labels), dtype=int)
-        rem_binary[rem_epochs] = 1
-        rem_duration = np.sum(rem_binary) * epoch_duration / 60  # minutes
-        # Count transitions from non-REM to REM
-        for i in range(1, len(rem_binary)):
-            if rem_binary[i-1] == 0 and rem_binary[i] == 1:
-                rem_cycles += 1
-    
-    # Store all metrics
-    metrics = {
-        'SOL': sleep_onset_latency,  # minutes
-        'TST': total_sleep_time,  # minutes
-        'SE': sleep_efficiency,  # percentage
-        'WASO': wake_after_sleep_onset,  # minutes
-        'REM_latency': rem_latency,  # minutes
-        'n_awakenings': awakenings,
-        'sleep_stage_percentages': stage_percentages,
-        'REM_cycles': rem_cycles,
-        'REM_duration': rem_duration,  # minutes
-        'total_time_in_bed': total_time_minutes,  # minutes
-        'n_epochs': n_epochs
-    }
-    
-    return metrics
-
-
-def print_metrics_comparison_table(true_metrics, pred_metrics):
+def _print_sleep_metrics_comparison_table(true_metrics, pred_metrics):
     """
     Print formatted comparison table for sleep metrics.
     

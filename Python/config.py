@@ -55,8 +55,11 @@ HIGHPASS_FILTER_FREQ = 0.2 # Hz
 if CURRENT_ITERATION == 1: # TODO: add more hyperparameters for the hyperparameter optimization
     # Iteration 1: Basic pipeline with k-NN
     CLASSIFIER_TYPE = 'knn'
-    KNN_N_NEIGHBORS = 5
-    USE_HYPERPARAMETER_OPT = True
+    #KNN_N_NEIGHBORS = 5
+    GRID_PARAMS = { 'n_neighbors' : [5,7,9,11,13,15],
+               'weights' : ['uniform','distance'],
+               'metric' : ['minkowski','euclidean','manhattan']}
+    
 elif CURRENT_ITERATION == 2:
     # Iteration 2: Enhanced EEG processing with SVM
     CLASSIFIER_TYPE = 'svm'

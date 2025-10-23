@@ -4,6 +4,8 @@ from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import xml.etree.ElementTree as ET
 import os
 import matplotlib.patches as mpatches
+from src.utils import calculate_sleep_metrics
+from scipy.stats import ttest_rel
 
 # Try to import MNE for EDF reading (more lenient than pyedflib)
 try:
@@ -301,6 +303,14 @@ def visualize_results(results, record_ids, config):
     print("Visualizing stage percentage comparison...")
     _visualize_stage_percentage_comparison(results['y_true_aggregate'], results['y_pred_aggregate'], config, record_ids)
 
+    # Calculate sleep metrics once for all subjects
+    print("\nCalculating sleep architecture metrics...")
+    sleep_metrics_data = _calculate_all_sleep_metrics(results['y_true_aggregate'], results['y_pred_aggregate'], record_ids, config)
+    
+    # sleep architecture metrics (Bland-Altman plots, correlation analysis)
+    print("\nVisualizing sleep architecture metrics...")
+    _plot_from_sleep_metrics(sleep_metrics_data, config)
+
 
 def visualize_fft(signal, fs, ax=None, title="FFT of Signal"):
     """
@@ -349,6 +359,45 @@ def visualize_signal(signal, fs, ax=None, title="Time-domain Signal"):
     ax.set_xlabel("Time (h)")
     ax.set_ylabel("Amplitude")
     ax.grid(True)
+
+
+def _calculate_all_sleep_metrics(y_true, y_pred, record_ids, config, epoch_duration=30):
+    """
+    Calculate sleep metrics for all subjects once.
+    
+    Args:
+        y_true (np.ndarray): Ground truth labels
+        y_pred (np.ndarray): Predicted labels
+        record_ids (np.ndarray): Record identifiers
+        config (module): Configuration module
+        epoch_duration (int): Duration of each epoch in seconds
+        
+    Returns:
+        dict: Sleep metrics data for all subjects
+    """
+
+    unique_records = np.unique(record_ids)
+    all_true_metrics = []
+    all_pred_metrics = []
+    
+    for record_id in unique_records:
+        indices = np.where(record_ids == record_id)[0]
+        if len(indices) == 0:
+            continue
+            
+        true_labels = y_true[indices]
+        pred_labels = y_pred[indices]
+        
+        true_metrics = calculate_sleep_metrics(true_labels, epoch_duration)
+        pred_metrics = calculate_sleep_metrics(pred_labels, epoch_duration)
+        
+        all_true_metrics.append(true_metrics)
+        all_pred_metrics.append(pred_metrics)
+    
+    return {
+        'all_true_metrics': all_true_metrics,
+        'all_pred_metrics': all_pred_metrics
+    }
 
 
 def _plot_confusion_matrix(y_true, y_pred, class_names, config):
@@ -428,6 +477,7 @@ def _visualize_sidebyside_hypnograms(y_true, y_pred, record_ids, config):
         fig.tight_layout()
         save_path = os.path.join(config.FIGURES_CLASSIFICATION_DIR, f"sidebyde_hypnograms_{target_id}.png")
         fig.savefig(save_path, dpi=300, bbox_inches='tight')
+        print(f"Saved hypnogram to {save_path}")
     
     plt.close(fig)  # release memory for the reused figure after all saves
 
@@ -584,3 +634,493 @@ def _visualize_stage_percentage_comparison(y_true, y_pred, config, record_ids=No
 
     plt.close(fig)
 
+
+def _create_bland_altman_plots(all_true_metrics, all_pred_metrics, metric_keys, metric_names, metric_units, config):
+    """
+    Create Bland-Altman plots with multiple subjects (each subject is one data point).
+    
+    Args:
+        all_true_metrics (list): List of true metrics for each subject
+        all_pred_metrics (list): List of predicted metrics for each subject
+        metric_keys (list): List of metric keys to plot
+        metric_names (dict): Display names for metrics
+        metric_units (dict): Units for metrics
+        config (module): Configuration module
+    """
+    # Filter out metrics with None values across all subjects
+    valid_metrics = []
+    for key in metric_keys:
+        valid_count = 0
+        for true_metrics, pred_metrics in zip(all_true_metrics, all_pred_metrics):
+            if (key in true_metrics and key in pred_metrics and 
+                true_metrics[key] is not None and pred_metrics[key] is not None):
+                valid_count += 1
+        
+        if valid_count >= 3:  # Need at least 3 subjects for meaningful statistics
+            valid_metrics.append(key)
+    
+    if not valid_metrics:
+        print("No valid metrics available for Bland-Altman plot (need at least 3 subjects)")
+        return
+    
+    print("Creating Bland-Altman plots...")
+    # Calculate number of subplots needed
+    n_metrics = len(valid_metrics)
+    n_cols = min(3, n_metrics)
+    n_rows = (n_metrics + n_cols - 1) // n_cols
+    
+    # Create figure
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(5*n_cols, 4*n_rows))
+    if n_metrics == 1:
+        axes = [axes]
+    elif n_rows == 1:
+        axes = axes if n_cols > 1 else [axes]
+    else:
+        axes = axes.flatten()
+    
+    for i, metric_key in enumerate(valid_metrics):
+        ax = axes[i]
+        
+        # Collect data points from all subjects
+        true_values = []
+        pred_values = []
+        
+        for true_metrics, pred_metrics in zip(all_true_metrics, all_pred_metrics):
+            if (metric_key in true_metrics and metric_key in pred_metrics and 
+                true_metrics[metric_key] is not None and pred_metrics[metric_key] is not None):
+                true_values.append(true_metrics[metric_key])
+                pred_values.append(pred_metrics[metric_key])
+        
+        if len(true_values) < 3:
+            continue
+            
+        true_values = np.array(true_values)
+        pred_values = np.array(pred_values)
+        
+        # Calculate Bland-Altman statistics
+        mean_values = (true_values + pred_values) / 2
+        diff_values = true_values - pred_values
+        
+        # Plot the data points (each subject is one point)
+        ax.scatter(mean_values, diff_values, alpha=0.7, s=60, c='blue', edgecolors='black')
+        
+        # Add subject labels
+        for j, (mean_val, diff_val) in enumerate(zip(mean_values, diff_values)):
+            ax.annotate(f'S{j+1}', (mean_val, diff_val), xytext=(5, 5), 
+                       textcoords='offset points', fontsize=8, alpha=0.7)
+        
+        # Calculate and plot bias (mean difference)
+        bias = np.mean(diff_values)
+        ax.axhline(y=bias, color='red', linestyle='--', linewidth=2, label=f'Bias: {bias:.2f}')
+        
+        # Calculate and plot limits of agreement (±1.96 * std)
+        std_diff = np.std(diff_values, ddof=1)  # Use sample standard deviation
+        upper_limit = bias + 1.96 * std_diff
+        lower_limit = bias - 1.96 * std_diff
+        
+        ax.axhline(y=upper_limit, color='red', linestyle=':', alpha=0.7, 
+                  label=f'Upper LoA: {upper_limit:.2f}')
+        ax.axhline(y=lower_limit, color='red', linestyle=':', alpha=0.7,
+                  label=f'Lower LoA: {lower_limit:.2f}')
+        
+        # Styling
+        ax.set_xlabel(f'Mean of True and Predicted ({metric_units[metric_key]})', fontsize=10)
+        ax.set_ylabel(f'Difference (True - Predicted) ({metric_units[metric_key]})', fontsize=10)
+        ax.set_title(f'{metric_names[metric_key]} - All Subjects', fontsize=12, fontweight='bold')
+        ax.grid(True, alpha=0.3)
+        ax.legend(fontsize=8)
+        
+        # Add text with statistics
+        stats_text = f'Bias: {bias:.2f}\nLoA: ±{1.96*std_diff:.2f}\nN={len(true_values)}'
+        ax.text(0.02, 0.98, stats_text, transform=ax.transAxes, 
+                verticalalignment='top', fontsize=8,
+                bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+    
+    # Hide unused subplots
+    for i in range(n_metrics, len(axes)):
+        axes[i].set_visible(False)
+    
+    plt.tight_layout()
+    
+    # Save figure
+    if config and hasattr(config, 'FIGURES_CLASSIFICATION_DIR'):
+        save_path = os.path.join(config.FIGURES_CLASSIFICATION_DIR, 'bland_altman_all_subjects.png')
+        fig.savefig(save_path, dpi=300, bbox_inches='tight')
+        print(f"Saved Bland-Altman plot to {save_path}\n")
+    
+    plt.close(fig)
+
+
+def _create_correlation_plots(all_true_metrics, all_pred_metrics, metric_keys, metric_names, metric_units, config):
+    """
+    Create correlation plots with multiple subjects (each subject is one data point).
+    
+    Args:
+        all_true_metrics (list): List of true metrics for each subject
+        all_pred_metrics (list): List of predicted metrics for each subject
+        metric_keys (list): List of metric keys to plot
+        metric_names (dict): Display names for metrics
+        metric_units (dict): Units for metrics
+        config (module): Configuration module
+    """
+    # Filter out metrics with None values across all subjects
+    valid_metrics = []
+    for key in metric_keys:
+        valid_count = 0
+        for true_metrics, pred_metrics in zip(all_true_metrics, all_pred_metrics):
+            if (key in true_metrics and key in pred_metrics and 
+                true_metrics[key] is not None and pred_metrics[key] is not None):
+                valid_count += 1
+        
+        if valid_count >= 3:  # Need at least 3 subjects for meaningful correlation
+            valid_metrics.append(key)
+    
+    if not valid_metrics:
+        print("No valid metrics available for correlation plot (need at least 3 subjects)")
+        return
+    
+    print("Creating Correlation plots...")
+    # Calculate number of subplots needed
+    n_metrics = len(valid_metrics)
+    n_cols = min(3, n_metrics)
+    n_rows = (n_metrics + n_cols - 1) // n_cols
+    
+    # Create figure
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(5*n_cols, 4*n_rows))
+    if n_metrics == 1:
+        axes = [axes]
+    elif n_rows == 1:
+        axes = axes if n_cols > 1 else [axes]
+    else:
+        axes = axes.flatten()
+    
+    for i, metric_key in enumerate(valid_metrics):
+        ax = axes[i]
+        
+        # Collect data points from all subjects
+        true_values = []
+        pred_values = []
+        
+        for true_metrics, pred_metrics in zip(all_true_metrics, all_pred_metrics):
+            if (metric_key in true_metrics and metric_key in pred_metrics and 
+                true_metrics[metric_key] is not None and pred_metrics[metric_key] is not None):
+                true_values.append(true_metrics[metric_key])
+                pred_values.append(pred_metrics[metric_key])
+        
+        if len(true_values) < 3:
+            continue
+            
+        true_values = np.array(true_values)
+        pred_values = np.array(pred_values)
+        
+        # Plot scatter plot
+        ax.scatter(true_values, pred_values, alpha=0.7, s=60, c='blue', edgecolors='black')
+        
+        # Add subject labels
+        for j, (true_val, pred_val) in enumerate(zip(true_values, pred_values)):
+            ax.annotate(f'S{j+1}', (true_val, pred_val), xytext=(5, 5), 
+                       textcoords='offset points', fontsize=8, alpha=0.7)
+        
+        # Calculate correlation coefficient
+        correlation = np.corrcoef(true_values, pred_values)[0, 1]
+        
+        # Calculate R-squared
+        r_squared = correlation ** 2
+        
+        # Fit linear regression line
+        z = np.polyfit(true_values, pred_values, 1)
+        p = np.poly1d(z)
+        x_line = np.linspace(true_values.min(), true_values.max(), 100)
+        y_line = p(x_line)
+        ax.plot(x_line, y_line, 'r--', alpha=0.8, linewidth=2, label='Regression Line')
+        
+        # Perfect agreement line (y = x)
+        min_val = min(true_values.min(), pred_values.min())
+        max_val = max(true_values.max(), pred_values.max())
+        ax.plot([min_val, max_val], [min_val, max_val], 'k--', alpha=0.5, linewidth=1, label='Perfect Agreement')
+        
+        # Styling
+        ax.set_xlabel(f'True {metric_names[metric_key]} ({metric_units[metric_key]})', fontsize=10)
+        ax.set_ylabel(f'Predicted {metric_names[metric_key]} ({metric_units[metric_key]})', fontsize=10)
+        ax.set_title(f'{metric_names[metric_key]} - Correlation Analysis', fontsize=12, fontweight='bold')
+        ax.grid(True, alpha=0.3)
+        
+        # Add correlation statistics
+        stats_text = f'r = {correlation:.3f}\nR² = {r_squared:.3f}\nN = {len(true_values)}'
+        ax.text(0.05, 0.95, stats_text, transform=ax.transAxes, 
+                verticalalignment='top', fontsize=9,
+                bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+        
+        # Add legend
+        ax.legend(fontsize=8, loc='lower right')
+        
+        # Set equal aspect ratio for better visualization
+        ax.set_aspect('equal', adjustable='box')
+    
+    # Hide unused subplots
+    for i in range(n_metrics, len(axes)):
+        axes[i].set_visible(False)
+    
+    plt.tight_layout()
+    
+    # Save figure
+    if config and hasattr(config, 'FIGURES_CLASSIFICATION_DIR'):
+        save_path = os.path.join(config.FIGURES_CLASSIFICATION_DIR, 'correlation_analysis.png')
+        fig.savefig(save_path, dpi=300, bbox_inches='tight')
+        print(f"Saved correlation plot to {save_path}\n")
+    
+    plt.close(fig)
+
+
+def _create_distribution_plots(all_true_metrics, all_pred_metrics, metric_keys, metric_names, metric_units, config):
+    """
+    Create distribution plots showing metric variability across subjects.
+    
+    Args:
+        all_true_metrics (list): List of true metrics for each subject
+        all_pred_metrics (list): List of predicted metrics for each subject
+        metric_keys (list): List of metric keys to plot
+        metric_names (dict): Display names for metrics
+        metric_units (dict): Units for metrics
+        config (module): Configuration module
+    """
+    # Filter out metrics with None values across all subjects
+    valid_metrics = []
+    for key in metric_keys:
+        valid_count = 0
+        for true_metrics, pred_metrics in zip(all_true_metrics, all_pred_metrics):
+            if (key in true_metrics and key in pred_metrics and 
+                true_metrics[key] is not None and pred_metrics[key] is not None):
+                valid_count += 1
+        
+        if valid_count >= 3:  # Need at least 3 subjects for meaningful distribution
+            valid_metrics.append(key)
+    
+    if not valid_metrics:
+        print("No valid metrics available for distribution plot (need at least 3 subjects)")
+        return
+    
+    print("Creating Distribution plots...")
+    # Calculate number of subplots needed
+    n_metrics = len(valid_metrics)
+    n_cols = min(3, n_metrics)
+    n_rows = (n_metrics + n_cols - 1) // n_cols
+    
+    # Create figure
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(5*n_cols, 4*n_rows))
+    if n_metrics == 1:
+        axes = [axes]
+    elif n_rows == 1:
+        axes = axes if n_cols > 1 else [axes]
+    else:
+        axes = axes.flatten()
+    
+    for i, metric_key in enumerate(valid_metrics):
+        ax = axes[i]
+        
+        # Collect data points from all subjects
+        true_values = []
+        pred_values = []
+        
+        for true_metrics, pred_metrics in zip(all_true_metrics, all_pred_metrics):
+            if (metric_key in true_metrics and metric_key in pred_metrics and 
+                true_metrics[metric_key] is not None and pred_metrics[metric_key] is not None):
+                true_values.append(true_metrics[metric_key])
+                pred_values.append(pred_metrics[metric_key])
+        
+        if len(true_values) < 3:
+            continue
+            
+        true_values = np.array(true_values)
+        pred_values = np.array(pred_values)
+        
+        # Create box plot
+        data_to_plot = [true_values, pred_values]
+        box_plot = ax.boxplot(data_to_plot, labels=['Ground Truth', 'Predicted'], 
+                             patch_artist=True, showmeans=True, meanline=True)
+        
+        # Color the boxes
+        colors = ['lightblue', 'lightcoral']
+        for patch, color in zip(box_plot['boxes'], colors):
+            patch.set_facecolor(color)
+            patch.set_alpha(0.7)
+        
+        # Style the median lines
+        for median in box_plot['medians']:
+            median.set_color('black')
+            median.set_linewidth(2)
+        
+        # Style the mean lines
+        for mean in box_plot['means']:
+            mean.set_color('red')
+            mean.set_linewidth(2)
+            mean.set_linestyle('--')
+        
+        # Add individual data points
+        n_subjects = len(true_values)
+        x_positions = np.random.normal(1, 0.04, n_subjects)  # Jitter for true values
+        ax.scatter(x_positions, true_values, alpha=0.6, s=30, c='blue', edgecolors='black', linewidth=0.5)
+        
+        x_positions = np.random.normal(2, 0.04, n_subjects)  # Jitter for predicted values
+        ax.scatter(x_positions, pred_values, alpha=0.6, s=30, c='red', edgecolors='black', linewidth=0.5)
+        
+        # Add subject labels
+        for j, (true_val, pred_val) in enumerate(zip(true_values, pred_values)):
+            ax.annotate(f'S{j+1}', (1, true_val), xytext=(5, 0), 
+                       textcoords='offset points', fontsize=6, alpha=0.7, color='blue')
+            ax.annotate(f'S{j+1}', (2, pred_val), xytext=(5, 0), 
+                       textcoords='offset points', fontsize=6, alpha=0.7, color='red')
+        
+        # Calculate statistics
+        true_mean = np.mean(true_values)
+        true_std = np.std(true_values, ddof=1)
+        pred_mean = np.mean(pred_values)
+        pred_std = np.std(pred_values, ddof=1)
+        
+        # Styling
+        ax.set_ylabel(f'{metric_names[metric_key]} ({metric_units[metric_key]})', fontsize=10)
+        ax.set_title(f'{metric_names[metric_key]} - Distribution Analysis', fontsize=12, fontweight='bold')
+        ax.grid(True, alpha=0.3, axis='y')
+        
+        # Add statistics text
+        stats_text = f'True: {true_mean:.1f}±{true_std:.1f}\nPred: {pred_mean:.1f}±{pred_std:.1f}\nN={len(true_values)}'
+        ax.text(0.02, 0.98, stats_text, transform=ax.transAxes, 
+                verticalalignment='top', fontsize=8,
+                bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+        
+        # Set y-axis limits with some padding
+        all_values = np.concatenate([true_values, pred_values])
+        y_min = np.min(all_values) - 0.1 * (np.max(all_values) - np.min(all_values))
+        y_max = np.max(all_values) + 0.1 * (np.max(all_values) - np.min(all_values))
+        ax.set_ylim(y_min, y_max)
+    
+    # Hide unused subplots
+    for i in range(n_metrics, len(axes)):
+        axes[i].set_visible(False)
+    
+    plt.tight_layout()
+    
+    # Save figure
+    if config and hasattr(config, 'FIGURES_CLASSIFICATION_DIR'):
+        save_path = os.path.join(config.FIGURES_CLASSIFICATION_DIR, 'distribution_analysis.png')
+        fig.savefig(save_path, dpi=300, bbox_inches='tight')
+        print(f"Saved distribution plot to {save_path}\n")
+    
+    plt.close(fig)
+
+
+def _perform_paired_t_tests(all_true_metrics, all_pred_metrics, metric_keys, metric_names, metric_units, config):
+    """
+    Perform paired t-tests to compare true vs predicted sleep metrics.
+    
+    Args:
+        all_true_metrics (list): List of true metrics for each subject
+        all_pred_metrics (list): List of predicted metrics for each subject
+        metric_keys (list): List of metric keys to test
+        metric_names (dict): Display names for metrics
+        metric_units (dict): Units for metrics
+        config (module): Configuration module
+    """
+    print("Performing paired t-tests...")
+    print("=" * 95)
+    print(f"{'Metric':<25} {'True Mean±SD':<15} {'Pred Mean±SD':<15} {'t-statistic':<12} {'p-value':<10} {'Significant':<12}")
+    print("=" * 95)
+    
+    significant_tests = 0
+    total_tests = 0
+    
+    for metric_key in metric_keys:
+        # Collect data points from all subjects
+        true_values = []
+        pred_values = []
+        
+        for true_metrics, pred_metrics in zip(all_true_metrics, all_pred_metrics):
+            if (metric_key in true_metrics and metric_key in pred_metrics and 
+                true_metrics[metric_key] is not None and pred_metrics[metric_key] is not None):
+                true_values.append(true_metrics[metric_key])
+                pred_values.append(pred_metrics[metric_key])
+        
+        if len(true_values) < 3:
+            print(f"{metric_names[metric_key]:<25} {'Insufficient data':<15} {'Insufficient data':<15} {'N/A':<12} {'N/A':<10} {'N/A':<12}")
+            continue
+        
+        true_values = np.array(true_values)
+        pred_values = np.array(pred_values)
+        
+        # Perform paired t-test
+        t_stat, p_value = ttest_rel(true_values, pred_values)
+        
+        # Calculate means and standard deviations
+        true_mean = np.mean(true_values)
+        true_std = np.std(true_values, ddof=1)
+        pred_mean = np.mean(pred_values)
+        pred_std = np.std(pred_values, ddof=1)
+        
+        # Determine significance (α = 0.05)
+        is_significant = p_value < 0.05
+        if is_significant:
+            significant_tests += 1
+        total_tests += 1
+        
+        # Format output
+        true_str = f"{true_mean:.1f}±{true_std:.1f}"
+        pred_str = f"{pred_mean:.1f}±{pred_std:.1f}"
+        t_str = f"{t_stat:.3f}"
+        p_str = f"{p_value:.4f}"
+        sig_str = "Yes" if is_significant else "No"
+        
+        print(f"{metric_names[metric_key]:<25} {true_str:<15} {pred_str:<15} {t_str:<12} {p_str:<10} {sig_str:<12}")
+    
+    print("=" * 95)
+    print(f"Summary: {significant_tests}/{total_tests} metrics showed significant differences (p < 0.05)")
+    print("\n" + "=" * 95)
+
+    print("Statistical Interpretation:")
+    print("- p < 0.05: Significant difference between true and predicted values")
+    print("- p ≥ 0.05: No significant difference (values are statistically similar)")
+    print("=" * 95)
+
+
+def _plot_from_sleep_metrics(sleep_metrics_data, config):
+    """
+    Create correlation plots from pre-calculated sleep metrics.
+    
+    Args:
+        sleep_metrics_data (dict): Pre-calculated sleep metrics
+        config (module): Configuration module
+    """
+    all_true_metrics = sleep_metrics_data['all_true_metrics']
+    all_pred_metrics = sleep_metrics_data['all_pred_metrics']
+    
+    # Define metrics to plot (numeric metrics only)
+    metric_keys = ['SOL', 'TST', 'SE', 'WASO', 'REM_latency', 'n_awakenings', 'REM_cycles', 'REM_duration']
+    metric_names = {
+        'SOL': 'Sleep Onset Latency',
+        'TST': 'Total Sleep Time', 
+        'SE': 'Sleep Efficiency',
+        'WASO': 'Wake After Sleep Onset',
+        'REM_latency': 'REM Latency',
+        'n_awakenings': 'Number of Awakenings',
+        'REM_cycles': 'REM Cycles',
+        'REM_duration': 'REM Duration'
+    }
+    metric_units = {
+        'SOL': 'min',
+        'TST': 'min',
+        'SE': '%',
+        'WASO': 'min', 
+        'REM_latency': 'min',
+        'n_awakenings': 'count',
+        'REM_cycles': 'count',
+        'REM_duration': 'min'
+    }
+    
+    if all_true_metrics and all_pred_metrics:
+        _create_bland_altman_plots(all_true_metrics, all_pred_metrics, 
+                                        metric_keys, metric_names, metric_units, config)
+        _create_correlation_plots(all_true_metrics, all_pred_metrics, 
+                                metric_keys, metric_names, metric_units, config)
+        _create_distribution_plots(all_true_metrics, all_pred_metrics, 
+                                 metric_keys, metric_names, metric_units, config)
+        _perform_paired_t_tests(all_true_metrics, all_pred_metrics, 
+                              metric_keys, metric_names, metric_units, config)
