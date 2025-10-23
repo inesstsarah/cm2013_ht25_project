@@ -54,7 +54,11 @@ BANDPASS_FILTER_ORDER = 5
 if CURRENT_ITERATION == 1:
     # Iteration 1: Basic pipeline with k-NN
     CLASSIFIER_TYPE = 'knn'
-    KNN_N_NEIGHBORS = 5
+    #KNN_N_NEIGHBORS = 5
+    GRID_PARAMS = { 'n_neighbors' : [5,7,9,11,13,15],
+               'weights' : ['uniform','distance'],
+               'metric' : ['minkowski','euclidean','manhattan']}
+    
 elif CURRENT_ITERATION == 2:
     # Iteration 2: Enhanced EEG processing with SVM
     CLASSIFIER_TYPE = 'svm'

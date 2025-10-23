@@ -9,6 +9,31 @@ import pandas as pd
 from imblearn.over_sampling import SMOTE
 from src.utils import calculate_sleep_metrics
 
+from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.metrics import precision_score, recall_score, f1_score, cohen_kappa_score, roc_auc_score, roc_curve
+import matplotlib.pyplot as plt
+import pandas as pd
+
+def hyperparameter_optimization(X_train, y_train, config):
+    """Function to search for the optimal parameters in a hyperparameter space"""
+    
+    '''grid_params = { 'n_neighbors' : [5,7,9,11,13,15],
+               'weights' : ['uniform','distance'],
+               'metric' : ['minkowski','euclidean','manhattan']}'''
+    grid_params = config.GRID_PARAMS
+
+    if (config.CURRENT_ITERATIONS == 1):
+        gs = GridSearchCV(KNeighborsClassifier(), grid_params, verbose = 1, cv=3, n_jobs = -1)
+        # fit the model on our train set
+        g_res = gs.fit(X_train, y_train)
+
+    # find the best score
+    best_score = g_res.best_score_
+
+    # Get dictionary of best params
+    best_params = g_res.best_params_
+    return(best_score, best_params)
 
 def train_classifier(features, labels, record_ids, config):
     """
