@@ -2,10 +2,20 @@ data/
 PROJECT_GUIDE.md
 README.md
 VISUALIZATION_GUIDE.md
-python/__pycache__/
+Python/__pycache__/
 *.py[cod]
 python/report.txt
 *.png
 PROJECT_GUIDE-zh-CN-dual.md
 cache/
 figure/
+**/__pycache__/
+MATLAB/
+CM2013 Project Introduction.pptx
+Python/.DS_Store
+Python/.coverage
+Python/colab_notebook.ipynb
+Python/plot_signals.py
+Python/src/__init__.py
+Python/tests/__init__.py
+CompareBranches.ps1
