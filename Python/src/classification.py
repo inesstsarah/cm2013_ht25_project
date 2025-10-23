@@ -13,11 +13,23 @@ from src.utils import calculate_sleep_metrics
 def get_model_from_config(config):
     """Get model instance based on config CLASSIFIER_TYPE"""
     if config.CLASSIFIER_TYPE == 'knn':
-        return KNeighborsClassifier()
+        return KNeighborsClassifier(n_neighbors=config.KNN_N_NEIGHBORS)
+    
     elif config.CLASSIFIER_TYPE == 'svm':
-        return SVC(random_state=42)
+        return SVC(
+            C=getattr(config, 'SVM_C', 1.0),
+            kernel=getattr(config, 'SVM_KERNEL', 'rbf'),
+            random_state=42
+        )
+    
     elif config.CLASSIFIER_TYPE == 'random_forest':
-        return RandomForestClassifier(random_state=42, n_jobs=-1)
+        return RandomForestClassifier(
+            n_estimators=getattr(config, 'RF_N_ESTIMATORS', 100),
+            max_depth=getattr(config, 'RF_MAX_DEPTH', None),
+            min_samples_split=getattr(config, 'RF_MIN_SAMPLES_SPLIT', 2),
+            random_state=42,
+            n_jobs=-1  # Use all available cores
+        )
     else:
         raise ValueError(f"Unknown classifier type: {config.CLASSIFIER_TYPE}")
 
@@ -96,7 +108,7 @@ def _LOGO_split_training(features, labels, record_ids, config):
         # Create fresh model instance with best parameters for each fold
         model = get_model_from_config(config)
         model.set_params(**best_params)
-        print(f"  Model instance ID: {id(model)}, Params: {best_params}")
+        print(f"Model instance ID: {id(model)}, Params: {best_params}")
         
         # Which subject is held out in this fold?
         train_subjects = np.unique(record_ids[train_idx])
