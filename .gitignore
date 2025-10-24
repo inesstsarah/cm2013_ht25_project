@@ -7,5 +7,6 @@ report.txt
 *.pyc
 __pycache__/
 **/__pycache__/
+/figure
 *.png
-**/.pytest_cache/
+
