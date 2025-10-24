@@ -2,7 +2,7 @@ import numpy as np
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import LeaveOneGroupOut
+from sklearn.model_selection import LeaveOneGroupOut,GridSearchCV
 from sklearn.metrics import accuracy_score, confusion_matrix, cohen_kappa_score
 from sklearn.metrics import precision_recall_fscore_support, roc_auc_score
 import pandas as pd
@@ -73,47 +73,18 @@ def train_classifier(features, labels, record_ids, config):
     Returns:
         object: The trained classifier.
     """
+  
     print(f"Training {config.CLASSIFIER_TYPE} classifier...")
     print(f"Features shape: {features.shape}, Labels shape: {labels.shape}")
 
     # Basic validation
     if features.shape[0] == 0 or features.shape[1] == 0:
         raise ValueError("No features available for training!")
-
-    # Select classifier based on iteration (using config parameters)
-    if config.CURRENT_ITERATION == 1:
-        # Iteration 1: Simple k-NN
-        # model = KNeighborsClassifier(n_neighbors=config.KNN_N_NEIGHBORS)
-        print(f"Using k-NN with k={config.KNN_N_NEIGHBORS}")
-        _LOGO_split_training(features, labels, record_ids, config)
-
-    elif config.CURRENT_ITERATION == 2:
-        # Iteration 2: SVM
-        # TODO: Students should tune hyperparameters (C, kernel, gamma)
-        model = SVC(
-            C=getattr(config, 'SVM_C', 1.0),
-            kernel=getattr(config, 'SVM_KERNEL', 'rbf'),
-            random_state=42
-        )
-        print(f"Using SVM with C={model.C}, kernel={model.kernel}")
-    elif config.CURRENT_ITERATION >= 3:
-        # Iteration 3+: Random Forest
-        # TODO: Students should tune hyperparameters (n_estimators, max_depth, etc.)
-        model = RandomForestClassifier(
-            n_estimators=getattr(config, 'RF_N_ESTIMATORS', 100),
-            max_depth=getattr(config, 'RF_MAX_DEPTH', None),
-            min_samples_split=getattr(config, 'RF_MIN_SAMPLES_SPLIT', 2),
-            random_state=42,
-            n_jobs=-1  # Use all available cores
-        )
-        print(f"Using Random Forest with {model.n_estimators} trees")
     else:
-        raise ValueError(f"Invalid iteration: {config.CURRENT_ITERATION}")
-
-    # Train the model
-    print("Training model...")
-    _LOGO_split_training(model, features, labels, record_ids)
-
+        print("Training model...")
+        # Use LOSO cross-validation for training
+        model = LOSO_split_training(features, labels, record_ids, config)
+        
     return model
 
 
@@ -121,7 +92,7 @@ def train_classifier(features, labels, record_ids, config):
 
 
 # TODO: Statistical comparison between iterations (t-test on kappa scores)
-def LOSO_split_training(model, features, labels, record_ids, config):
+def LOSO_split_training(features, labels, record_ids, config):
     # Create LOSO cross-validation split
     logo = LeaveOneGroupOut()
     loso_results = []
