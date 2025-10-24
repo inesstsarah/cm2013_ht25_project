@@ -40,50 +40,6 @@ def extract_hjorth_complexity(epoch):
 
     return extract_hjorth_mobility(np.diff(epoch)) / extract_hjorth_mobility(epoch)
 
-def extract_simple_k_complex(epoch):
-    """
-    
-    Simple K-complex detection i time domain.
-
-    Args:
-        epoch (np.ndarray): A 1D array representing one epoch of signal data.
-
-    Returns:
-        nb (int): Number of K-complexes detected
-        float : Total duration of K-complexes in epoch in seconds
-    """
-    eeg_fs = 125
-    min_delta = int(0.5*eeg_fs)
-    max_delta = int(1.5*eeg_fs)
-    min_peak_to_peak = 75
-
-    #Find peaks that stands out with at least 30 uV and is 240 ms from next peak
-    neg_peaks,_ = scipy.signal.find_peaks(-epoch,prominence = 30, distance = 30)
-    pos_peaks,_ = scipy.signal.find_peaks(epoch,prominence = 30, distance = 30)
-    #print(len(pos_peaks)," ", len(neg_peaks))
-    pos_idx = 0
-    k_complexes=[]
-    for neg_idx in neg_peaks:
-        while pos_idx < len(pos_peaks) and pos_peaks[pos_idx]<= neg_idx:
-            pos_idx +=1
-        for j in range(pos_idx,len(pos_peaks)):
-            delta = pos_peaks[j]-neg_idx
-            peak_to_peak = np.abs(epoch[pos_peaks[j]]-epoch[neg_idx])
-            if delta > max_delta:
-                break
-            if delta >= min_delta  and peak_to_peak > min_peak_to_peak:
-                k_complexes.append(
-                    {
-                        'delta' : delta,
-                        'peak_to_peak' : peak_to_peak
-                    }
-                )
-    nb = len(k_complexes)
-    duration = 0
-    for complex in k_complexes:
-        duration += complex['delta']
-    return nb, duration/eeg_fs
-
 def extract_sample_entropy(epoch, m=2, r_factor=0.2):
     """
     Computes the Sample Entropy for one epoch of signal data.
@@ -140,10 +96,7 @@ def extract_time_domain_features(epoch):
     features['zero_crossings'] = np.sum(np.diff(np.sign(epoch)) != 0)
     
     # Complexity Feature:
-    #features['Entropy'] = extract_sample_entropy(epoch)
-
-    #K-complex features:
-    #features['nb_complexes'],  features['duration_complexes'] = simple_k_complex_extraction(epoch)
+    features['Entropy'] = extract_sample_entropy(epoch)
 
     return features
 
