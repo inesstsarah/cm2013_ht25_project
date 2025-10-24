@@ -1,10 +1,8 @@
 data/
-PROJECT_GUIDE.md
 README.md
-VISUALIZATION_GUIDE.md
 Python/__pycache__/
 *.py[cod]
-python/report.txt
+report.txt
 *.png
 PROJECT_GUIDE-zh-CN-dual.md
 cache/

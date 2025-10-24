@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 from src.visualization import visualize_fft, visualize_signal
 
 
-
 def highpass_filter(data,cutoff,fs,order=5):
     """
     Simple highpass filter for baseline wander removal.
@@ -27,6 +26,7 @@ def highpass_filter(data,cutoff,fs,order=5):
     #, padlen = 3*order, padtype="odd"
     return y
 
+
 def lowpass_filter(data, cutoff, fs, order=5):
     """
     Simple low-pass Butterworth filter.
@@ -47,10 +47,12 @@ def lowpass_filter(data, cutoff, fs, order=5):
     y = lfilter(b, a, data)
     return y
 
+
 def notch_filter(data, f0, Q, fs):
     b, a = iirnotch(f0, Q, fs)        
     y = filtfilt(b,a,data) 
     return y
+
 
 def bandpass_filter(data, lowcut , highcut, fs, order):
     nyquist = 0.5 * fs
@@ -61,7 +63,7 @@ def bandpass_filter(data, lowcut , highcut, fs, order):
     return y
 
 
-def preprocess(data,channel_info, config):
+def preprocess(data, channel_info, config):
     """
     STUDENT IMPLEMENTATION AREA: Preprocess data based on current iteration.
 
