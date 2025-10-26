@@ -92,7 +92,7 @@ def extract_time_domain_features(epoch):
     features['mean'] = np.mean(epoch)
     features['median'] = np.median(epoch)
     features['std'] = np.std(epoch)
-    #features['variance'] = np.var(epoch)
+    features['variance'] = np.var(epoch)
     features['skewness'] = scipy.stats.skew(epoch)
     features['kurtosis'] = scipy.stats.kurtosis(epoch)
 
@@ -102,7 +102,6 @@ def extract_time_domain_features(epoch):
     features['max'] = np.max(epoch)
     features['range'] = np.max(epoch) - np.min(epoch)
     features['total_energy'] = np.sum(epoch**2)
-    features['mean_power'] = np.mean(epoch**2)
 
     # Hjorth Parameters:
     features['hjorth_activity'] = extract_hjorth_activity(epoch)
@@ -113,7 +112,7 @@ def extract_time_domain_features(epoch):
     features['zero_crossings'] = np.sum(np.diff(np.sign(epoch)) != 0)
     
     # Complexity Feature:
-    features['Entropy'] = extract_sample_entropy(epoch)
+    features['entropy'] = extract_sample_entropy(epoch)
 
     return features
 

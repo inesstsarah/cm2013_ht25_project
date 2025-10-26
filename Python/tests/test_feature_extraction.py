@@ -73,7 +73,7 @@ def test_extract_time_domain_features():
     float_features = [
     'mean', 'median', 'std', 'variance', 'rms', 'min', 'max', 'range', 
     'skewness', 'kurtosis', 'hjorth_activity', 'hjorth_mobility', 
-    'hjorth_complexity', 'total_energy', 'mean_power', 'Entropy'
+    'hjorth_complexity', 'total_energy', 'entropy'
     ]
 
     # Zero crossings
