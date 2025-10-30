@@ -2,8 +2,13 @@ data/
 PROJECT_GUIDE.md
 README.md
 VISUALIZATION_GUIDE.md
-python/__pycache__/
-*.py[cod]
-python/cache/
-python/report.txt
+report.txt
+**/cache/
+*.pyc
+__pycache__/
+**/__pycache__/
+/figure
+*.png
+
+
 /cache/

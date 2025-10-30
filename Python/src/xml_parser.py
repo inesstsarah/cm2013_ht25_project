@@ -132,7 +132,7 @@ def create_epoch_labels(stages, total_duration, epoch_length=30):
         >>> labels = create_epoch_labels(stages, total_duration=180, epoch_length=30)
         >>> print(labels)  # [0, 0, 2, 2, 2, 2]
     """
-    n_epochs = int(np.ceil(total_duration / epoch_length))
+    n_epochs = int(total_duration / epoch_length)
     labels = np.zeros(n_epochs, dtype=int)
 
     for stage_event in stages:

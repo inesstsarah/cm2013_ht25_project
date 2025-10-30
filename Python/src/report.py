@@ -1,3 +1,5 @@
+import textwrap
+
 def generate_report(model, features, labels, config, processing_log):
     """
     Generates a report summarizing the results.
@@ -16,23 +18,16 @@ def generate_report(model, features, labels, config, processing_log):
     # - Performance metrics (accuracy, kappa, F1-score)
     # - Confusion matrix
     # - Details about the model and features used
-    report_content = f"""
-    {processing_log}
-
-
+    report_content = processing_log + textwrap.dedent(f"""\
     # Sleep Scoring Report - Iteration {config.CURRENT_ITERATION}
-
     ## Model
     {type(model).__name__}
+    ## Features
+    Number of features: {features.shape[1]}
+    ## Labels
+    Number of samples: {labels.shape[0]}
+    """)
 
-    ## Performance
-    Accuracy: ...
-    Kappa: ...
-    F1-score: ...
-
-    ## Notes
-    This is a dummy report. Implement full report generation.
-    """
-    with open("report.txt", "w") as f:
+    with open("report.txt", "w", encoding="utf-8") as f:
         f.write(report_content)
     print("Report saved to report.txt")

@@ -8,7 +8,6 @@ from src.classification import train_classifier
 from src.visualization import visualize_results
 from src.report import generate_report
 from src.utils import save_cache, load_cache
-import os
 import sys
 import io
 
@@ -16,23 +15,18 @@ import io
 def main():
     # Create a string buffer
     stdout_buffer = io.StringIO()
-
     # Save the original stdout
     original_stdout = sys.stdout
 
     # Redirect stdout to the buffer
-    sys.stdout = stdout_buffer 
-
-    print("\n=== PROCESSING LOG ===")
+    sys.stdout = stdout_buffer
+    print("=== PROCESSING LOG ===")
 
     print(f"--- Sleep Scoring Pipeline - Iteration {config.CURRENT_ITERATION} ---")
 
     # 1. Load Data
     # Example uses R1.edf and R1.xml from training directory
     print("\n=== STEP 1: DATA LOADING ===")
-    edf_file = os.path.join(config.TRAINING_DIR, "R1.edf")  # Example EDF file
-    xml_file = os.path.join(config.TRAINING_DIR, "R1.xml")  # Corresponding annotation file
-
     # Handle both new multi-channel format and old single-channel format for compatibility
     try:
         multi_channel_data, labels, record_ids, channel_info = load_all_training_data(config.TRAINING_DIR)
@@ -42,14 +36,8 @@ def main():
         print(f"  EMG: {multi_channel_data['emg'].shape}")
         print(f"Labels shape: {labels.shape}")
 
-        # For pipeline compatibility, use EEG data as primary signal
-        #eeg_data = multi_channel_data  # Use first EEG channel for now
-        #print(f"Using EEG channel 1 for pipeline: {eeg_data.shape}")
-
     except (ValueError, TypeError):
-        # Fallback to old format if multi-channel not implemented
-        eeg_data, labels = load_training_data(edf_file, xml_file)
-        print(f"Single-channel data loaded: {eeg_data.shape}, Labels: {labels.shape}")
+        print("Fail to load multi-channel data, closely check the error message above.")
 
     # 2. Preprocessing
     print("\n=== STEP 2: PREPROCESSING ===")
@@ -61,8 +49,8 @@ def main():
             print("Loaded preprocessed data from cache")
 
     if preprocessed_data is None:
-        preprocessed_data = preprocess(multi_channel_data, config)
-        #print(f"Preprocessed data shape: {preprocessed_data}")
+        preprocessed_data = preprocess(multi_channel_data,channel_info, config)
+        print(f"Preprocessed EEG shape: {preprocessed_data['eeg'].shape}")
         if config.USE_CACHE:
             save_cache(preprocessed_data, cache_filename_preprocess, config.CACHE_DIR)
             print("Saved preprocessed data to cache")
@@ -93,7 +81,7 @@ def main():
     # 5. Classification
     print("\n=== STEP 5: CLASSIFICATION ===")
     if selected_features.shape[1] > 0:
-        model = train_classifier(selected_features, labels, config)
+        model = train_classifier(selected_features, labels, record_ids, config)
         print(f"Trained {config.CLASSIFIER_TYPE} classifier")
     else:
         print("⚠️  WARNING: Cannot train classifier - no features available!")
@@ -103,7 +91,7 @@ def main():
     # 6. Visualization
     print("\n=== STEP 6: VISUALIZATION ===")
     if model is not None:
-        visualize_results(model, selected_features, labels, config)
+        visualize_results(model, record_ids, config)
     else:
         print("Skipping visualization - no trained model")
 
@@ -117,7 +105,7 @@ def main():
     processing_log = stdout_buffer.getvalue()   
      
     if model is not None:
-        generate_report(model, selected_features, labels, config, processing_log)
+        generate_report(model['model'], selected_features, labels, config, processing_log)
     else:
         print("Skipping report - no trained model")
 

@@ -2,37 +2,22 @@ import numpy as np
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import GridSearchCV, LeaveOneGroupOut
-from sklearn.metrics import accuracy_score, confusion_matrix,precision_recall_fscore_support,roc_auc_score, cohen_kappa_score
-import pandas as pd
-from imblearn.over_sampling import SMOTE
-from src.utils import calculate_sleep_metrics
-
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 from sklearn.metrics import precision_score, recall_score, f1_score, cohen_kappa_score, roc_auc_score, roc_curve
 import matplotlib.pyplot as plt
 import pandas as pd
 
-def hyperparameter_optimization(X_train, y_train, config):
-    """Function to search for the optimal parameters in a hyperparameter space
+def hyperparameter_optimization(X_train, y_train):
+    """Function to search for the optimal parameters in a hyperparameter space"""
     
-    Args:
-        X_train (np.ndarray): Array of training variables
-        y_train (np.ndarray): Array of training class values
-        config (dict): Config of repository"""
-    
-    '''grid_params = { 'n_neighbors' : [5,7,9,11,13,15],
+    grid_params = { 'n_neighbors' : [5,7,9,11,13,15],
                'weights' : ['uniform','distance'],
-               'metric' : ['minkowski','euclidean','manhattan']}'''
+               'metric' : ['minkowski','euclidean','manhattan']}
     
-    grid_params = config.GRID_PARAMS
-
-    if (config.CURRENT_ITERATIONS == 1):
-        gs = GridSearchCV(KNeighborsClassifier(), grid_params, verbose = 1, cv=3, n_jobs = -1)
-        # fit the model on our train set
-        g_res = gs.fit(X_train, y_train)
-
+    gs = GridSearchCV(KNeighborsClassifier(), grid_params, verbose = 1, cv=3, n_jobs = -1)
+    # fit the model on our train set
+    g_res = gs.fit(X_train, y_train)
     # find the best score
     best_score = g_res.best_score_
 
@@ -41,7 +26,11 @@ def hyperparameter_optimization(X_train, y_train, config):
     return(best_score, best_params)
 
 
-def train_classifier(features, labels,record_ids, config):
+
+    
+    
+
+def train_classifier(features, labels, config):
     """
     STUDENT IMPLEMENTATION AREA: Train classifier based on iteration.
 
@@ -61,6 +50,7 @@ def train_classifier(features, labels,record_ids, config):
     Returns:
         object: The trained classifier.
     """
+  
     print(f"Training {config.CLASSIFIER_TYPE} classifier...")
     print(f"Features shape: {features.shape}, Labels shape: {labels.shape}")
 
@@ -68,12 +58,35 @@ def train_classifier(features, labels,record_ids, config):
     if features.shape[0] == 0 or features.shape[1] == 0:
         raise ValueError("No features available for training!")
 
+    # BASIC train/test split - students should implement cross-validation
+    # TODO: Students should implement k-fold cross-validation for more robust evaluation
+    # Use stratified split for realistic sleep data distribution
+    # Sleep stages are naturally imbalanced (more N2, less N1/REM)
+    try:
+        X_train, X_test, y_train, y_test = train_test_split(
+            features, labels, test_size=0.2, random_state=42, stratify=labels
+        )
+        print("Using stratified train/test split to maintain class balance")
+    except ValueError as e:
+        # Fallback for edge cases (very small datasets)
+        X_train, X_test, y_train, y_test = train_test_split(
+            features, labels, test_size=0.2, random_state=42
+        )
+        print(f"Using non-stratified split: {e}")
+    print(f"Training set: {X_train.shape[0]} samples, Test set: {X_test.shape[0]} samples")
+
+    # TODO: Students should address class imbalance in sleep data:
+    # - Sleep stages are not equally distributed
+    # - Consider SMOTE, class weights, or other techniques
+    # from imblearn.over_sampling import SMOTE
+    # smote = SMOTE(random_state=42)
+    # X_train, y_train = smote.fit_resample(X_train, y_train)
+
     # Select classifier based on iteration (using config parameters)
     if config.CURRENT_ITERATION == 1:
         # Iteration 1: Simple k-NN
-        # model = KNeighborsClassifier(n_neighbors=config.KNN_N_NEIGHBORS)
-        #print(f"Using k-NN with k={config.KNN_N_NEIGHBORS}")
-        model = LOSO_split_training(features, labels, record_ids, config)
+        model = KNeighborsClassifier(n_neighbors=config.KNN_N_NEIGHBORS)
+        print(f"Using k-NN with k={config.KNN_N_NEIGHBORS}")
 
     elif config.CURRENT_ITERATION == 2:
         # Iteration 2: SVM
@@ -84,6 +97,7 @@ def train_classifier(features, labels,record_ids, config):
             random_state=42
         )
         print(f"Using SVM with C={model.C}, kernel={model.kernel}")
+
     elif config.CURRENT_ITERATION >= 3:
         # Iteration 3+: Random Forest
         # TODO: Students should tune hyperparameters (n_estimators, max_depth, etc.)
@@ -95,138 +109,62 @@ def train_classifier(features, labels,record_ids, config):
             n_jobs=-1  # Use all available cores
         )
         print(f"Using Random Forest with {model.n_estimators} trees")
+
     else:
         raise ValueError(f"Invalid iteration: {config.CURRENT_ITERATION}")
 
     # Train the model
     print("Training model...")
+    if (config.USE_HYPERPARAMETER_OPT == False):
+        model.fit(X_train, y_train)
+
+    else: # Do hyperparameter optimization
+        # Hyperparameter optimization 
+        _, best_hyperparameters = hyperparameter_optimization(X_train, y_train)
+        # Unpack results of best_hyperparameters
+        model = KNeighborsClassifier(**best_hyperparameters)
+        model.fit(X_train, y_train)
+
+    # Comprehensive evaluation with detailed performance metrics
+    y_pred = model.predict(X_test)
+    overall_accuracy = accuracy_score(y_test, y_pred)
+    print(f"Overall accuracy: {overall_accuracy:.3f}")
+
+    # Getting probabilities for AUC-ROC score
+    y_probs = model.predict_proba(X_test)
+
+    # Calculate and display detailed performance metrics
+    print_performance_metrics(y_test, y_pred)
+
+    # TODO: Students should add more advanced metrics:
+
+    # - ROC-AUC for each class
+    roc_auc = roc_auc_score(y_test, y_probs)
+
+    # NOTE: not sure whether to print it here or if we have to print it in the print_performance_metrics function
+    print(f"ROC-AUC score: {roc_auc}")
+    # Generate plot for ROC-AUC
+
+    fpr, tpr, _ = roc_curve(y_test, y_probs)
+    plt.plot(fpr, tpr)
+
+
+
+    # - Cross-validation scores
+    # - Feature importance analysis
+    print("\nTODO: Students should add Cohen's kappa and ROC-AUC metrics")
+
     return model
 
 
-def compare_sleep_metrics(y_true, y_pred, record_ids, epoch_duration=30):
+def print_performance_metrics(y_true, y_pred):
     """
-    Compare sleep architecture metrics between ground truth and predictions.
-    
-    Args:
-        y_true (np.ndarray): Ground truth labels
-        y_pred (np.ndarray): Predicted labels  
-        record_ids (np.ndarray): Optional record identifiers
-        epoch_duration (int): Duration of each epoch in seconds
-        
-    Returns:
-        dict: Comparison results for each record
+    Print comprehensive performance metrics for sleep stage classification.
+
+    Includes accuracy, sensitivity (recall), specificity, and F1-score for each sleep stage.
     """
-    if record_ids is None:
-        # Overall comparison
-        true_metrics = calculate_sleep_metrics(y_true, epoch_duration)
-        pred_metrics = calculate_sleep_metrics(y_pred, epoch_duration)
-        
-        print("\nSleep Architecture Metrics Comparison")
-        print("=" * 80)
-        _print_sleep_metrics_comparison_table(true_metrics, pred_metrics)
-        
-        return {
-            'overall': {
-                'true_metrics': true_metrics,
-                'pred_metrics': pred_metrics
-            }
-        }
-    else:
-        # Per-record comparison
-        unique_records = np.unique(record_ids)
-        results = {}
-        
-        for record_id in unique_records:
-            indices = np.where(record_ids == record_id)[0]
-            if len(indices) == 0:
-                continue
-                
-            true_labels = y_true[indices]
-            pred_labels = y_pred[indices]
-            
-            true_metrics = calculate_sleep_metrics(true_labels, epoch_duration)
-            pred_metrics = calculate_sleep_metrics(pred_labels, epoch_duration)
-            
-            print(f"\nSleep Architecture Metrics Comparison - {record_id}")
-            print("=" * 80)
-            _print_sleep_metrics_comparison_table(true_metrics, pred_metrics)
-            
-            results[record_id] = {
-                'true_metrics': true_metrics,
-                'pred_metrics': pred_metrics
-            }   
-    return results
 
-
-# TODO: Statistical comparison between iterations (t-test on kappa scores)
-def LOSO_split_training(model, features, labels, record_ids, config):
-    # Create LOSO cross-validation split
-    logo = LeaveOneGroupOut()
-    loso_results = []
-    smote = SMOTE(random_state=42)
-    all_y_test = []
-    all_y_pred = []
-
-    for fold_idx, (train_idx, test_idx) in enumerate(logo.split(features, labels, groups=record_ids)):
-        X_train, X_test = features[train_idx], features[test_idx]
-        y_train, y_test = labels[train_idx], labels[test_idx]
-
-        # - Sleep stages are not equally distributed
-        # Sleep stages are naturally imbalanced (more N2, less N1/REM)
-        # TODO：Use class weighting method in next iterations
-        X_train, y_train = smote.fit_resample(X_train, y_train)
-
-        if (config.CURRENT_ITERATION == 1):
-            best_score, best_params = hyperparameter_optimization(X_train, y_train, config)
-            model = KNeighborsClassifier(**best_params)
-        
-
-        # Which subject is held out in this fold?
-        train_subjects = np.unique(record_ids[train_idx])
-        test_subject = np.unique(record_ids[test_idx])[0]
-        print(f"\nFold {fold_idx+1}/{len(train_subjects)+1}: Training on {len(train_subjects)} subjects, testing on {test_subject}")
-
-        # Train classifier on 9 subjects
-        model.fit(X_train, y_train)
-
-        # Predict on held-out subject
-        y_pred = model.predict(X_test)
-        y_pred_proba = model.predict_proba(X_test) if hasattr(model, "predict_proba") else None
-        eva_results = training_evaluation(y_test, y_pred, y_pred_proba,record_ids[test_idx])
-        all_y_test.extend(y_test)
-        all_y_pred.extend(y_pred)
-
-        loso_results.append({
-            'subject': test_subject,
-            **eva_results
-            })
-         # Report mean ± std across all subjects
-    mean_acc = np.mean([r['accuracy'] for r in loso_results])
-    std_acc = np.std([r['accuracy'] for r in loso_results])
-    mean_kappa = np.mean([r['kappa'] for r in loso_results])
-    std_kappa = np.std([r['kappa'] for r in loso_results])
-
-    print("\n" + "="*60)
-    print(f"LOSO Cross-Validation Results ({len(loso_results)} subjects):")
-    print(f"  Accuracy = {mean_acc:.1%} ± {std_acc:.1%}")
-    print(f"  Kappa    = {mean_kappa:.3f} ± {std_kappa:.3f}")
-    print("="*60)
-
-    final_model_params = model.get_params() 
-    final_model = KNeighborsClassifier(**final_model_params)
-    X_full, y_full = SMOTE(random_state=42).fit_resample(features, labels)
-    final_model.fit(X_full, y_full)
-
-    return {
-    'model': final_model,
-    'y_true_aggregate': np.array(all_y_test),
-    'y_pred_aggregate': np.array(all_y_pred)
-    }
-   
-
-
-def training_evaluation(y_true, y_pred, y_pred_proba,record_ids):
-    # Calculate metrics for this subject
+    # Sleep stage labels and names (0=Wake, 1=N1, 2=N2, 3=N3, 4=REM)
     stage_names = ['Wake', 'N1', 'N2', 'N3', 'REM']
     stage_labels = list(range(5))
 
@@ -369,99 +307,3 @@ def print_scoring_notes():
     print("- Sleep stage imbalance is natural (more N2, less N1/REM)")
     print("- Consider Cohen's kappa for chance-corrected agreement")
     print("- Clinical focus: High sensitivity for REM and N3 stages")
-
-
-def _print_sleep_metrics_comparison_table(true_metrics, pred_metrics):
-    """
-    Print formatted comparison table for sleep metrics.
-    
-    Args:
-        true_metrics (dict): Ground truth sleep metrics
-        pred_metrics (dict): Predicted sleep metrics
-    """
-    # Define metric display names and units
-    metric_info = {
-        'SOL': ('Sleep Onset Latency', 'min'),
-        'TST': ('Total Sleep Time', 'min'),
-        'SE': ('Sleep Efficiency', '%'),
-        'WASO': ('Wake After Sleep Onset', 'min'),
-        'REM_latency': ('REM Latency', 'min'),
-        'n_awakenings': ('Number of Awakenings', 'count'),
-        'REM_cycles': ('REM Cycles', 'count'),
-        'REM_duration': ('REM Duration', 'min')
-    }
-    
-    # Print basic metrics
-    print(f"{'Metric':<25} {'Ground Truth':<15} {'Predicted':<15} {'Error':<10} {'Unit':<8}")
-    print("-" * 80)
-    
-    for metric_key, (display_name, unit) in metric_info.items():
-        if metric_key in true_metrics and metric_key in pred_metrics:
-            true_val = true_metrics[metric_key]
-            pred_val = pred_metrics[metric_key]
-            
-            # Handle None values
-            if true_val is None or pred_val is None:
-                true_str = "N/A" if true_val is None else f"{true_val:.1f}"
-                pred_str = "N/A" if pred_val is None else f"{pred_val:.1f}"
-                error_str = "N/A"
-            else:
-                true_str = f"{true_val:.1f}"
-                pred_str = f"{pred_val:.1f}"
-                error = abs(pred_val - true_val)
-                error_str = f"{error:.1f}"
-            
-            print(f"{display_name:<25} {true_str:<15} {pred_str:<15} {error_str:<10} {unit:<8}")
-    
-    # Print sleep stage percentages
-    print("\nSleep Stage Percentages (relative to TST):")
-    print("-" * 60)
-    print(f"{'Stage':<10} {'Ground Truth':<15} {'Predicted':<15} {'Error':<10}")
-    print("-" * 60)
-    
-    if 'sleep_stage_percentages' in true_metrics and 'sleep_stage_percentages' in pred_metrics:
-        true_stages = true_metrics['sleep_stage_percentages']
-        pred_stages = pred_metrics['sleep_stage_percentages']
-        
-        for stage in ['N1', 'N2', 'N3', 'REM']:
-            if stage in true_stages and stage in pred_stages:
-                true_pct = true_stages[stage]
-                pred_pct = pred_stages[stage]
-                error = abs(pred_pct - true_pct)
-                
-                print(f"{stage:<10} {true_pct:<15.1f} {pred_pct:<15.1f} {error:<10.1f}")
-    
-    # Calculate and print summary statistics
-    print("\nSummary Statistics:")
-    print("-" * 40)
-    
-    # Calculate mean absolute error for numeric metrics
-    numeric_metrics = ['SOL', 'TST', 'SE', 'WASO', 'REM_latency', 'n_awakenings', 'REM_cycles', 'REM_duration']
-    mae_values = []
-    
-    for metric in numeric_metrics:
-        if (metric in true_metrics and metric in pred_metrics and 
-            true_metrics[metric] is not None and pred_metrics[metric] is not None):
-            error = abs(pred_metrics[metric] - true_metrics[metric])
-            mae_values.append(error)
-    
-    if mae_values:
-        mean_mae = np.mean(mae_values)
-        print(f"Mean Absolute Error (numeric metrics): {mean_mae:.2f}")
-    
-    # Calculate MAE for stage percentages
-    if ('sleep_stage_percentages' in true_metrics and 
-        'sleep_stage_percentages' in pred_metrics):
-        stage_errors = []
-        for stage in ['N1', 'N2', 'N3', 'REM']:
-            if stage in true_metrics['sleep_stage_percentages'] and stage in pred_metrics['sleep_stage_percentages']:
-                error = abs(pred_metrics['sleep_stage_percentages'][stage] - 
-                           true_metrics['sleep_stage_percentages'][stage])
-                stage_errors.append(error)
-        
-        if stage_errors:
-            mean_stage_mae = np.mean(stage_errors)
-            print(f"Mean Absolute Error (stage percentages): {mean_stage_mae:.2f}%")
-    
-    print("=" * 80)
-
