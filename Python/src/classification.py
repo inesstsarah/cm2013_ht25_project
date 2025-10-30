@@ -35,7 +35,14 @@ def get_model_from_config(config):
 
 
 def hyperparameter_optimization(X_train, y_train, config):
-    """Function to search for the optimal parameters in a hyperparameter space"""
+    """
+    Function to search for the optimal parameters in a hyperparameter space
+
+    Args:
+        X_train (np.ndarray[float]): Array of training set variables
+        y_train (np.ndarray[int]): Array of training set classes
+        config (dict): Config for repository.
+    """
     
     # Get model and parameters from config
     base_model = get_model_from_config(config)
@@ -149,6 +156,7 @@ def LOSO_split_training(features, labels, record_ids, config):
     print(f"  Kappa    = {mean_kappa:.3f} +/- {std_kappa:.3f}")
     print("="*60)
 
+    # NOTE: Doesnt this just get the last model's parameters
     final_model_params = model.get_params() 
     final_model = KNeighborsClassifier(**final_model_params)
     X_full, y_full = SMOTE(random_state=42).fit_resample(features, labels)
