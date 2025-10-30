@@ -12,7 +12,10 @@ def extract_hjorth_activity(epoch):
 
     Returns:
         float: A float representing the variance of the signal, also known as Hjorth Activity.
+    Example:
+        >>> activity = extract_hjorth_activity(epoch)
     """
+
     return np.var(epoch)
 
 def extract_hjorth_mobility(epoch):
@@ -24,7 +27,10 @@ def extract_hjorth_mobility(epoch):
 
     Returns:
         float: A flaot representing the Hjorth Mobility.
+    Example:
+        >>> mobility = extract_hjorth_mobility(epoch)
     """
+
     return np.sqrt(extract_hjorth_activity(np.diff(epoch)) / extract_hjorth_activity(epoch))
 
 def extract_hjorth_complexity(epoch):
@@ -36,6 +42,8 @@ def extract_hjorth_complexity(epoch):
 
     Returns:
         float: A Float representing the Hjorth Complexity.
+    Example:
+        >>> complexity = extract_hjorth_complexity(epoch)
     """
 
     return extract_hjorth_mobility(np.diff(epoch)) / extract_hjorth_mobility(epoch)
@@ -50,11 +58,16 @@ def extract_sample_entropy(epoch, m=2, r_factor=0.2):
         r_factor (float): Tolerance factor as a fraction of the standard deviation.
 
     Returns:
-        float: Sample Entropy value.
+        entropy (float): Sample Entropy value.
+
+    Example:
+        >>> sampen = extract_sample_entropy(epoch)
     """
    
     r = r_factor * np.std(epoch)
-    return nolds.sampen(epoch, m, r)
+    entropy = nolds.sampen(epoch, m, r)
+
+    return entropy
 
 def extract_time_domain_features(epoch):
     """
@@ -67,15 +80,19 @@ def extract_time_domain_features(epoch):
         epoch (np.ndarray): A 1D array representing one epoch of signal data.
 
     Returns:
-        dict: A dictionary of features.
+       features (dict): A dictionary containing the extracted features.
+
+    Example:
+        >>> features = extract_time_domain_features(epoch)
     """
+
     features = {}
 
     # Statistical Moments:
     features['mean'] = np.mean(epoch)
     features['median'] = np.median(epoch)
     features['std'] = np.std(epoch)
-    #features['variance'] = np.var(epoch)
+    features['variance'] = np.var(epoch)
     features['skewness'] = scipy.stats.skew(epoch)
     features['kurtosis'] = scipy.stats.kurtosis(epoch)
 
@@ -85,7 +102,6 @@ def extract_time_domain_features(epoch):
     features['max'] = np.max(epoch)
     features['range'] = np.max(epoch) - np.min(epoch)
     features['total_energy'] = np.sum(epoch**2)
-    features['mean_power'] = np.mean(epoch**2)
 
     # Hjorth Parameters:
     features['hjorth_activity'] = extract_hjorth_activity(epoch)
@@ -96,13 +112,13 @@ def extract_time_domain_features(epoch):
     features['zero_crossings'] = np.sum(np.diff(np.sign(epoch)) != 0)
     
     # Complexity Feature:
-    features['Entropy'] = extract_sample_entropy(epoch)
+    features['entropy'] = extract_sample_entropy(epoch)
 
     return features
 
 def extract_features(data, config):
     """
-    STUDENT IMPLEMENTATION AREA: Extract features based on current iteration.
+    Extract features from the preprocessed data.
 
     This function should handle both single-channel (old format) and
     multi-channel data (new format with 2 EEG + 2 EOG + 1 EMG channels).
@@ -118,7 +134,11 @@ def extract_features(data, config):
 
     Returns:
         np.ndarray: A 2D array of features (n_epochs, n_features).
+
+    Example:
+        >>> features = extract_features(preprocessed_data, config)
     """
+
     print(f"Extracting features for iteration {config.CURRENT_ITERATION}...")
 
     # Detect if we have multi-channel data structure
@@ -135,15 +155,20 @@ def extract_features(data, config):
 def extract_multi_channel_features(multi_channel_data, config):
     """
     Extract features from multi-channel data: 2 EEG + 2 EOG + 1 EMG channels.
+
     Args:
         multi_channel_data (dict): Dictionary with keys 'eeg', 'eog', 'emg'.
         config (module): The configuration module.
+
     Returns:
-        np.ndarray: A 2D array of features (n_epochs, n_features).
+        features (np.ndarray): A 2D array of features (n_epochs, n_features).
+    
+    Example:
+        >>> features = extract_multi_channel_features(multi_channel_data, config)
     """
+
     print("selecting multi-channel features...")
     
-
     n_epochs = multi_channel_data['eeg'].shape[0]
     all_features = []
     
@@ -164,17 +189,24 @@ def extract_multi_channel_features(multi_channel_data, config):
     elif config.CURRENT_ITERATION >= 3:
         print(f"Multi-channel features extracted: {features.shape[1]} total")
         print("(2 EEG + 2 EOG + 1 EMG channels)")
+
     return features
 
 
 def extract_single_channel_features(data, config):
     """
     Extract features from single-channel data for backward compatibility.
+
     Args:
+
         data (np.ndarray): A 2D array of shape (n_epochs, n_samples).
         config (module): The configuration module.  
+
     Returns:
-        np.ndarray: A 2D array of features (n_epochs, n_features).
+        features (np.ndarray): A 2D array of features (n_epochs, n_features).
+
+    Example:
+        >>> features = extract_single_channel_features(single_channel_data, config)
     """
     if config.CURRENT_ITERATION == 1:
         # Iteration 1: Time-domain features (TARGET: 16 features)
@@ -248,7 +280,21 @@ def extract_emg_features(emg_signal):
     # - Muscle tone quantification
 
     return features
+
 def process_epoch(epoch_idx, multi_channel_data, config):
+    """
+    Process a single epoch to extract features from EEG, EOG, and EMG channels.
+
+    Args:
+        epoch_idx (int): The index of the epoch to process.
+        multi_channel_data (dict): Dictionary with keys 'eeg', 'eog', 'emg'.
+        config (module): The configuration module.
+    Returns:
+        epoch_features (list): A list of extracted features for the epoch.
+    
+    Example:
+        >>> epoch_features = process_epoch(epoch_idx, multi_channel_data, config)
+    """
     epoch_features = []
     # EEG features (2 channels)
     for ch in range(multi_channel_data['eeg'].shape[1]):
@@ -267,4 +313,5 @@ def process_epoch(epoch_idx, multi_channel_data, config):
         emg_signal = multi_channel_data['emg'][epoch_idx, 0, :]
         emg_features = extract_emg_features(emg_signal)
         epoch_features.extend(list(emg_features.values()))
+
     return epoch_features

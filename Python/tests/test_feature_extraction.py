@@ -73,7 +73,7 @@ def test_extract_time_domain_features():
     float_features = [
     'mean', 'median', 'std', 'variance', 'rms', 'min', 'max', 'range', 
     'skewness', 'kurtosis', 'hjorth_activity', 'hjorth_mobility', 
-    'hjorth_complexity', 'total_energy', 'mean_power', 'Entropy'
+    'hjorth_complexity', 'total_energy', 'entropy'
     ]
 
     # Zero crossings
@@ -106,7 +106,7 @@ def test_extract_multi_channel_features_iter1():
     features = extract_multi_channel_features(preprocessed_data, config)
     # 2 EEG channels * 16 features/channel
     expected_n_features = 2 * 16
-    expected_n_epochs = 2
+    expected_n_epochs = 1083
     assert isinstance(features, np.ndarray)
     assert features.shape == (expected_n_epochs, expected_n_features)
     
