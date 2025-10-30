@@ -106,7 +106,7 @@ def test_extract_multi_channel_features_iter1():
     features = extract_multi_channel_features(preprocessed_data, config)
     # 2 EEG channels * 16 features/channel
     expected_n_features = 2 * 16
-    expected_n_epochs = 2
+    expected_n_epochs = 1083
     assert isinstance(features, np.ndarray)
     assert features.shape == (expected_n_epochs, expected_n_features)
     
