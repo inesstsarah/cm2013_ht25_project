@@ -5,7 +5,16 @@ import numpy as np
 
 def highpass_filter(data,cutoff,fs,order=5):
     """
-    Simple highpass filter for baseline wander removal"""
+    Simple highpass filter for baseline wander removal
+
+    Args:
+        data: (np.ndarray): The input signal.
+        cutoff (float): Cutoff frequency of the filter. 
+        fs (int): The sampling frequency of the signal.
+        order (int): The order of the filter. 
+    Returns:
+        np.ndarray: The filtered signal.
+    """
     nyquist = 0.5 * fs
     normal_cutoff = cutoff / nyquist
     b, a = butter(order, normal_cutoff, btype='high', analog=False)
@@ -43,12 +52,33 @@ def lowpass_filter(data, cutoff, fs, order=5):
     return y
 
 def notch_filter(data, f0, Q, fs):
+    """
+    Simple notch/bandstop filter 
+
+    Args:
+        data: (np.ndarray): The input signal.
+        f0 (float): Frequency to remove from a signal. 
+        Q (float): Quality factor.
+        fs (int): The sampling frequency of the signal. 
+    Returns:
+        np.ndarray: The filtered signal."""
     b, a = iirnotch(f0, Q, fs)  
     order = 3      
     y = filtfilt(b,a,data,padlen = 3*order, padtype="odd") 
     return y
 
-def bandpass_filter(data, lowcut , highcut, fs, order):
+def bandpass_filter(data, lowcut, highcut, fs, order):
+    """
+    Simple bandpass filter for electronic line frequency (50-60Hz) removal
+
+    Args:
+        data: (np.ndarray): The input signal.
+        lowcut (float): Low cutoff frequency of the filter.
+        highcut (float): High cutoff frequency of the filter. 
+        fs (int): The sampling frequency of the signal.
+        order (int): The order of the filter. 
+    Returns:
+        np.ndarray: The filtered signal."""
     nyquist = 0.5 * fs
     normal_lowcut = lowcut / nyquist
     normal_highcut = highcut/nyquist
