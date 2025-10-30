@@ -24,8 +24,8 @@ def highpass_filter(signal,cutoff,fs,order=5):
 
     nyquist = 0.5 * fs
     normal_cutoff = cutoff / nyquist
-    b, a = butter(order, normal_cutoff, btype='high', analog=False, padlen = 3*order, padtype="odd")
-    filtered_signal = filtfilt(b, a, signal)
+    b, a = butter(order, normal_cutoff, btype='high', analog=False)
+    filtered_signal = filtfilt(b, a, signal, padlen = 3*order, padtype="odd")
     
     return filtered_signal
 
@@ -72,8 +72,8 @@ def bandpass_filter(signal, lowcut , highcut, fs, order):
     nyquist = 0.5 * fs
     normal_lowcut = lowcut / nyquist
     normal_highcut = highcut/nyquist
-    b, a = butter(order, [normal_lowcut, normal_highcut], btype='band', analog=False, padlen = 3*order, padtype="odd")
-    filtered_signal = filtfilt(b, a, signal)
+    b, a = butter(order, [normal_lowcut, normal_highcut], btype='band', analog=False)
+    filtered_signal = filtfilt(b, a, signal, padlen = 3*order, padtype="odd")
 
     return filtered_signal
 

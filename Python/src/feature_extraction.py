@@ -112,7 +112,7 @@ def extract_time_domain_features(epoch):
     features['zero_crossings'] = np.sum(np.diff(np.sign(epoch)) != 0)
     
     # Complexity Feature:
-    features['entropy'] = extract_sample_entropy(epoch)
+    # features['entropy'] = extract_sample_entropy(epoch)
 
     return features
 
