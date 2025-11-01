@@ -113,7 +113,7 @@ def main():
     # 6. Visualization
     print("\n=== STEP 6: VISUALIZATION ===")
     if model is not None:
-        visualize_results(model, selected_features, labels, record_ids, config)
+        visualize_results(model, record_ids, config)
     else:
         print("Skipping visualization - no trained model")
 

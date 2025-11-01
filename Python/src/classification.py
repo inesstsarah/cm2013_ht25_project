@@ -2,12 +2,62 @@ import numpy as np
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import LeaveOneGroupOut, GridSearchCV
+from sklearn.model_selection import LeaveOneGroupOut,GridSearchCV
 from sklearn.metrics import accuracy_score, confusion_matrix, cohen_kappa_score
 from sklearn.metrics import precision_recall_fscore_support, roc_auc_score
 import pandas as pd
 from imblearn.over_sampling import SMOTE
 from src.utils import calculate_sleep_metrics
+
+
+def get_model_from_config(config):
+    """Get model instance based on config CLASSIFIER_TYPE"""
+    if config.CLASSIFIER_TYPE == 'knn':
+        return KNeighborsClassifier(n_neighbors=config.KNN_N_NEIGHBORS)
+    
+    elif config.CLASSIFIER_TYPE == 'svm':
+        return SVC(
+            C=getattr(config, 'SVM_C', 1.0),
+            kernel=getattr(config, 'SVM_KERNEL', 'rbf'),
+            random_state=42
+        )
+    
+    elif config.CLASSIFIER_TYPE == 'random_forest':
+        return RandomForestClassifier(
+            n_estimators=getattr(config, 'RF_N_ESTIMATORS', 100),
+            max_depth=getattr(config, 'RF_MAX_DEPTH', None),
+            min_samples_split=getattr(config, 'RF_MIN_SAMPLES_SPLIT', 2),
+            random_state=42,
+            n_jobs=-1  # Use all available cores
+        )
+    else:
+        raise ValueError(f"Unknown classifier type: {config.CLASSIFIER_TYPE}")
+
+
+def hyperparameter_optimization(X_train, y_train, config):
+    """
+    Function to search for the optimal parameters in a hyperparameter space
+
+    Args:
+        X_train (np.ndarray[float]): Array of training set variables
+        y_train (np.ndarray[int]): Array of training set classes
+        config (dict): Config for repository.
+    """
+    
+    # Get model and parameters from config
+    base_model = get_model_from_config(config)
+    grid_params = config.GRID_PARAMS
+
+    # Perform grid search
+    gs = GridSearchCV(base_model, grid_params, verbose=1, cv=3, n_jobs=-1)
+    g_res = gs.fit(X_train, y_train)
+
+    # find the best score
+    best_score = g_res.best_score_
+
+    # Get dictionary of best params
+    best_params = g_res.best_params_
+    return(best_score, best_params)
 
 
 def train_classifier(features, labels, record_ids, config):
@@ -30,70 +80,36 @@ def train_classifier(features, labels, record_ids, config):
     Returns:
         object: The trained classifier.
     """
+  
     print(f"Training {config.CLASSIFIER_TYPE} classifier...")
     print(f"Features shape: {features.shape}, Labels shape: {labels.shape}\n")
 
     # Basic validation
     if features.shape[0] == 0 or features.shape[1] == 0:
         raise ValueError("No features available for training!")
-
-    # Use LOSO cross-validation for training
-    result = _LOSO_split_training(features, labels, record_ids, config)
-    
-    return result['model']
-
-
-def _get_model_from_config(config):
-    """Get model instance based on config CLASSIFIER_TYPE"""
-    if config.CLASSIFIER_TYPE == 'knn':
-        return KNeighborsClassifier()
-    
-    elif config.CLASSIFIER_TYPE == 'svm':
-        return SVC(
-            C=getattr(config, 'SVM_C', 1.0),
-            kernel=getattr(config, 'SVM_KERNEL', 'rbf'),
-            random_state=42
-        )
-    
-    elif config.CLASSIFIER_TYPE == 'random_forest':
-        return RandomForestClassifier(
-            n_estimators=getattr(config, 'RF_N_ESTIMATORS', 100),
-            max_depth=getattr(config, 'RF_MAX_DEPTH', None),
-            min_samples_split=getattr(config, 'RF_MIN_SAMPLES_SPLIT', 2),
-            random_state=42,
-            n_jobs=-1  # Use all available cores
-        )
     else:
-        raise ValueError(f"Unknown classifier type: {config.CLASSIFIER_TYPE}")
-
-
-def _hyperparameter_optimization(X_train, y_train, config):
-    """Function to search for the optimal parameters in a hyperparameter space"""
-    
-    # Get model and parameters from config
-    base_model = _get_model_from_config(config)
-    grid_params = config.GRID_PARAMS
-
-    # Perform grid search
-    gs = GridSearchCV(base_model, grid_params, verbose=1, cv=3, n_jobs=-1)
-    g_res = gs.fit(X_train, y_train)
-
-    # find the best score
-    best_score = g_res.best_score_
-
-    # Get dictionary of best params
-    best_params = g_res.best_params_
-    return(best_score, best_params)
+        print("Training model...")
+        # Use LOSO cross-validation for training
+        model = LOSO_split_training(features, labels, record_ids, config)
+    return model
 
 
 # TODO: Statistical comparison between iterations (t-test on kappa scores)
-def _LOSO_split_training(features, labels, record_ids, config):
+def LOSO_split_training(features, labels, record_ids, config):
     # Create LOSO cross-validation split
     logo = LeaveOneGroupOut()
     loso_results = []
     smote = SMOTE(random_state=42)
     all_y_test = []
     all_y_pred = []
+    X_full, y_full = smote.fit_resample(features, labels)
+    # Hyperparameter optimization and model creation
+    best_score, best_params = hyperparameter_optimization(X_full, y_full, config)
+    
+    # Create fresh model instance with best parameters for each fold
+    model = get_model_from_config(config)
+    model.set_params(**best_params)
+    print(f"Model instance ID: {id(model)}, Params: {best_params}")
 
     for fold_idx, (train_idx, test_idx) in enumerate(logo.split(features, labels, groups=record_ids)):
         X_train, X_test = features[train_idx], features[test_idx]
@@ -103,14 +119,6 @@ def _LOSO_split_training(features, labels, record_ids, config):
         # Sleep stages are naturally imbalanced (more N2, less N1/REM)
         # TODO: Use class weighting method in next iterations
         X_train, y_train = smote.fit_resample(X_train, y_train)
-
-        # Hyperparameter optimization and model creation
-        best_score, best_params = _hyperparameter_optimization(X_train, y_train, config)
-        
-        # Create fresh model instance with best parameters for each fold
-        model = _get_model_from_config(config)
-        model.set_params(**best_params)
-        print(f"Model instance ID: {id(model)}, Params: {best_params}")
         
         # Which subject is held out in this fold?
         train_subjects = np.unique(record_ids[train_idx])
@@ -144,13 +152,10 @@ def _LOSO_split_training(features, labels, record_ids, config):
     print(f"  Kappa    = {mean_kappa:.3f} +/- {std_kappa:.3f}")
     print("="*60)
 
-    final_model_params = model.get_params() 
-    final_model = KNeighborsClassifier(**final_model_params)
-    X_full, y_full = SMOTE(random_state=42).fit_resample(features, labels)
-    final_model.fit(X_full, y_full)
+    model.fit(X_full, y_full)
 
     return {
-    'model': final_model,
+    'model': model,
     'y_true_aggregate': np.array(all_y_test),
     'y_pred_aggregate': np.array(all_y_pred)
     }
@@ -209,7 +214,7 @@ def _training_evaluation(y_true, y_pred, y_pred_proba,record_ids):
     _print_scoring_notes()
 
     # Clinical plausibility check
-    _compare_sleep_metrics(y_true, y_pred,record_ids)
+    compare_sleep_metrics(y_true, y_pred,record_ids)
 
     result = {
             'accuracy': accuracy,
@@ -397,7 +402,7 @@ def _print_sleep_metrics_comparison_table(true_metrics, pred_metrics):
     print("=" * 80, end="\n")
 
 
-def _compare_sleep_metrics(y_true, y_pred, record_ids=None, epoch_duration=30):
+def compare_sleep_metrics(y_true, y_pred, record_ids=None, epoch_duration=30):
     """
     Compare sleep architecture metrics between ground truth and predictions.
     

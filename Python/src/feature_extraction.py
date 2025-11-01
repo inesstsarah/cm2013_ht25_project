@@ -7,24 +7,75 @@ try:
 except ImportError:
     JOBLIB_AVAILABLE = False
 
-def hjorth_mobility(signal):
-    """Calculate the Hjorth Mobility of a signal."""
-    first_derivative = np.diff(signal)
-    var_signal = np.var(signal)
-    var_derivative = np.var(first_derivative)
-    if var_signal == 0:
-        return 0
-    return np.sqrt(var_derivative / var_signal)
+
+def extract_hjorth_activity(epoch):
+    """
+    Computes the Hjorth Activity for one epoch of signal data.
+
+    Args:
+        signal (np.ndarray): A 1D array representing one epoch of signal data.
+
+    Returns:
+        float: A float representing the variance of the signal, also known as Hjorth Activity.
+    Example:
+        >>> activity = extract_hjorth_activity(epoch)
+    """
+
+    return np.var(epoch)
 
 
-def hjorth_complexity(signal):
-    """Calculate the Hjorth Complexity of a signal."""
-    first_derivative = np.diff(signal)
-    mobility_signal = hjorth_mobility(signal)
-    mobility_derivative = hjorth_mobility(first_derivative)
-    if mobility_signal == 0:
-        return 0
-    return mobility_derivative / mobility_signal
+def extract_hjorth_mobility(epoch):
+    """
+    Computes the Hjorth Mobility for one epoch of signal data.
+
+    Args:
+        signal (np.ndarray): A 1D array representing one epoch of signal data.
+
+    Returns:
+        float: A flaot representing the Hjorth Mobility.
+    Example:
+        >>> mobility = extract_hjorth_mobility(epoch)
+    """
+
+    return np.sqrt(extract_hjorth_activity(np.diff(epoch)) / extract_hjorth_activity(epoch))
+
+
+def extract_hjorth_complexity(epoch):
+    """
+    Computes the Hjorth Complexity for one epoch of signal data.
+
+    Args:
+        signal (np.ndarray): A 1D array representing one epoch of signal data.
+
+    Returns:
+        float: A Float representing the Hjorth Complexity.
+    Example:
+        >>> complexity = extract_hjorth_complexity(epoch)
+    """
+
+    return extract_hjorth_mobility(np.diff(epoch)) / extract_hjorth_mobility(epoch)
+
+
+def extract_sample_entropy(epoch, m=2, r_factor=0.2):
+    """
+    Computes the Sample Entropy for one epoch of signal data.
+
+    Args:
+        epoch (np.ndarray): A 1D array representing one epoch of signal data.
+        m (int): Embedding dimension.
+        r_factor (float): Tolerance factor as a fraction of the standard deviation.
+
+    Returns:
+        entropy (float): Sample Entropy value.
+
+    Example:
+        >>> sampen = extract_sample_entropy(epoch)
+    """
+   
+    r = r_factor * np.std(epoch)
+    entropy = nolds.sampen(epoch, m, r)
+
+    return entropy
 
 
 def extract_time_domain_features(epoch):
@@ -41,17 +92,23 @@ def extract_time_domain_features(epoch):
         epoch (np.ndarray): A 1D array representing one epoch of signal data.
 
     Returns:
-        dict: A dictionary of features.
-    """
-    # EXAMPLE: Only 3 basic features - students must add 13+ more
-    features = {
-        'mean': np.mean(epoch),
-        'median': np.median(epoch),
-        'std': np.std(epoch),
-    }
+       features (dict): A dictionary containing the extracted features.
 
-    # Basic statistical features:
+    Example:
+        >>> features = extract_time_domain_features(epoch)
+    """
+
+    features = {}
+
+    # Statistical Moments:
+    features['mean'] = np.mean(epoch)
+    features['median'] = np.median(epoch)
+    features['std'] = np.std(epoch)
     features['variance'] = np.var(epoch)
+    features['skewness'] = scipy.stats.skew(epoch)
+    features['kurtosis'] = scipy.stats.kurtosis(epoch)
+
+    # Amplitude Features:
     features['rms'] = np.sqrt(np.mean(epoch**2))
     features['min'] = np.min(epoch)
     features['max'] = np.max(epoch)
@@ -62,20 +119,29 @@ def extract_time_domain_features(epoch):
     # Signal complexity features:
     features['zero_crossings'] = np.sum(np.diff(np.sign(epoch)) != 0)
     features['hjorth_activity'] = np.var(epoch)
-    features['hjorth_mobility'] = hjorth_mobility(epoch)
-    features['hjorth_complexity'] = hjorth_complexity(epoch)
+    features['hjorth_mobility'] = extract_hjorth_mobility(epoch)
+    features['hjorth_complexity'] = extract_hjorth_complexity(epoch)
 
     # Signal energy and power:
     features['total_energy'] = np.sum(epoch**2)
-    features['mean_power'] = np.mean(epoch**2)
-    features['sample_entropy'] = nolds.sampen(epoch, emb_dim=2, tolerance=0.2 * np.std(epoch))
+
+    # Hjorth Parameters:
+    features['hjorth_activity'] = extract_hjorth_activity(epoch)
+    features['hjorth_mobility'] = extract_hjorth_mobility(epoch)
+    features['hjorth_complexity'] = extract_hjorth_complexity(epoch)
+
+    # Frequency-related Features:
+    features['zero_crossings'] = np.sum(np.diff(np.sign(epoch)) != 0)
+    
+    # Complexity Feature:
+    features['entropy'] = extract_sample_entropy(epoch)
 
     return features
 
 
 def extract_features(data, config):
     """
-    STUDENT IMPLEMENTATION AREA: Extract features based on current iteration.
+    Extract features from the preprocessed data.
 
     This function should handle both single-channel (old format) and
     multi-channel data (new format with 2 EEG + 2 EOG + 1 EMG channels).
@@ -91,7 +157,11 @@ def extract_features(data, config):
 
     Returns:
         np.ndarray: A 2D array of features (n_epochs, n_features).
+
+    Example:
+        >>> features = extract_features(preprocessed_data, config)
     """
+
     print(f"Extracting features for iteration {config.CURRENT_ITERATION}...")
 
     # Detect if we have multi-channel data structure
@@ -109,30 +179,19 @@ def extract_multi_channel_features(multi_channel_data, config):
     """
     Extract features from multi-channel data: 2 EEG + 2 EOG + 1 EMG channels.
 
-    Students should expand this significantly!
+    Args:
+        multi_channel_data (dict): Dictionary with keys 'eeg', 'eog', 'emg'.
+        config (module): The configuration module.
+
+    Returns:
+        features (np.ndarray): A 2D array of features (n_epochs, n_features).
+    
+    Example:
+        >>> features = extract_multi_channel_features(multi_channel_data, config)
     """
+
     print("selecting multi-channel features...")
-    def process_epoch(epoch_idx):
-        epoch_features = []
-        # EEG features (2 channels)
-        for ch in range(multi_channel_data['eeg'].shape[1]):
-            eeg_signal = multi_channel_data['eeg'][epoch_idx, ch, :]
-            eeg_features = extract_time_domain_features(eeg_signal)
-            epoch_features.extend(list(eeg_features.values()))
-
-        if config.CURRENT_ITERATION >= 3:
-            # Add EOG features (2 channels)
-            for ch in range(multi_channel_data['eog'].shape[1]):
-                eog_signal = multi_channel_data['eog'][epoch_idx, ch, :]
-                eog_features = extract_eog_features(eog_signal)
-                epoch_features.extend(list(eog_features.values()))
-
-            # Add EMG features (1 channel)
-            emg_signal = multi_channel_data['emg'][epoch_idx, 0, :]
-            emg_features = extract_emg_features(emg_signal)
-            epoch_features.extend(list(emg_features.values()))
-        return epoch_features
-
+    
     n_epochs = multi_channel_data['eeg'].shape[0]
     all_features = []
     
@@ -141,7 +200,7 @@ def extract_multi_channel_features(multi_channel_data, config):
             raise ImportError("joblib is required for parallel processing, but not installed.")
         
         all_features = Parallel(n_jobs=config.PARALLEL_N_JOBS, backend='loky', verbose=10)(
-            delayed(process_epoch)(i) for i in range(n_epochs))
+            delayed(process_epoch)(i,multi_channel_data,config) for i in range(n_epochs))
     else:
         for epoch_idx in range(n_epochs):
             print(f"Extracting EEG features for epoch {epoch_idx+1}/{n_epochs}")
@@ -156,12 +215,24 @@ def extract_multi_channel_features(multi_channel_data, config):
     elif config.CURRENT_ITERATION >= 3:
         print(f"Multi-channel features extracted: {features.shape[1]} total")
         print("(2 EEG + 2 EOG + 1 EMG channels)")
+
     return features
 
 
 def extract_single_channel_features(data, config):
     """
-    Backward compatibility for single-channel data.
+    Extract features from single-channel data for backward compatibility.
+
+    Args:
+
+        data (np.ndarray): A 2D array of shape (n_epochs, n_samples).
+        config (module): The configuration module.  
+
+    Returns:
+        features (np.ndarray): A 2D array of features (n_epochs, n_features).
+
+    Example:
+        >>> features = extract_single_channel_features(single_channel_data, config)
     """
     if config.CURRENT_ITERATION == 1:
         # Iteration 1: Time-domain features (TARGET: 16 features)
@@ -236,3 +307,38 @@ def extract_emg_features(emg_signal):
     # - Muscle tone quantification
 
     return features
+
+def process_epoch(epoch_idx, multi_channel_data, config):
+    """
+    Process a single epoch to extract features from EEG, EOG, and EMG channels.
+
+    Args:
+        epoch_idx (int): The index of the epoch to process.
+        multi_channel_data (dict): Dictionary with keys 'eeg', 'eog', 'emg'.
+        config (module): The configuration module.
+    Returns:
+        epoch_features (list): A list of extracted features for the epoch.
+    
+    Example:
+        >>> epoch_features = process_epoch(epoch_idx, multi_channel_data, config)
+    """
+    epoch_features = []
+    # EEG features (2 channels)
+    for ch in range(multi_channel_data['eeg'].shape[1]):
+        eeg_signal = multi_channel_data['eeg'][epoch_idx, ch, :]
+        eeg_features = extract_time_domain_features(eeg_signal)
+        epoch_features.extend(list(eeg_features.values()))
+
+    if config.CURRENT_ITERATION >= 3:
+        # Add EOG features (2 channels)
+        for ch in range(multi_channel_data['eog'].shape[1]):
+            eog_signal = multi_channel_data['eog'][epoch_idx, ch, :]
+            eog_features = extract_eog_features(eog_signal)
+            epoch_features.extend(list(eog_features.values()))
+
+        # Add EMG features (1 channel)
+        emg_signal = multi_channel_data['emg'][epoch_idx, 0, :]
+        emg_features = extract_emg_features(emg_signal)
+        epoch_features.extend(list(emg_features.values()))
+
+    return epoch_features

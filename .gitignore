@@ -9,7 +9,6 @@ cache/
 figure/
 **/__pycache__/
 MATLAB/
-CM2013 Project Introduction.pptx
 Python/.DS_Store
 Python/.coverage
 Python/colab_notebook.ipynb
@@ -17,5 +16,3 @@ Python/plot_signals.py
 Python/src/__init__.py
 Python/tests/__init__.py
 Python/cola
-PEOJECT_GUIDE.md
-VISUALIZATION_GUIDE.md
