@@ -107,6 +107,14 @@ def LOSO_split_training(features, labels, record_ids, config):
     all_y_test = []
     all_y_pred = []
 
+    X_full, y_full = SMOTE(random_state=42).fit_resample(features, labels)
+    _, best_params = hyperparameter_optimization(X_full, y_full, config)
+        
+    # Create fresh model instance with best parameters for each fold
+    model = get_model_from_config(config)
+    model.set_params(**best_params)
+    print(f"Model instance ID: {id(model)}, Params: {best_params}")
+
     for fold_idx, (train_idx, test_idx) in enumerate(logo.split(features, labels, groups=record_ids)):
         X_train, X_test = features[train_idx], features[test_idx]
         y_train, y_test = labels[train_idx], labels[test_idx]
@@ -115,14 +123,6 @@ def LOSO_split_training(features, labels, record_ids, config):
         # Sleep stages are naturally imbalanced (more N2, less N1/REM)
         # TODO: Use class weighting method in next iterations
         X_train, y_train = smote.fit_resample(X_train, y_train)
-
-        # Hyperparameter optimization and model creation
-        best_score, best_params = hyperparameter_optimization(X_train, y_train, config)
-        
-        # Create fresh model instance with best parameters for each fold
-        model = get_model_from_config(config)
-        model.set_params(**best_params)
-        print(f"Model instance ID: {id(model)}, Params: {best_params}")
         
         # Which subject is held out in this fold?
         train_subjects = np.unique(record_ids[train_idx])
@@ -157,13 +157,10 @@ def LOSO_split_training(features, labels, record_ids, config):
     print("="*60)
 
     # NOTE: Doesnt this just get the last model's parameters
-    final_model_params = model.get_params() 
-    final_model = KNeighborsClassifier(**final_model_params)
-    X_full, y_full = SMOTE(random_state=42).fit_resample(features, labels)
-    final_model.fit(X_full, y_full)
+    model.fit(X_full, y_full)
 
     return {
-    'model': final_model,
+    'model': model,
     'y_true_aggregate': np.array(all_y_test),
     'y_pred_aggregate': np.array(all_y_pred)
     }

@@ -1,4 +1,4 @@
-from scipy.signal import butter, lfilter, iirnotch, filtfilt, welch
+from scipy.signal import butter, iirnotch, filtfilt
 import numpy as np
 import os
 import matplotlib.pyplot as plt
@@ -54,7 +54,7 @@ def notch_filter(signal, f0, Q, fs):
 def bandpass_filter(signal, lowcut , highcut, fs, order):
     """
     Butterworth bandpass filter to retain frequencies within a specific range.
-
+    
     Args:
         signal (np.ndarray): The input signal.
         lowcut (float): The lower cutoff frequency.
