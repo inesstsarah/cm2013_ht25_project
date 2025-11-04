@@ -113,17 +113,10 @@ def extract_time_domain_features(epoch):
     features['min'] = np.min(epoch)
     features['max'] = np.max(epoch)
     features['range'] = np.max(epoch) - np.min(epoch)
-    features['skewness'] = scipy.stats.skew(epoch)
-    features['kurtosis'] = scipy.stats.kurtosis(epoch)
-
-    # Signal complexity features:
-    features['zero_crossings'] = np.sum(np.diff(np.sign(epoch)) != 0)
-    features['hjorth_activity'] = np.var(epoch)
-    features['hjorth_mobility'] = extract_hjorth_mobility(epoch)
-    features['hjorth_complexity'] = extract_hjorth_complexity(epoch)
 
     # Signal energy and power:
     features['total_energy'] = np.sum(epoch**2)
+    features['mean_power'] = np.mean(epoch**2)
 
     # Hjorth Parameters:
     features['hjorth_activity'] = extract_hjorth_activity(epoch)
