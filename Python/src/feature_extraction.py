@@ -2,6 +2,12 @@ import numpy as np
 import scipy.stats
 import nolds
 try:
+    # AR (Burg) method for parametric PSD
+    from spectrum import arburg
+    SPECTRUM_AVAILABLE = True
+except ImportError:
+    SPECTRUM_AVAILABLE = False
+try:
     from joblib import Parallel, delayed
     JOBLIB_AVAILABLE = True
 except ImportError:
@@ -127,12 +133,120 @@ def extract_time_domain_features(epoch):
     features['zero_crossings'] = np.sum(np.diff(np.sign(epoch)) != 0)
     
     # Complexity Feature:
-    features['entropy'] = extract_sample_entropy(epoch)
+    # features['entropy'] = extract_sample_entropy(epoch)
 
     return features
 
 
-def extract_features(data, config):
+def _ar_compute_psd(epoch: np.ndarray, fs: float, order: int, n_freqs: int):
+    """
+    Compute AR-based PSD using Burg's method.
+
+    Returns frequencies (Hz) and one-sided PSD.
+    """
+    if not SPECTRUM_AVAILABLE:
+        raise ImportError("AR PSD requires 'spectrum' package. Install via: pip install spectrum")
+
+    # Estimate AR coefficients and driving noise variance
+    ar_coeffs, noise_var = arburg(epoch, order)[:2]
+
+    # Frequency grid (0 .. fs/2)
+    freqs = np.linspace(0.0, fs / 2.0, n_freqs)
+
+    # Evaluate A(e^{-j 2π f k / fs}) over grid
+    # ar_coeffs is [1, a1, ..., ap] as returned by arburg
+    k_indices = np.arange(1, len(ar_coeffs))
+    if len(k_indices) == 0:
+        # Degenerate case
+        psd = np.full_like(freqs, fill_value=noise_var / (1e-12))
+        return freqs, psd
+
+    exp_matrix = np.exp(-1j * 2.0 * np.pi * np.outer(freqs / fs, k_indices))  # shape (n_freqs, p)
+    A_vals = 1.0 + exp_matrix @ ar_coeffs[1:]
+    psd = noise_var / (np.abs(A_vals) ** 2)
+    psd = np.real(psd)
+
+    return freqs, psd
+
+
+def _integrate_band_power(freqs: np.ndarray, psd: np.ndarray, f_low: float, f_high: float) -> float:
+    mask = (freqs >= f_low) & (freqs <= f_high)
+    if not np.any(mask):
+        return 0.0
+    return np.trapezoid(psd[mask], freqs[mask])
+
+
+def _spectral_entropy(freqs: np.ndarray, psd: np.ndarray, f_low: float, f_high: float) -> float:
+    mask = (freqs >= f_low) & (freqs <= f_high)
+    if not np.any(mask):
+        return 0.0
+    p = psd[mask]
+    p = np.clip(p, 1e-20, None)
+    p = p / np.sum(p)
+    H = -np.sum(p * np.log(p))
+    H_norm = H / np.log(len(p))
+    return float(H_norm)
+
+
+def _spectral_edge_frequency(freqs: np.ndarray, psd: np.ndarray, f_low: float, f_high: float, percentile: float = 0.9) -> float:
+    mask = (freqs >= f_low) & (freqs <= f_high)
+    if not np.any(mask):
+        return float('nan')
+    f_sel = freqs[mask]
+    p_sel = psd[mask]
+    cum = np.cumsum(p_sel)
+    total = cum[-1]
+    if total <= 0:
+        return float('nan')
+    target = percentile * total
+    idx = np.searchsorted(cum, target)
+    idx = np.clip(idx, 0, len(f_sel) - 1)
+    return float(f_sel[idx])
+
+
+def extract_ar_features(epoch: np.ndarray,
+                        fs: int,
+                        bands: dict,
+                        order: int,
+                        se_percentile: float) -> dict:
+    """
+    Extract AR (Burg) spectral features for a single EEG epoch.
+
+    Features:
+    - Band powers (Delta/Theta/Alpha/Sigma/Beta)
+    - Relative band powers (normalized by total power 0.5–30 Hz)
+    - Spectral edge frequency (90% by default) within 0.5–30 Hz
+    - Peak frequency within 0.5–30 Hz
+    - Spectral entropy within 0.5–30 Hz
+    """
+    fmin_total, fmax_total = 0.5, 30.0
+    
+    freqs, psd = _ar_compute_psd(epoch, fs, order=order, n_freqs=1024)
+    total_power = _integrate_band_power(freqs, psd, fmin_total, fmax_total)
+    features = {}
+
+    # Absolute and relative band powers
+    for name, (f1, f2) in bands.items():
+        bp = _integrate_band_power(freqs, psd, f1, f2)
+        features[f'ar_{name}_power'] = bp
+        features[f'ar_{name}_rel_power'] = (bp / total_power) if total_power > 0 else 0.0
+
+    # Edge frequency, peak frequency, spectral entropy (within analysis band)
+    features['ar_spectral_edge_freq'] = _spectral_edge_frequency(freqs, psd, fmin_total, fmax_total, se_percentile)
+
+    mask = (freqs >= fmin_total) & (freqs <= fmax_total)
+    if np.any(mask):
+        peak_idx = np.argmax(psd[mask])
+        features['ar_peak_frequency'] = float(freqs[mask][peak_idx])
+    else:
+        features['ar_peak_frequency'] = float('nan')
+
+    features['ar_spectral_entropy'] = _spectral_entropy(freqs, psd, fmin_total, fmax_total)
+
+    return features
+
+
+def extract_features(data, channel_info, config):
     """
     Extract features from the preprocessed data.
 
@@ -162,13 +276,13 @@ def extract_features(data, config):
 
     if is_multi_channel:
         print("Processing multi-channel data (EEG + EOG + EMG)")
-        return extract_multi_channel_features(data, config)
+        return extract_multi_channel_features(data, channel_info, config)
     else:
         print("Processing single-channel data (backward compatibility)")
-        return extract_single_channel_features(data, config)
+        return extract_single_channel_features(data, channel_info, config)
 
 
-def extract_multi_channel_features(multi_channel_data, config):
+def extract_multi_channel_features(multi_channel_data, channel_info, config):
     """
     Extract features from multi-channel data: 2 EEG + 2 EOG + 1 EMG channels.
 
@@ -193,11 +307,11 @@ def extract_multi_channel_features(multi_channel_data, config):
             raise ImportError("joblib is required for parallel processing, but not installed.")
         
         all_features = Parallel(n_jobs=config.PARALLEL_N_JOBS, backend='loky', verbose=10)(
-            delayed(process_epoch)(i,multi_channel_data,config) for i in range(n_epochs))
+            delayed(process_epoch)(i,multi_channel_data,channel_info,config) for i in range(n_epochs))
     else:
         for epoch_idx in range(n_epochs):
             print(f"Extracting EEG features for epoch {epoch_idx+1}/{n_epochs}")
-            epoch_features = process_epoch(epoch_idx)
+            epoch_features = process_epoch(epoch_idx, multi_channel_data, channel_info, config)
             all_features.append(epoch_features)
 
     features = np.array(all_features)
@@ -212,7 +326,7 @@ def extract_multi_channel_features(multi_channel_data, config):
     return features
 
 
-def extract_single_channel_features(data, config):
+def extract_single_channel_features(data, channel_info, config):
     """
     Extract features from single-channel data for backward compatibility.
 
@@ -238,11 +352,20 @@ def extract_single_channel_features(data, config):
         print(f"2 EEG channels Iteration 1: {features.shape[1]} features (target: {expected}+)")
 
     elif config.CURRENT_ITERATION == 2:
-        # TODO: Students must implement frequency-domain features
-        print("TODO: Students must implement frequency-domain feature extraction")
-        print("Target: ~31 features (time + frequency domain)")
-        n_epochs = data.shape[0] if len(data.shape) > 1 else 1
-        features = np.zeros((n_epochs, 0))  # Empty features - students must implement
+        # Iteration 2: Time + Frequency (AR) domain features
+        print("Iteration 2: Adding AR spectral features")
+        all_features = []
+        for epoch in data:
+            td = extract_time_domain_features(epoch)
+            try:
+                ar = extract_ar_features(epoch, channel_info['eeg_fs'], config.EEG_BANDS, config.AR_ORDER)
+            except ImportError as e:
+                print(str(e))
+                ar = {}
+            # Combine
+            feat_vec = list(td.values()) + list(ar.values())
+            all_features.append(feat_vec)
+        features = np.array(all_features)
 
     elif config.CURRENT_ITERATION >= 3:
         # TODO: Students must implement multi-signal features
@@ -301,7 +424,8 @@ def extract_emg_features(emg_signal):
 
     return features
 
-def process_epoch(epoch_idx, multi_channel_data, config):
+
+def process_epoch(epoch_idx, multi_channel_data, channel_info, config):
     """
     Process a single epoch to extract features from EEG, EOG, and EMG channels.
 
@@ -319,8 +443,16 @@ def process_epoch(epoch_idx, multi_channel_data, config):
     # EEG features (2 channels)
     for ch in range(multi_channel_data['eeg'].shape[1]):
         eeg_signal = multi_channel_data['eeg'][epoch_idx, ch, :]
-        eeg_features = extract_time_domain_features(eeg_signal)
-        epoch_features.extend(list(eeg_features.values()))
+        eeg_td = extract_time_domain_features(eeg_signal)
+        epoch_features.extend(list(eeg_td.values()))
+        # Add AR spectral features starting iteration 2
+        if config.CURRENT_ITERATION >= 2:
+            try:
+                eeg_ar = extract_ar_features(eeg_signal, channel_info['eeg_fs'], config.EEG_BANDS, config.AR_ORDER, config.EEG_SE_PERCENTILE)
+                epoch_features.extend(list(eeg_ar.values()))
+            except ImportError as e:
+                # Graceful fallback if 'spectrum' is not installed
+                print(str(e))
 
     if config.CURRENT_ITERATION >= 3:
         # Add EOG features (2 channels)

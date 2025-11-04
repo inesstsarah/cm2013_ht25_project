@@ -13,7 +13,7 @@ from src.utils import calculate_sleep_metrics
 def get_model_from_config(config):
     """Get model instance based on config CLASSIFIER_TYPE"""
     if config.CLASSIFIER_TYPE == 'knn':
-        return KNeighborsClassifier(n_neighbors=config.KNN_N_NEIGHBORS)
+        return KNeighborsClassifier()
     
     elif config.CLASSIFIER_TYPE == 'svm':
         return SVC(

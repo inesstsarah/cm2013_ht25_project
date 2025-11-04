@@ -2,7 +2,7 @@
 
 # Set the current iteration of the project (1-4). 
 # This controls which parts of the pipeline are active.
-CURRENT_ITERATION = 1
+CURRENT_ITERATION = 2
 
 # Set to True to use cached data for preprocessing and feature extraction.
 USE_CACHE = True
@@ -49,6 +49,15 @@ HIGHPASS_FILTER_FREQ = 0.2 # Hz
 
 # -- Feature Extraction --
 # (Add feature-specific parameters here)
+AR_ORDER = 15
+EEG_BANDS = {
+    'delta': (0.5, 4.0),
+    'theta': (4.0, 8.0),
+    'alpha': (8.0, 13.0),
+    # 'sigma': (12.0, 15.0),
+    'beta': (13.0, 30.0),
+}
+EEG_SE_PERCENTILE = 0.9
 
 # -- Classification --
 # Iteration-specific parameters - students should modify these based on current iteration
@@ -62,9 +71,41 @@ if CURRENT_ITERATION == 1: # TODO: add more hyperparameters for the hyperparamet
     
 elif CURRENT_ITERATION == 2:
     # Iteration 2: Enhanced EEG processing with SVM
+    # CLASSIFIER_TYPE = 'knn'
     CLASSIFIER_TYPE = 'svm'
     SVM_C = 1.0
     SVM_KERNEL = 'rbf'
+    # SVM Grid Search Parameters
+    # Option 1: RBF kernel (recommended for sleep staging) - 最常用
+    GRID_PARAMS = {
+        'C': [0.1, 1.0, 10.0, 100.0],  # 正则化参数，控制过拟合
+        'gamma': ['scale', 'auto', 0.001, 0.01, 0.1, 1.0],  # RBF核宽度参数
+        'kernel': ['rbf']  # 径向基函数核
+    }
+    
+    # Option 2: 更细致的搜索（计算时间更长）
+    # GRID_PARAMS = {
+    #     'C': [0.1, 0.5, 1.0, 5.0, 10.0, 50.0, 100.0],
+    #     'gamma': ['scale', 0.0001, 0.001, 0.01, 0.1],
+    #     'kernel': ['rbf']
+    # }
+    
+    # Option 3: 包含多个核函数（更全面但更慢）
+    # GRID_PARAMS = {
+    #     'C': [0.1, 1.0, 10.0, 100.0],
+    #     'gamma': ['scale', 0.001, 0.01, 0.1],
+    #     'kernel': ['rbf', 'linear', 'poly'],
+    #     'degree': [2, 3, 4]  # 仅对 poly 核有效
+    # }
+    
+    # Option 4: 处理类别不平衡（如果数据不平衡）
+    # GRID_PARAMS = {
+    #     'C': [0.1, 1.0, 10.0, 100.0],
+    #     'gamma': ['scale', 0.001, 0.01, 0.1],
+    #     'kernel': ['rbf'],
+    #     'class_weight': [None, 'balanced', {0: 1, 1: 2, 2: 1, 3: 1, 4: 2}]  # 自定义权重
+    # }
+    
 elif CURRENT_ITERATION == 3:
     # Iteration 3: Multi-signal processing with Random Forest
     CLASSIFIER_TYPE = 'random_forest'
