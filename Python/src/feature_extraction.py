@@ -445,14 +445,14 @@ def process_epoch(epoch_idx, multi_channel_data, channel_info, config):
         eeg_signal = multi_channel_data['eeg'][epoch_idx, ch, :]
         eeg_td = extract_time_domain_features(eeg_signal)
         epoch_features.extend(list(eeg_td.values()))
-        # Add AR spectral features starting iteration 2
-        if config.CURRENT_ITERATION >= 2:
-            try:
-                eeg_ar = extract_ar_features(eeg_signal, channel_info['eeg_fs'], config.EEG_BANDS, config.AR_ORDER, config.EEG_SE_PERCENTILE)
-                epoch_features.extend(list(eeg_ar.values()))
-            except ImportError as e:
-                # Graceful fallback if 'spectrum' is not installed
-                print(str(e))
+
+        # Add AR spectral features
+        try:
+            eeg_ar = extract_ar_features(eeg_signal, channel_info['eeg_fs'], config.EEG_BANDS, config.AR_ORDER, config.EEG_SE_PERCENTILE)
+            epoch_features.extend(list(eeg_ar.values()))
+        except ImportError as e:
+            # Graceful fallback if 'spectrum' is not installed
+            print(str(e))
 
     if config.CURRENT_ITERATION >= 3:
         # Add EOG features (2 channels)

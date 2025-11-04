@@ -60,51 +60,36 @@ EEG_BANDS = {
 EEG_SE_PERCENTILE = 0.9
 
 # -- Classification --
+USE_HYPERPARAM_OPTIMAZATION = False
 # Iteration-specific parameters - students should modify these based on current iteration
 if CURRENT_ITERATION == 1: # TODO: add more hyperparameters for the hyperparameter optimization
     # Iteration 1: Basic pipeline with k-NN
     CLASSIFIER_TYPE = 'knn'
-    KNN_N_NEIGHBORS = 5
     GRID_PARAMS = { 'n_neighbors' : [5,7,9,11,13,15],
                'weights' : ['uniform','distance'],
                'metric' : ['minkowski','euclidean','manhattan']}
-    
+    BEST_PARAMS = {
+        'n_neighbors': 5,
+        'weights': 'distance',
+        'metric': 'manhattan'
+    }
+
 elif CURRENT_ITERATION == 2:
     # Iteration 2: Enhanced EEG processing with SVM
-    # CLASSIFIER_TYPE = 'knn'
     CLASSIFIER_TYPE = 'svm'
-    SVM_C = 1.0
-    SVM_KERNEL = 'rbf'
     # SVM Grid Search Parameters
-    # Option 1: RBF kernel (recommended for sleep staging) - 最常用
     GRID_PARAMS = {
-        'C': [0.1, 1.0, 10.0, 100.0],  # 正则化参数，控制过拟合
-        'gamma': ['scale', 'auto', 0.001, 0.01, 0.1, 1.0],  # RBF核宽度参数
-        'kernel': ['rbf']  # 径向基函数核
+        'C': [0.1, 0.5, 1.0, 5.0, 10.0, 50.0, 100.0],
+        'gamma': ['scale', 'auto', 0.001, 0.01, 0.1, 1.0], 
+        'kernel': ['rbf'],
+        'class_weight': ['balanced']
     }
-    
-    # Option 2: 更细致的搜索（计算时间更长）
-    # GRID_PARAMS = {
-    #     'C': [0.1, 0.5, 1.0, 5.0, 10.0, 50.0, 100.0],
-    #     'gamma': ['scale', 0.0001, 0.001, 0.01, 0.1],
-    #     'kernel': ['rbf']
-    # }
-    
-    # Option 3: 包含多个核函数（更全面但更慢）
-    # GRID_PARAMS = {
-    #     'C': [0.1, 1.0, 10.0, 100.0],
-    #     'gamma': ['scale', 0.001, 0.01, 0.1],
-    #     'kernel': ['rbf', 'linear', 'poly'],
-    #     'degree': [2, 3, 4]  # 仅对 poly 核有效
-    # }
-    
-    # Option 4: 处理类别不平衡（如果数据不平衡）
-    # GRID_PARAMS = {
-    #     'C': [0.1, 1.0, 10.0, 100.0],
-    #     'gamma': ['scale', 0.001, 0.01, 0.1],
-    #     'kernel': ['rbf'],
-    #     'class_weight': [None, 'balanced', {0: 1, 1: 2, 2: 1, 3: 1, 4: 2}]  # 自定义权重
-    # }
+    BEST_PARAMS = {
+        'C': 5.0,
+        'gamma': 'auto',
+        'kernel': 'rbf',
+        'class_weight': 'balanced'
+    }
     
 elif CURRENT_ITERATION == 3:
     # Iteration 3: Multi-signal processing with Random Forest

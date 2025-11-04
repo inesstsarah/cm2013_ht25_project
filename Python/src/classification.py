@@ -17,8 +17,7 @@ def get_model_from_config(config):
     
     elif config.CLASSIFIER_TYPE == 'svm':
         return SVC(
-            C=getattr(config, 'SVM_C', 1.0),
-            kernel=getattr(config, 'SVM_KERNEL', 'rbf'),
+            probability=True,
             random_state=42
         )
     
@@ -99,17 +98,25 @@ def LOSO_split_training(features, labels, record_ids, config):
     # Create LOSO cross-validation split
     logo = LeaveOneGroupOut()
     loso_results = []
-    smote = SMOTE(random_state=42)
     all_y_test = []
     all_y_pred = []
-    X_full, y_full = smote.fit_resample(features, labels)
-    # Hyperparameter optimization and model creation
-    best_score, best_params = hyperparameter_optimization(X_full, y_full, config)
+    if config.CURRENT_ITERATION == 1:
+        smote = SMOTE(random_state=42)
+        X_full, y_full = smote.fit_resample(features, labels)
+    else:
+        X_full, y_full = features, labels
     
-    # Create fresh model instance with best parameters for each fold
     model = get_model_from_config(config)
-    model.set_params(**best_params)
-    print(f"Model instance ID: {id(model)}, Params: {best_params}")
+    if config.USE_HYPERPARAM_OPTIMAZATION:
+        # Hyperparameter optimization and model creation
+        best_score, best_params = hyperparameter_optimization(X_full, y_full, config)
+        # Create fresh model instance with best parameters for each fold
+        model.set_params(**best_params)
+        print(f"Model instance ID: {id(model)}, Params: {best_params}")
+    else:
+        model.set_params(**config.BEST_PARAMS)
+        print(f"Model instance ID: {id(model)}, Params: {config.BEST_PARAMS}")
+
 
     for fold_idx, (train_idx, test_idx) in enumerate(logo.split(features, labels, groups=record_ids)):
         X_train, X_test = features[train_idx], features[test_idx]
@@ -117,8 +124,8 @@ def LOSO_split_training(features, labels, record_ids, config):
 
         # - Sleep stages are not equally distributed
         # Sleep stages are naturally imbalanced (more N2, less N1/REM)
-        # TODO: Use class weighting method in next iterations
-        X_train, y_train = smote.fit_resample(X_train, y_train)
+        if config.CURRENT_ITERATION == 1:
+            X_train, y_train = smote.fit_resample(X_train, y_train)
         
         # Which subject is held out in this fold?
         train_subjects = np.unique(record_ids[train_idx])
