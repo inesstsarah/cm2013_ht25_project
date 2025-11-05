@@ -2,6 +2,9 @@ import numpy as np
 import scipy.stats, scipy.signal
 import nolds
 from joblib import Parallel, delayed
+import pywt
+from math import log, e
+
 
 def extract_hjorth_activity(epoch):
     """
@@ -55,6 +58,96 @@ def extract_sample_entropy(epoch, m=2, r_factor=0.2):
    
     r = r_factor * np.std(epoch)
     return nolds.sampen(epoch, m, r)
+
+# ---- WAVELET FEATURE EXTRACTION ----
+def entropy2(labels, base=None):
+  """ Computes entropy of label distribution. """
+
+  n_labels = len(labels)
+
+  if n_labels <= 1:
+    return 0
+
+  value,counts = np.unique(labels, return_counts=True)
+  probs = counts / n_labels
+  n_classes = np.count_nonzero(probs)
+
+  if n_classes <= 1:
+    return 0
+
+  ent = 0.
+
+  # Compute entropy
+  base = e if base is None else base
+  for i in probs:
+    ent -= i * log(i, base)
+
+  return ent
+
+def wavelet_decomposition(signal: np.ndarray, wavelet_name: str):
+    """Function to do wavelet decomposition on a signal
+    
+    Args:
+        signal (np.ndarray): 1D array of a signal for wavelet decomposition
+        wavelet_name (str): name of wavelet family and the number e.g 'coif1' or 'db1'
+
+    Returns:
+        coeff_arr (np.ndarray): Array of coefficients of different levels
+    """
+    # Get wavelet 
+    wavelet = pywt.Wavelet(wavelet_name)
+    # Do wavelet decomposition
+    coeff_arr = pywt.wavedec(signal, wavelet)
+    
+    return(coeff_arr)
+
+def wavelet_feature_extraction(coeff_arr):
+    """Function to extract signals from wavelet coefficients from 
+    the decomposition
+    
+    Args:
+        coeff_arr (np.ndarray): 2D array of all coefficients from array
+    
+    Returns:
+        wavelet_features (dict): A dictionary of all wavelet features"""
+
+    wavelet_features = {}
+    # Try extracting the entropy, and other statistics from every coefficient if possible
+    for coeff in coeff_arr:
+        # Do the feature extraction here for every coeff
+        energy = np.sum(coeff**2)
+        wavelet_features["energy"] = energy
+    
+        # Get statistical moments
+        # Mean
+        mean = np.mean(coeff)
+        wavelet_features["mean"] = mean
+
+        # Standard Deviation
+        stdev = np.std(coeff)
+        wavelet_features["stdev"] = stdev
+
+        # Skewness
+        skewness = scipy.stats.skew(coeff) 
+        wavelet_features["skewness"] = skewness
+
+        # Kurtosis
+        kurt = scipy.stats.kurtosis(coeff)
+        wavelet_features["kurtosis"] = kurt
+
+        # Entropy
+        entropy = entropy2(coeff)
+        wavelet_features["entropy"] = entropy
+    
+    return(wavelet_features)
+
+    
+def wavelet_processing(epoch, wavelet_name):
+    coeff_arr = wavelet_decomposition(signal = epoch, wavelet_name = wavelet_name)
+    wavelet_features = wavelet_feature_extraction(coeff_arr=coeff_arr)
+    return(wavelet_features)
+
+# ---- TIME DOMAIN FEATURE EXTRACTION ----
 
 def extract_time_domain_features(epoch):
     """
