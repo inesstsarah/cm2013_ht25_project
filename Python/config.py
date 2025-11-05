@@ -48,6 +48,7 @@ BANDPASS_FILTER_ORDER = 5
 HIGHPASS_FILTER_FREQ = 0.5 # Hz
 
 # -- Feature Extraction --
+EEG_FS = 125
 EEG_LOWER = 0.5
 EEG_UPPER = 30
 EEG_BANDS = {
@@ -56,6 +57,13 @@ EEG_BANDS = {
         'alpha': (8, 13),
         'beta': (13, 30)
     }
+WELCH_PARAMETERS = {
+    'window' : 'hann',
+    'nperseg' : 4*EEG_FS,
+    'noverlap' : int(0.5*4*EEG_FS),
+    'nfft' : 4*EEG_FS
+}
+
 
 # -- Classification --
 # Iteration-specific parameters - students should modify these based on current iteration

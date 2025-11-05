@@ -302,12 +302,7 @@ def process_epoch(epoch_idx, multi_channel_data, config):
         eeg_signal = multi_channel_data['eeg'][epoch_idx, ch, :]
         eeg_features = extract_time_domain_features(eeg_signal)
         epoch_features.extend(list(eeg_features.values()))
-        window = 'hann'
-        nperseg = 4*125
-        noverlap = 0.5 * nperseg
-        scaling = 'density'
-        nfft = nperseg
-        freqs, psd = welch_method(eeg_signal,125,window,nperseg,noverlap,nfft,scaling,config)
+        freqs, psd = welch_method(eeg_signal,config= config)
         eeg_features = extract_spectral_features(freqs, psd, config)
         epoch_features.extend(list(eeg_features.values()))
 
@@ -325,7 +320,7 @@ def process_epoch(epoch_idx, multi_channel_data, config):
 
     return epoch_features
 
-def welch_method(signal, fs, window, nperseg, noverlap, nfft, scaling, config):
+def welch_method(signal, config):
     """
     Computes the Power Spectral Density (PSD) using Welch's method.
 
@@ -348,12 +343,8 @@ def welch_method(signal, fs, window, nperseg, noverlap, nfft, scaling, config):
    
     freqs, psd = welch(
     signal,
-    fs,          # Sampling frequency
-    window,        # Which window? Hanning? Hamming? Others?
-    nperseg,         # Window length in samples - how to choose?
-    noverlap,        # Overlap samples - relationship to nperseg?
-    nfft,            # FFT length - same as nperseg or larger?
-    scaling= scaling         # or 'spectrum' - what's the difference?
+    config.EEG_FS,    # Sampling frequency
+    **config.WELCH_PARAMETERS            
     )
 
     return freqs, psd
