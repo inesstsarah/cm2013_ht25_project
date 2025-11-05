@@ -1,5 +1,6 @@
 import numpy as np
-import scipy.stats, scipy.signal
+import scipy.stats   
+from scipy.signal import welch
 import nolds
 from joblib import Parallel, delayed
 
@@ -177,7 +178,7 @@ def extract_multi_channel_features(multi_channel_data, config):
             delayed(process_epoch)(i,multi_channel_data,config) for i in range(n_epochs))
     else:
         for epoch_idx in range(n_epochs):
-            print(f"Extracting EEG features for epoch {epoch_idx+1}/{n_epochs}")
+            #print(f"Extracting EEG features for epoch {epoch_idx+1}/{n_epochs}")
             epoch_features = process_epoch(epoch_idx,multi_channel_data,config)
             all_features.append(epoch_features)
 
@@ -301,6 +302,14 @@ def process_epoch(epoch_idx, multi_channel_data, config):
         eeg_signal = multi_channel_data['eeg'][epoch_idx, ch, :]
         eeg_features = extract_time_domain_features(eeg_signal)
         epoch_features.extend(list(eeg_features.values()))
+        window = 'hann'
+        nperseg = 4*125
+        noverlap = 0.5 * nperseg
+        scaling = 'density'
+        nfft = nperseg
+        freqs, psd = welch_method(eeg_signal,125,window,nperseg,noverlap,nfft,scaling,config)
+        eeg_features = extract_spectral_features(freqs, psd, config)
+        epoch_features.extend(list(eeg_features.values()))
 
     if config.CURRENT_ITERATION >= 3:
         # Add EOG features (2 channels)
@@ -315,3 +324,86 @@ def process_epoch(epoch_idx, multi_channel_data, config):
         epoch_features.extend(list(emg_features.values()))
 
     return epoch_features
+
+def welch_method(signal, fs, window, nperseg, noverlap, nfft, scaling, config):
+    """
+    Computes the Power Spectral Density (PSD) using Welch's method.
+
+    Args:
+        epoch (np.ndarray): A 1D array representing one epoch of signal data.
+        fs (int): Sampling frequency of the signal.
+        nperseg (int): Length of each segment for Welch's method.
+        noverlap (int): Number of overlapping samples between segments.
+        nfft (int): Number of points for the FFT.
+        window (str or tuple or array_like): Desired window to use.
+        scaling (str): Selects between 'density' and 'spectrum' scaling of the PSD.
+
+    Returns:
+        f (np.ndarray): Array of sample frequencies.
+        Pxx (np.ndarray): Power spectral density of the signal.
+
+    Example:
+        >>> freqs, psd = welch_psd(epoch, fs=100, nperseg=256)
+    """
+   
+    freqs, psd = welch(
+    signal,
+    fs,          # Sampling frequency
+    window,        # Which window? Hanning? Hamming? Others?
+    nperseg,         # Window length in samples - how to choose?
+    noverlap,        # Overlap samples - relationship to nperseg?
+    nfft,            # FFT length - same as nperseg or larger?
+    scaling= scaling         # or 'spectrum' - what's the difference?
+    )
+
+    return freqs, psd
+
+def extract_spectral_features(freqs, psd, config):
+    spectral_features = {}
+    indices = np.where((freqs>=config.EEG_LOWER)&(freqs<=config.EEG_UPPER))
+    freqs = freqs[indices]
+    psd = psd[indices]
+    total_power = np.trapezoid(psd, freqs)
+
+    #Band Powers
+    for band,(lower,upper) in config.EEG_BANDS.items():
+        band_i = np.where((freqs>=lower) & (freqs<=upper))
+        band_freqs = freqs[band_i]
+        band_psd = psd[band_i]
+        band_power = np.trapezoid(band_psd,band_freqs)
+        spectral_features[band+'_power'] = band_power
+       
+        try:
+            spectral_features[band+'_power_rel'] = spectral_features[band+'_power'] / total_power
+        except ZeroDivisionError:
+            spectral_features[band+'_power_rel'] = 0.0
+   
+
+    #Spectral Entropy
+    psd_norm = psd / np.sum(psd)
+    spectral_entropy = (-np.sum(psd_norm * np.log2(psd_norm))) / np.log2(len(psd_norm))
+    spectral_features['spectral_entropy'] = spectral_entropy
+
+    #Peak Frequency
+    spectral_features['peak_freq'] = freqs[np.argmax(psd)]
+
+    #Spectral Edge Frequencies
+    P90 = 0.9*total_power
+    P95 = 0.95*total_power
+    power_per_bin = psd*np.diff(freqs)[0]
+    cumulative_power = np.cumsum(power_per_bin)
+    spectral_features['sef90'] = np.interp(P90, cumulative_power, freqs)
+    spectral_features['sef95']= np.interp(P95, cumulative_power, freqs)
+
+    return spectral_features
+
+    
+
+        
+
+    
+
+    
+
+
+    

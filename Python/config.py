@@ -6,12 +6,12 @@ CURRENT_ITERATION = 1
 
 # Set to True to use cached data for preprocessing and feature extraction.
 USE_CACHE = True
-USE_PARALLEL = True  # Use parallel processing where applicable
+USE_PARALLEL = False # Use parallel processing where applicable
 PARALLEL_N_JOBS = -1  # Number of parallel jobs (-1 uses all available cores)
 
 # -- File Paths --
 import os
-DATA_DIR = 'data/'
+DATA_DIR = '../data/'
 TRAINING_DIR = f'{DATA_DIR}training/'
 HOLDOUT_DIR = f'{DATA_DIR}holdout/'
 SAMPLE_DIR = f'{DATA_DIR}sample/'
@@ -45,10 +45,17 @@ NOTCH_FILTER_Q = 30
 BANDPASS_FILTER_LOWER_FREQ = 0.5 # Hz
 BANDPASS_FILTER_HIGHER_FREQ = 33 # Hz
 BANDPASS_FILTER_ORDER = 5
-HIGHPASS_FILTER_FREQ = 0.2 # Hz
+HIGHPASS_FILTER_FREQ = 0.5 # Hz
 
 # -- Feature Extraction --
-# (Add feature-specific parameters here)
+EEG_LOWER = 0.5
+EEG_UPPER = 30
+EEG_BANDS = {
+        'delta': (0.5, 4),
+        'theta': (4, 8),
+        'alpha': (8, 13),
+        'beta': (13, 30)
+    }
 
 # -- Classification --
 # Iteration-specific parameters - students should modify these based on current iteration
@@ -56,7 +63,7 @@ if CURRENT_ITERATION == 1: # TODO: add more hyperparameters for the hyperparamet
     # Iteration 1: Basic pipeline with k-NN
     CLASSIFIER_TYPE = 'knn'
     KNN_N_NEIGHBORS = 5
-    GRID_PARAMS = { 'n_neighbors' : [5,7,9,11,13,15],
+    GRID_PARAMS = { 'n_neighbors' : [3,5,7,9,11,13,15],
                'weights' : ['uniform','distance'],
                'metric' : ['minkowski','euclidean','manhattan']}
     
