@@ -139,7 +139,7 @@ def wavelet_feature_extraction(coeff_arr):
     
     return(wavelet_features)
 
-    
+
 def wavelet_processing(epoch, wavelet_name):
     coeff_arr = wavelet_decomposition(signal = epoch, wavelet_name = wavelet_name)
     wavelet_features = wavelet_feature_extraction(coeff_arr=coeff_arr)
