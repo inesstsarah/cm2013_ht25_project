@@ -1,17 +1,10 @@
 import numpy as np
 import scipy.stats
 import nolds
-try:
-    # AR (Burg) method for parametric PSD
-    from spectrum import arburg
-    SPECTRUM_AVAILABLE = True
-except ImportError:
-    SPECTRUM_AVAILABLE = False
-try:
-    from joblib import Parallel, delayed
-    JOBLIB_AVAILABLE = True
-except ImportError:
-    JOBLIB_AVAILABLE = False
+from joblib import Parallel, delayed
+from spectrum import arburg
+import pywt
+from math import log, e
 
 
 def extract_hjorth_activity(epoch):
@@ -62,28 +55,98 @@ def extract_hjorth_complexity(epoch):
     return extract_hjorth_mobility(np.diff(epoch)) / extract_hjorth_mobility(epoch)
 
 
-def extract_sample_entropy(epoch, m=2, r_factor=0.2):
-    """
-    Computes the Sample Entropy for one epoch of signal data.
+# ---- WAVELET FEATURE EXTRACTION ----
+def entropy2(labels, base=None):
+  """ Computes entropy of label distribution. """
 
+  n_labels = len(labels)
+
+  if n_labels <= 1:
+    return 0
+
+  value,counts = np.unique(labels, return_counts=True)
+  probs = counts / n_labels
+  n_classes = np.count_nonzero(probs)
+
+  if n_classes <= 1:
+    return 0
+
+  ent = 0.
+
+  # Compute entropy
+  base = e if base is None else base
+  for i in probs:
+    ent -= i * log(i, base)
+
+  return ent
+
+
+def wavelet_decomposition(signal: np.ndarray, wavelet_name: str):
+    """Function to do wavelet decomposition on a signal
+    
     Args:
-        epoch (np.ndarray): A 1D array representing one epoch of signal data.
-        m (int): Embedding dimension.
-        r_factor (float): Tolerance factor as a fraction of the standard deviation.
+        signal (np.ndarray): 1D array of a signal for wavelet decomposition
+        wavelet_name (str): name of wavelet family and the number e.g 'coif1' or 'db1'
 
     Returns:
-        entropy (float): Sample Entropy value.
-
-    Example:
-        >>> sampen = extract_sample_entropy(epoch)
+        coeff_arr (np.ndarray): Array of coefficients of different levels
     """
-   
-    r = r_factor * np.std(epoch)
-    entropy = nolds.sampen(epoch, m, r)
+    # Get wavelet 
+    wavelet = pywt.Wavelet(wavelet_name)
+    # Do wavelet decomposition
+    coeff_arr = pywt.wavedec(signal, wavelet)
+    
+    return(coeff_arr)
 
-    return entropy
+
+def wavelet_feature_extraction(coeff_arr):
+    """Function to extract signals from wavelet coefficients from 
+    the decomposition
+    
+    Args:
+        coeff_arr (np.ndarray): 2D array of all coefficients from array
+    
+    Returns:
+        wavelet_features (dict): A dictionary of all wavelet features"""
+
+    wavelet_features = {}
+    # Try extracting the entropy, and other statistics from every coefficient if possible
+    for coeff in coeff_arr:
+        # Do the feature extraction here for every coeff
+        energy = np.sum(coeff**2)
+        wavelet_features["energy"] = energy
+    
+        # Get statistical moments
+        # Mean
+        mean = np.mean(coeff)
+        wavelet_features["mean"] = mean
+
+        # Standard Deviation
+        stdev = np.std(coeff)
+        wavelet_features["stdev"] = stdev
+
+        # Skewness
+        skewness = scipy.stats.skew(coeff) 
+        wavelet_features["skewness"] = skewness
+
+        # Kurtosis
+        kurt = scipy.stats.kurtosis(coeff)
+        wavelet_features["kurtosis"] = kurt
+
+        # Entropy
+        entropy = entropy2(coeff)
+        wavelet_features["entropy"] = entropy
+    
+    return(wavelet_features)
+
+    
+def wavelet_processing(epoch, wavelet_name):
+    coeff_arr = wavelet_decomposition(signal = epoch, wavelet_name = wavelet_name)
+    wavelet_features = wavelet_feature_extraction(coeff_arr=coeff_arr)
+    return(wavelet_features)
 
 
+# ---- TIME DOMAIN FEATURE EXTRACTION ----
 def extract_time_domain_features(epoch):
     """
     EXAMPLE: Extract basic time-domain features from a single epoch.
@@ -145,9 +208,6 @@ def _ar_compute_psd(epoch: np.ndarray, fs: float, order: int, n_freqs: int) -> t
 
     Returns frequencies (Hz) and one-sided PSD.
     """
-    if not SPECTRUM_AVAILABLE:
-        raise ImportError("AR PSD requires 'spectrum' package. Install via: pip install spectrum")
-
     # Estimate AR coefficients and driving noise variance
     ar_coeffs, noise_var = arburg(epoch, order)[:2]
 
@@ -304,9 +364,6 @@ def extract_multi_channel_features(multi_channel_data, channel_info, config):
     all_features = []
     
     if config.USE_PARALLEL:
-        if not JOBLIB_AVAILABLE:
-            raise ImportError("joblib is required for parallel processing, but not installed.")
-        
         all_features = Parallel(n_jobs=config.PARALLEL_N_JOBS, backend='loky', verbose=10)(
             delayed(process_epoch)(i,multi_channel_data,channel_info,config) for i in range(n_epochs))
     else:
@@ -443,7 +500,7 @@ def process_epoch(epoch_idx, multi_channel_data, channel_info, config):
     epoch_features = []
     # EEG features (2 channels)
     for ch in range(multi_channel_data['eeg'].shape[1]):
-        eeg_signal = multi_channel_data['eeg'][epoch_idx, ch, :]
+        eeg_signal = multi_channel_data['eeg'][epoch_idx, ch, :].copy()
         # Time-domain features
         eeg_td = extract_time_domain_features(eeg_signal)
         epoch_features.extend(list(eeg_td.values()))
@@ -451,6 +508,10 @@ def process_epoch(epoch_idx, multi_channel_data, channel_info, config):
         # Add AR spectral features
         eeg_ar = extract_ar_features(eeg_signal, channel_info['eeg_fs'], config.EEG_BANDS, config.AR_ORDER, config.EEG_SE_PERCENTILE)
         epoch_features.extend(list(eeg_ar.values()))
+
+        # Add wavelet features
+        eeg_wavelet = wavelet_processing(eeg_signal, config.WAVELET_NAME)
+        epoch_features.extend(list(eeg_wavelet.values()))
 
 
     if config.CURRENT_ITERATION >= 3:
