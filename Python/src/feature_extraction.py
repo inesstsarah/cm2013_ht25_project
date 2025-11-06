@@ -138,8 +138,8 @@ def extract_time_domain_features(epoch):
     return features
 
 
-# ========== AR features computation ==========
-def _ar_compute_psd(epoch: np.ndarray, fs: float, order: int, n_freqs: int):
+# ========== AR features computation ========== {
+def _ar_compute_psd(epoch: np.ndarray, fs: float, order: int, n_freqs: int) -> tuple:
     """
     Compute AR-based PSD using Burg's method.
 
@@ -245,7 +245,7 @@ def extract_ar_features(epoch: np.ndarray,
     features['ar_spectral_entropy'] = _spectral_entropy(freqs, psd, fmin_total, fmax_total)
 
     return features
-# ========== AR features computation ==========
+# ========== AR features computation ========== }
 
 def extract_features(data, channel_info, config):
     """
