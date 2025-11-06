@@ -6,12 +6,12 @@ CURRENT_ITERATION = 1
 
 # Set to True to use cached data for preprocessing and feature extraction.
 USE_CACHE = True
-USE_PARALLEL = True  # Use parallel processing where applicable
+USE_PARALLEL = False # Use parallel processing where applicable
 PARALLEL_N_JOBS = -1  # Number of parallel jobs (-1 uses all available cores)
 
 # -- File Paths --
 import os
-DATA_DIR = 'data/'
+DATA_DIR = '../data/'
 TRAINING_DIR = f'{DATA_DIR}training/'
 HOLDOUT_DIR = f'{DATA_DIR}holdout/'
 SAMPLE_DIR = f'{DATA_DIR}sample/'
@@ -45,7 +45,7 @@ NOTCH_FILTER_Q = 30
 BANDPASS_FILTER_LOWER_FREQ = 0.5 # Hz
 BANDPASS_FILTER_HIGHER_FREQ = 33 # Hz
 BANDPASS_FILTER_ORDER = 5
-HIGHPASS_FILTER_FREQ = 0.2 # Hz
+HIGHPASS_FILTER_FREQ = 0.5 # Hz
 
 # -- Feature Extraction --
 # (Add feature-specific parameters here)
@@ -58,8 +58,18 @@ EEG_BANDS = {
     'beta': (13.0, 30.0),
 }
 EEG_SE_PERCENTILE = 0.9
+EEG_FS = 125
+EEG_LOWER = 0.5
+EEG_UPPER = 30
 
+WELCH_PARAMETERS = {
+    'window' : 'hann',
+    'nperseg' : 4*EEG_FS,
+    'noverlap' : int(0.5*4*EEG_FS),
+    'nfft' : 4*EEG_FS
+}
 WAVELET_NAME = 'db4'
+
 # -- Classification --
 USE_HYPERPARAM_OPTIMAZATION = False
 # Iteration-specific parameters - students should modify these based on current iteration

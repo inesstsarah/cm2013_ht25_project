@@ -118,6 +118,14 @@ def LOSO_split_training(features, labels, record_ids, config):
         print(f"Model instance ID: {id(model)}, Params: {config.BEST_PARAMS}")
 
 
+    X_full, y_full = SMOTE(random_state=42).fit_resample(features, labels)
+    _, best_params = hyperparameter_optimization(X_full, y_full, config)
+        
+    # Create fresh model instance with best parameters for each fold
+    model = get_model_from_config(config)
+    model.set_params(**best_params)
+    print(f"Model instance ID: {id(model)}, Params: {best_params}")
+
     for fold_idx, (train_idx, test_idx) in enumerate(logo.split(features, labels, groups=record_ids)):
         X_train, X_test = features[train_idx], features[test_idx]
         y_train, y_test = labels[train_idx], labels[test_idx]
