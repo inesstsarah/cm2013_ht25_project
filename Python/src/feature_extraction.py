@@ -138,6 +138,7 @@ def extract_time_domain_features(epoch):
     return features
 
 
+# ========== AR features computation ==========
 def _ar_compute_psd(epoch: np.ndarray, fs: float, order: int, n_freqs: int):
     """
     Compute AR-based PSD using Burg's method.
@@ -244,7 +245,7 @@ def extract_ar_features(epoch: np.ndarray,
     features['ar_spectral_entropy'] = _spectral_entropy(freqs, psd, fmin_total, fmax_total)
 
     return features
-
+# ========== AR features computation ==========
 
 def extract_features(data, channel_info, config):
     """
@@ -443,16 +444,14 @@ def process_epoch(epoch_idx, multi_channel_data, channel_info, config):
     # EEG features (2 channels)
     for ch in range(multi_channel_data['eeg'].shape[1]):
         eeg_signal = multi_channel_data['eeg'][epoch_idx, ch, :]
+        # Time-domain features
         eeg_td = extract_time_domain_features(eeg_signal)
         epoch_features.extend(list(eeg_td.values()))
 
         # Add AR spectral features
-        try:
-            eeg_ar = extract_ar_features(eeg_signal, channel_info['eeg_fs'], config.EEG_BANDS, config.AR_ORDER, config.EEG_SE_PERCENTILE)
-            epoch_features.extend(list(eeg_ar.values()))
-        except ImportError as e:
-            # Graceful fallback if 'spectrum' is not installed
-            print(str(e))
+        eeg_ar = extract_ar_features(eeg_signal, channel_info['eeg_fs'], config.EEG_BANDS, config.AR_ORDER, config.EEG_SE_PERCENTILE)
+        epoch_features.extend(list(eeg_ar.values()))
+
 
     if config.CURRENT_ITERATION >= 3:
         # Add EOG features (2 channels)
