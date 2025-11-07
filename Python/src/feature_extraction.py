@@ -603,13 +603,3 @@ def extract_spectral_features(freqs, psd, config):
 
     return spectral_features
 
-    
-
-        
-
-    
-
-    
-
-
-    
