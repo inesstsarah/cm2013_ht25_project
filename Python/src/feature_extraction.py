@@ -117,7 +117,7 @@ def extract_time_domain_features(epoch):
 
     return features
 
-def extract_features(data, config):
+def extract_features(data, channel_info, config):
     """
     Extract features from the preprocessed data.
 
@@ -147,13 +147,13 @@ def extract_features(data, config):
 
     if is_multi_channel:
         print("Processing multi-channel data (EEG + EOG + EMG)")
-        return extract_multi_channel_features(data, config)
+        return extract_multi_channel_features(data,channel_info, config)
     else:
         print("Processing single-channel data (backward compatibility)")
-        return extract_single_channel_features(data, config)
+        return extract_single_channel_features(data, channel_info, config)
 
 
-def extract_multi_channel_features(multi_channel_data, config):
+def extract_multi_channel_features(multi_channel_data, channel_info, config):
     """
     Extract features from multi-channel data: 2 EEG + 2 EOG + 1 EMG channels.
 
@@ -175,11 +175,11 @@ def extract_multi_channel_features(multi_channel_data, config):
     
     if config.USE_PARALLEL:
         all_features = Parallel(n_jobs=config.PARALLEL_N_JOBS, backend='loky', verbose=10)(
-            delayed(process_epoch)(i,multi_channel_data,config) for i in range(n_epochs))
+            delayed(process_epoch)(i,multi_channel_data,channel_info, config) for i in range(n_epochs))
     else:
         for epoch_idx in range(n_epochs):
             #print(f"Extracting EEG features for epoch {epoch_idx+1}/{n_epochs}")
-            epoch_features = process_epoch(epoch_idx,multi_channel_data,config)
+            epoch_features = process_epoch(epoch_idx,multi_channel_data,channel_info, config)
             all_features.append(epoch_features)
 
     features = np.array(all_features)
@@ -194,7 +194,7 @@ def extract_multi_channel_features(multi_channel_data, config):
     return features
 
 
-def extract_single_channel_features(data, config):
+def extract_single_channel_features(data, channel_info, config):
     """
     Extract features from single-channel data for backward compatibility.
 
@@ -223,8 +223,14 @@ def extract_single_channel_features(data, config):
         # TODO: Students must implement frequency-domain features
         print("TODO: Students must implement frequency-domain feature extraction")
         print("Target: ~31 features (time + frequency domain)")
-        n_epochs = data.shape[0] if len(data.shape) > 1 else 1
-        features = np.zeros((n_epochs, 0))  # Empty features - students must implement
+        all_features = []
+        for epoch in data:
+            features = extract_time_domain_features(epoch)
+            freqs_welch, psd_welch = welch_method(epoch,channel_info,config)
+            welch_features = extract_spectral_features(freqs_welch,psd_welch,config)
+            all_features.append(list(features.values())+list(welch_features.values()))
+        features = np.array(all_features)
+       
 
     elif config.CURRENT_ITERATION >= 3:
         # TODO: Students must implement multi-signal features
@@ -282,7 +288,7 @@ def extract_emg_features(emg_signal):
 
     return features
 
-def process_epoch(epoch_idx, multi_channel_data, config):
+def process_epoch(epoch_idx, multi_channel_data, channel_info, config):
     """
     Process a single epoch to extract features from EEG, EOG, and EMG channels.
 
@@ -300,11 +306,17 @@ def process_epoch(epoch_idx, multi_channel_data, config):
     # EEG features (2 channels)
     for ch in range(multi_channel_data['eeg'].shape[1]):
         eeg_signal = multi_channel_data['eeg'][epoch_idx, ch, :]
+
+        # Time domain
         eeg_features = extract_time_domain_features(eeg_signal)
         epoch_features.extend(list(eeg_features.values()))
-        freqs, psd = welch_method(eeg_signal,config= config)
-        eeg_features = extract_spectral_features(freqs, psd, config)
-        epoch_features.extend(list(eeg_features.values()))
+
+        # Welch's method
+        freqs, psd = welch_method(eeg_signal,channel_info, config)
+        eeg_welch = extract_spectral_features(freqs, psd, config)
+        epoch_features.extend(list(eeg_welch.values()))
+
+        
 
     if config.CURRENT_ITERATION >= 3:
         # Add EOG features (2 channels)
@@ -320,7 +332,7 @@ def process_epoch(epoch_idx, multi_channel_data, config):
 
     return epoch_features
 
-def welch_method(signal, config):
+def welch_method(signal,channel_info, config):
     """
     Computes the Power Spectral Density (PSD) using Welch's method.
 
@@ -343,7 +355,7 @@ def welch_method(signal, config):
    
     freqs, psd = welch(
     signal,
-    config.EEG_FS,    # Sampling frequency
+    channel_info['eeg_fs'],    # Sampling frequency
     **config.WELCH_PARAMETERS            
     )
 
