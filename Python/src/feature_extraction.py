@@ -338,7 +338,7 @@ def extract_features(data, channel_info, config):
 
     if is_multi_channel:
         print("Processing multi-channel data (EEG + EOG + EMG)")
-        return extract_multi_channel_features(data, channel_info, config)
+        return extract_multi_channel_features(data,channel_info, config)
     else:
         print("Processing single-channel data (backward compatibility)")
         return extract_single_channel_features(data, channel_info, config)
@@ -515,7 +515,7 @@ def process_epoch(epoch_idx, multi_channel_data, channel_info, config):
         epoch_features.extend(list(eeg_wavelet.values()))
 
         # Add welch features
-        freqs, psd = welch_method(eeg_signal,config= config)
+        freqs, psd = welch_method(eeg_signal, channel_info, config)
         eeg_features = extract_spectral_features(freqs, psd, config)
         epoch_features.extend(list(eeg_features.values()))
 
@@ -534,7 +534,7 @@ def process_epoch(epoch_idx, multi_channel_data, channel_info, config):
     return epoch_features
 
 
-def welch_method(signal, config):
+def welch_method(signal,channel_info, config):
     """
     Computes the Power Spectral Density (PSD) using Welch's method.
 
@@ -557,7 +557,7 @@ def welch_method(signal, config):
    
     freqs, psd = welch(
     signal,
-    config.EEG_FS,    # Sampling frequency
+    channel_info['eeg_fs'],    # Sampling frequency
     **config.WELCH_PARAMETERS            
     )
 
