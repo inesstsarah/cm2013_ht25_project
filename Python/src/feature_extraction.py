@@ -64,7 +64,6 @@ def entropy2(labels, base=None):
   """ Computes entropy of label distribution. """
 
   n_labels = len(labels)
-
   if n_labels <= 1:
     return 0
 
@@ -84,7 +83,7 @@ def entropy2(labels, base=None):
 
   return ent
 
-def wavelet_decomposition(signal: np.ndarray, wavelet_name: str):
+def wavelet_decomposition(signal, wavelet_name):
     """Function to do wavelet decomposition on a signal
     
     Args:
@@ -113,37 +112,40 @@ def wavelet_feature_extraction(coeff_arr):
 
     wavelet_features = {}
     # Try extracting the entropy, and other statistics from every coefficient if possible
-    for coeff in coeff_arr:
+    #for coeff in coeff_arr:
         # Do the feature extraction here for every coeff
-        energy = np.sum(coeff**2)
-        wavelet_features["energy"] = energy
-    
-        # Get statistical moments
-        # Mean
-        mean = np.mean(coeff)
-        wavelet_features["mean"] = mean
+    coeff = coeff_arr[-1]
+    energy = np.sum(coeff**2)
+    wavelet_features["energy"] = energy
 
-        # Standard Deviation
-        stdev = np.std(coeff)
-        wavelet_features["stdev"] = stdev
+    # Get statistical moments
+    # Mean
+    mean = np.mean(coeff)
+    wavelet_features["mean"] = mean
 
-        # Skewness
-        skewness = scipy.stats.skew(coeff) 
-        wavelet_features["skewness"] = skewness
+    # Standard Deviation
+    stdev = np.std(coeff)
+    wavelet_features["stdev"] = stdev
 
-        # Kurtosis
-        kurt = scipy.stats.kurtosis(coeff)
-        wavelet_features["kurtosis"] = kurt
+    # Skewness
+    skewness = scipy.stats.skew(coeff) 
+    wavelet_features["skewness"] = skewness
 
-        # Entropy
-        entropy = entropy2(coeff)
-        wavelet_features["entropy"] = entropy
+    # Kurtosis
+    kurt = scipy.stats.kurtosis(coeff)
+    wavelet_features["kurtosis"] = kurt
+
+    # Entropy
+    entropy = entropy2(coeff)
+    wavelet_features["entropy"] = entropy
     
     return(wavelet_features)
 
     
 def wavelet_processing(epoch, wavelet_name):
     coeff_arr = wavelet_decomposition(signal = epoch, wavelet_name = wavelet_name)
+    print(f"Array of coeffs: {coeff_arr}")
+    print(f"Shape of array coeffs: {coeff_arr.shape}")
     wavelet_features = wavelet_feature_extraction(coeff_arr=coeff_arr)
     return(wavelet_features)
 
@@ -189,7 +191,8 @@ def extract_time_domain_features(epoch):
     features['zero_crossings'] = np.sum(np.diff(np.sign(epoch)) != 0)
     
     # Complexity Feature:
-    features['Entropy'] = extract_sample_entropy(epoch)
+    # Try new entropy function
+    features['Entropy'] = entropy2(epoch)
 
     return features
 
@@ -347,7 +350,11 @@ def process_epoch(epoch_idx, multi_channel_data, config):
     for ch in range(multi_channel_data['eeg'].shape[1]):
         eeg_signal = multi_channel_data['eeg'][epoch_idx, ch, :]
         eeg_features = extract_time_domain_features(eeg_signal)
+
+        # Use Daubechies in the meantime before more research
+        wavelet_features = wavelet_processing(eeg_signal, 'db1')
         epoch_features.extend(list(eeg_features.values()))
+        epoch_features.extend(list(wavelet_features.values()))
 
     if config.CURRENT_ITERATION >= 3:
         # Add EOG features (2 channels)
