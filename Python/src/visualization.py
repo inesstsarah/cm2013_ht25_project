@@ -289,7 +289,6 @@ def visualize_results(results, record_ids, config):
     print("Visualizing results...")
     # TODO: Add more visualizations as needed (e.g., feature importance).
     class_names = ['Wake', 'N1', 'N2', 'N3', 'REM']
-    #y_pred = model.predict(features)
     
     # visualize confusion matrix
     print("Visualizing confusion matrix...")
@@ -350,13 +349,14 @@ def visualize_signal(signal, fs, ax=None, title="Time-domain Signal"):
         title (str, optional): Plot title.
     """
     n = len(signal)
-    t = np.arange(n) / fs / 3600 # Convert to hours
+    t = np.arange(n) / fs  # 时间轴
+
     if ax is None:
         fig, ax = plt.subplots(figsize=(10, 5))
 
     ax.plot(t, signal)
     ax.set_title(title)
-    ax.set_xlabel("Time (h)")
+    ax.set_xlabel("Time (s)")
     ax.set_ylabel("Amplitude")
     ax.grid(True)
 

@@ -201,41 +201,37 @@ def load_holdout_data(edf_file_path, epoch_length=30):
 
     # Extract data for each signal type
     multi_channel_data = {}
-    sampling_rates = {}
-
+    channel_info = {}
+    # Extract EEG data
     if eeg_channels:
         eeg_raw = raw.copy().pick(eeg_channels)
         eeg_data, eeg_fs = _extract_epochs(eeg_raw, epoch_length, n_epochs)
         multi_channel_data['eeg'] = eeg_data
-        sampling_rates['eeg'] = eeg_fs
+        channel_info['eeg_names'] = eeg_channels
+        channel_info['eeg_fs'] = eeg_fs
         print(f"  EEG: {eeg_data.shape[1]} channels, {eeg_data.shape[2]} samples/epoch, {eeg_fs} Hz")
 
+    # Extract EOG data
     if eog_channels:
         eog_raw = raw.copy().pick(eog_channels)
         eog_data, eog_fs = _extract_epochs(eog_raw, epoch_length, n_epochs)
         multi_channel_data['eog'] = eog_data
-        sampling_rates['eog'] = eog_fs
+        channel_info['eog_names'] = eog_channels
+        channel_info['eog_fs'] = eog_fs
         print(f"  EOG: {eog_data.shape[1]} channels, {eog_data.shape[2]} samples/epoch, {eog_fs} Hz")
 
+    # Extract EMG data
     if emg_channels:
         emg_raw = raw.copy().pick(emg_channels)
         emg_data, emg_fs = _extract_epochs(emg_raw, epoch_length, n_epochs)
         multi_channel_data['emg'] = emg_data
-        sampling_rates['emg'] = emg_fs
+        channel_info['emg_names'] = emg_channels
+        channel_info['emg_fs'] = emg_fs
         print(f"  EMG: {emg_data.shape[1]} channels, {emg_data.shape[2]} samples/epoch, {emg_fs} Hz")
-
-    # Create record info
-    record_info = {
-        'record_id': record_id,
-        'n_epochs': n_epochs,
-        'channels': eeg_channels + eog_channels + emg_channels,
-        'sampling_rates': sampling_rates,
-        'epoch_length': epoch_length
-    }
 
     print(f"Loaded {n_epochs} epochs ({n_epochs*epoch_length/3600:.2f} hours)")
 
-    return multi_channel_data, record_info
+    return multi_channel_data, channel_info
 
 
 def _extract_epochs(raw, epoch_length, n_epochs):

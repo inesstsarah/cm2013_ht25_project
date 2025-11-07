@@ -2,16 +2,16 @@
 
 # Set the current iteration of the project (1-4). 
 # This controls which parts of the pipeline are active.
-CURRENT_ITERATION = 1
+CURRENT_ITERATION = 2
 
 # Set to True to use cached data for preprocessing and feature extraction.
-USE_CACHE = True
-USE_PARALLEL = True  # Use parallel processing where applicable
+USE_CACHE = False
+USE_PARALLEL = True # Use parallel processing where applicable
 PARALLEL_N_JOBS = -1  # Number of parallel jobs (-1 uses all available cores)
 
 # -- File Paths --
 import os
-DATA_DIR = 'data/'
+DATA_DIR = '../data/'
 TRAINING_DIR = f'{DATA_DIR}training/'
 HOLDOUT_DIR = f'{DATA_DIR}holdout/'
 SAMPLE_DIR = f'{DATA_DIR}sample/'
@@ -45,26 +45,63 @@ NOTCH_FILTER_Q = 30
 BANDPASS_FILTER_LOWER_FREQ = 0.5 # Hz
 BANDPASS_FILTER_HIGHER_FREQ = 33 # Hz
 BANDPASS_FILTER_ORDER = 5
-HIGHPASS_FILTER_FREQ = 0.2 # Hz
+HIGHPASS_FILTER_FREQ = 0.5 # Hz
 
 # -- Feature Extraction --
 # (Add feature-specific parameters here)
+AR_ORDER = 15
+EEG_BANDS = {
+    'delta': (0.5, 4.0),
+    'theta': (4.0, 8.0),
+    'alpha': (8.0, 13.0),
+    # 'sigma': (12.0, 15.0),
+    'beta': (13.0, 30.0),
+}
+EEG_SE_PERCENTILE = 0.9
+EEG_FS = 125
+EEG_LOWER = 0.5
+EEG_UPPER = 30
+
+WELCH_PARAMETERS = {
+    'window' : 'hann',
+    'nperseg' : 4*EEG_FS,
+    'noverlap' : int(0.5*4*EEG_FS),
+    'nfft' : 4*EEG_FS
+}
+WAVELET_NAME = 'db4'
 
 # -- Classification --
+USE_HYPERPARAM_OPTIMAZATION = False
 # Iteration-specific parameters - students should modify these based on current iteration
 if CURRENT_ITERATION == 1: # TODO: add more hyperparameters for the hyperparameter optimization
     # Iteration 1: Basic pipeline with k-NN
     CLASSIFIER_TYPE = 'knn'
-    KNN_N_NEIGHBORS = 5
     GRID_PARAMS = { 'n_neighbors' : [5,7,9,11,13,15],
                'weights' : ['uniform','distance'],
                'metric' : ['minkowski','euclidean','manhattan']}
-    
+    BEST_PARAMS = {
+        'n_neighbors': 5,
+        'weights': 'distance',
+        'metric': 'manhattan'
+    }
+
 elif CURRENT_ITERATION == 2:
     # Iteration 2: Enhanced EEG processing with SVM
     CLASSIFIER_TYPE = 'svm'
-    SVM_C = 1.0
-    SVM_KERNEL = 'rbf'
+    # SVM Grid Search Parameters
+    GRID_PARAMS = {
+        'C': [0.1, 0.5, 1.0, 5.0, 10.0, 50.0, 100.0],
+        'gamma': ['scale', 'auto', 0.001, 0.01, 0.1, 1.0], 
+        'kernel': ['rbf'],
+        'class_weight': ['balanced']
+    }
+    BEST_PARAMS = {
+        'C': 5.0,
+        'gamma': 'auto',
+        'kernel': 'rbf',
+        'class_weight': 'balanced'
+    }
+    
 elif CURRENT_ITERATION == 3:
     # Iteration 3: Multi-signal processing with Random Forest
     CLASSIFIER_TYPE = 'random_forest'

@@ -19,8 +19,8 @@ def run_inference():
 
     # 1. Load Hold-out Data
     # For jumpstart, we're using dummy data. In a real scenario, you'd iterate through files.
-    holdout_edf_file = os.path.join(config.HOLDOUT_DIR, "dummy_holdout.edf") # Placeholder
-    holdout_eeg_data = load_holdout_data(holdout_edf_file)
+    holdout_edf_file = os.path.join(config.HOLDOUT_DIR, "H1.edf") # Placeholder
+    holdout_eeg_data, channel_info = load_holdout_data(holdout_edf_file)
 
     # 2. Preprocessing (using the same logic as training)
     preprocessed_holdout_data = None
@@ -29,7 +29,7 @@ def run_inference():
         preprocessed_holdout_data = load_cache(cache_filename_preprocess_holdout, config.CACHE_DIR)
     
     if preprocessed_holdout_data is None:
-        preprocessed_holdout_data = preprocess(holdout_eeg_data, config)
+        preprocessed_holdout_data = preprocess(holdout_eeg_data,channel_info, config)
         if config.USE_CACHE:
             save_cache(preprocessed_holdout_data, cache_filename_preprocess_holdout, config.CACHE_DIR)
 

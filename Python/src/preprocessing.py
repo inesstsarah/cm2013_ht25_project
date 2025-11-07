@@ -1,9 +1,8 @@
-from scipy.signal import butter, lfilter, iirnotch, filtfilt, welch
+from scipy.signal import butter, iirnotch, filtfilt
 import numpy as np
 import os
 import matplotlib.pyplot as plt
 from src.visualization import visualize_fft, visualize_signal
-
 
 
 def highpass_filter(signal,cutoff,fs,order=5):
@@ -54,7 +53,7 @@ def notch_filter(signal, f0, Q, fs):
 def bandpass_filter(signal, lowcut , highcut, fs, order):
     """
     Butterworth bandpass filter to retain frequencies within a specific range.
-
+    
     Args:
         signal (np.ndarray): The input signal.
         lowcut (float): The lower cutoff frequency.
@@ -78,7 +77,7 @@ def bandpass_filter(signal, lowcut , highcut, fs, order):
     return filtered_signal
 
 
-def preprocess(data,channel_info, config):
+def preprocess(data, channel_info, config):
     """
     Preprocess input data based on current iteration settings.
 
@@ -127,7 +126,7 @@ def preprocess_multi_channel(multi_channel_data,channel_info, config):
     if config.CURRENT_ITERATION >= 2:  # EOG starts in iteration 2
         # Process EOG channels (2 channels) - may need different filtering
         eog_data = multi_channel_data['eog']
-        eog_fs = 50  # Actual sampling rate: 50 Hz (TODO: Get from channel_info)
+        eog_fs = channel_info['eog_fs']  # Actual sampling rate: 50 Hz (TODO: Get from channel_info)
         preprocessed_eog = np.zeros_like(eog_data)
 
         for ch in range(eog_data.shape[1]):

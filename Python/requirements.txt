@@ -9,3 +9,5 @@ pytest
 nolds
 imblearn
 pyedflib
+PyWavelets
+spectrum
