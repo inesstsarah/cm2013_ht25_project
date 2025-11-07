@@ -2,10 +2,10 @@
 
 # Set the current iteration of the project (1-4). 
 # This controls which parts of the pipeline are active.
-CURRENT_ITERATION = 1
+CURRENT_ITERATION = 2
 
 # Set to True to use cached data for preprocessing and feature extraction.
-USE_CACHE = True
+USE_CACHE = False
 USE_PARALLEL = True # Use parallel processing where applicable
 PARALLEL_N_JOBS = -1  # Number of parallel jobs (-1 uses all available cores)
 
