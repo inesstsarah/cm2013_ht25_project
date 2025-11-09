@@ -49,7 +49,7 @@ HIGHPASS_FILTER_FREQ = 0.5 # Hz
 
 # -- Feature Extraction --
 # (Add feature-specific parameters here)
-AR_ORDER = 15
+AR_ORDER = 10 # usually 10-15
 EEG_BANDS = {
     'delta': (0.5, 4.0),
     'theta': (4.0, 8.0),
@@ -68,6 +68,9 @@ WELCH_PARAMETERS = {
     'nfft' : 4*EEG_FS
 }
 WAVELET_NAME = 'db4'
+
+# -- Feature Selection --
+FEATURE_SELECTION_K = 50  # Number of top features to select
 
 # -- Classification --
 USE_HYPERPARAM_OPTIMAZATION = False

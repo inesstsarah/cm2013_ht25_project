@@ -1,4 +1,5 @@
 import numpy as np
+from sklearn.feature_selection import SelectKBest, mutual_info_classif
 
 def select_features(features, labels, config):
     """
@@ -34,23 +35,12 @@ def select_features(features, labels, config):
         return features
 
     if config.CURRENT_ITERATION <= 2:
-        # Early iterations: Use all available features
-        print("Early iteration - using all available features")
         selected_features = features
-
+        # selected_features = _select_features_mutual_information(features, labels, config.FEATURE_SELECTION_K)
+        
     elif config.CURRENT_ITERATION == 3:
-        # TODO: Students should implement feature selection here
-        # Target: Select ~30 best features from larger set
-        print("TODO: Students should implement feature selection for iteration 3")
-        print("Suggested: Use SelectKBest with f_classif to select ~30 features")
-        print("Example code:")
-        print("  from sklearn.feature_selection import SelectKBest, f_classif")
-        print("  selector = SelectKBest(f_classif, k=30)")
-        print("  selected_features = selector.fit_transform(features, labels)")
-
-        # Placeholder - students must replace:
-        selected_features = features  # No selection implemented yet
-
+        selected_features = features
+        
     elif config.CURRENT_ITERATION == 4:
         # TODO: Students should implement advanced feature selection
         print("TODO: Students should implement advanced feature selection for iteration 4")
@@ -60,4 +50,30 @@ def select_features(features, labels, config):
         selected_features = features  # No selection implemented yet
 
     #print(f"Selected features shape: {selected_features.shape}")
+    return selected_features
+
+
+def _select_features_mutual_information(features: np.ndarray, labels: np.ndarray, k: int) -> np.ndarray:
+    """
+    Select features using mutual information.
+    Args:
+        features (np.ndarray): The input features (n_samples, n_features).
+        labels (np.ndarray): The corresponding labels.
+        k (int): The number of top features to select.
+    Returns:
+        np.ndarray: The selected features (n_samples, n_selected_features).
+    """
+    k = min(k, features.shape[1])
+    print(f"Using Mutual Information to select top {k} features...")
+    print(f"  Method: mutual_info_classif (Option B)")
+    print(f"  Captures both linear and non-linear relationships")
+
+    selector = SelectKBest(score_func=mutual_info_classif, k=k)
+    selected_features = selector.fit_transform(features, labels)
+
+    feature_scores = selector.scores_
+    selected_indices = selector.get_support(indices=True)
+    print(f"  Selected {len(selected_indices)} features from {features.shape[1]} total")
+    print(f"  Selected features shape: {selected_features.shape}")
+    print(f"  Top 5 feature scores: {sorted(feature_scores, reverse=True)[:5]}")
     return selected_features

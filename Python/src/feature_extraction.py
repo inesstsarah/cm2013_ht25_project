@@ -231,7 +231,7 @@ def _ar_compute_psd(epoch: np.ndarray, fs: float, order: int, n_freqs: int) -> t
     A_vals = 1.0 + exp_matrix @ ar_coeffs[1:]
     psd = noise_var / (np.abs(A_vals) ** 2)
     psd = np.real(psd)
-    
+
     return (freqs, psd)
 
 
@@ -352,7 +352,7 @@ def extract_ar_features(epoch: np.ndarray,
     
     # Compute PSD and extract AR coefficient features in one call
     # This avoids redundant AR model estimation
-    freqs, psd = _ar_compute_psd(epoch, fs, order=order, n_freqs=1024)
+    freqs, psd = _ar_compute_psd(epoch, fs, order=order, n_freqs=256)
     total_power = _integrate_band_power(freqs, psd, fmin_total, fmax_total)
     features = {}
 
@@ -443,13 +443,18 @@ def extract_multi_channel_features(multi_channel_data, channel_info, config):
     ]
     
     if config.USE_PARALLEL:
+        # from threadpoolctl import threadpool_limits
+        # threadpool_limits(limits=1)
         print(f"Preparing {n_epochs} epochs for parallel processing...")
-
+        n_jobs = config.PARALLEL_N_JOBS if config.PARALLEL_N_JOBS > 0 else os.cpu_count() or 4
+        batch_size = max(1, n_epochs // (n_jobs * 3))
+        print(f"Using {n_jobs} workers with batch_size: {batch_size}")
         all_features = Parallel(
             n_jobs=config.PARALLEL_N_JOBS, 
             backend='loky', 
             verbose=10,
-            prefer='processes'
+            prefer='processes',
+            batch_size=batch_size
         )(
             delayed(_process_epoch)(epoch_data, channel_info, config) 
             for epoch_data in epoch_data_list
