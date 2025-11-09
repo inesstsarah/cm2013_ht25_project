@@ -5,13 +5,13 @@
 CURRENT_ITERATION = 2
 
 # Set to True to use cached data for preprocessing and feature extraction.
-USE_CACHE = False
+USE_CACHE = True
 USE_PARALLEL = True # Use parallel processing where applicable
 PARALLEL_N_JOBS = -1  # Number of parallel jobs (-1 uses all available cores)
 
 # -- File Paths --
 import os
-DATA_DIR = '../data/'
+DATA_DIR = './data/'
 TRAINING_DIR = f'{DATA_DIR}training/'
 HOLDOUT_DIR = f'{DATA_DIR}holdout/'
 SAMPLE_DIR = f'{DATA_DIR}sample/'
@@ -57,7 +57,6 @@ EEG_BANDS = {
     # 'sigma': (12.0, 15.0),
     'beta': (13.0, 30.0),
 }
-EEG_SE_PERCENTILE = 0.9
 EEG_FS = 125
 EEG_LOWER = 0.5
 EEG_UPPER = 30

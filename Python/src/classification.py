@@ -5,6 +5,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import LeaveOneGroupOut,GridSearchCV
 from sklearn.metrics import accuracy_score, confusion_matrix, cohen_kappa_score
 from sklearn.metrics import precision_recall_fscore_support, roc_auc_score
+from sklearn.preprocessing import StandardScaler
 import pandas as pd
 from imblearn.over_sampling import SMOTE
 from src.utils import calculate_sleep_metrics
@@ -43,13 +44,18 @@ def hyperparameter_optimization(X_train, y_train, config):
         config (dict): Config for repository.
     """
     
+    # CRITICAL: Scale features before hyperparameter optimization
+    # This ensures grid search evaluates models on properly scaled data
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    
     # Get model and parameters from config
     base_model = get_model_from_config(config)
     grid_params = config.GRID_PARAMS
 
-    # Perform grid search
+    # Perform grid search on scaled features
     gs = GridSearchCV(base_model, grid_params, verbose=1, cv=3, n_jobs=-1)
-    g_res = gs.fit(X_train, y_train)
+    g_res = gs.fit(X_train_scaled, y_train)
 
     # find the best score
     best_score = g_res.best_score_
@@ -127,17 +133,24 @@ def LOSO_split_training(features, labels, record_ids, config):
         if config.CURRENT_ITERATION == 1:
             X_train, y_train = smote.fit_resample(X_train, y_train)
         
+        # CRITICAL: Feature scaling for SVM (and helpful for other classifiers)
+        # StandardScaler normalizes features to mean=0, std=1
+        # This is essential when features have different scales (e.g., power vs. frequency)
+        scaler = StandardScaler()
+        X_train_scaled = scaler.fit_transform(X_train)
+        X_test_scaled = scaler.transform(X_test)
+        
         # Which subject is held out in this fold?
         train_subjects = np.unique(record_ids[train_idx])
         test_subject = np.unique(record_ids[test_idx])[0]
         print(f"\nFold {fold_idx+1}/{len(train_subjects)+1}: Training on {len(train_subjects)} subjects, testing on {test_subject}")
 
-        # Train classifier on 9 subjects
-        model.fit(X_train, y_train)
+        # Train classifier on scaled features
+        model.fit(X_train_scaled, y_train)
 
-        # Predict on held-out subject
-        y_pred = model.predict(X_test)
-        y_pred_proba = model.predict_proba(X_test) if hasattr(model, "predict_proba") else None
+        # Predict on held-out subject (use scaled test features)
+        y_pred = model.predict(X_test_scaled)
+        y_pred_proba = model.predict_proba(X_test_scaled) if hasattr(model, "predict_proba") else None
         eva_results = _training_evaluation(y_test, y_pred, y_pred_proba,record_ids[test_idx])
         all_y_test.extend(y_test)
         all_y_pred.extend(y_pred)

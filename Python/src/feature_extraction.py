@@ -1,4 +1,6 @@
 from typing import Any
+import matplotlib
+matplotlib.use('Agg')  # Non-interactive backend (must be set before pyplot import)
 import numpy as np
 import scipy.stats   
 from scipy.signal import welch
@@ -205,18 +207,17 @@ def extract_time_domain_features(epoch):
 
 
 # ========== AR features computation ========== {
-def _ar_compute_psd(epoch: np.ndarray, fs: float, order: int, n_freqs: int) -> tuple:
+def _ar_compute_psd(epoch: np.ndarray, fs: float, order: int, n_freqs: int) -> tuple[np.ndarray, np.ndarray]:
     """
     Compute AR-based PSD using Burg's method.
-
-    Returns frequencies (Hz) and one-sided PSD.
     """
     # Estimate AR coefficients and driving noise variance
     ar_coeffs, noise_var = arburg(epoch, order)[:2]
-
+    
+    # Compute PSD
     # Frequency grid (0 .. fs/2)
     freqs = np.linspace(0.0, fs / 2.0, n_freqs)
-
+    
     # Evaluate A(e^{-j 2π f k / fs}) over grid
     # ar_coeffs is [1, a1, ..., ap] as returned by arburg
     k_indices = np.arange(1, len(ar_coeffs))
@@ -224,13 +225,13 @@ def _ar_compute_psd(epoch: np.ndarray, fs: float, order: int, n_freqs: int) -> t
         # Degenerate case
         psd = np.full_like(freqs, fill_value=noise_var / (1e-12))
         return freqs, psd
-
+    
     exp_matrix = np.exp(-1j * 2.0 * np.pi * np.outer(freqs / fs, k_indices))  # shape (n_freqs, p)
     A_vals = 1.0 + exp_matrix @ ar_coeffs[1:]
     psd = noise_var / (np.abs(A_vals) ** 2)
     psd = np.real(psd)
-
-    return freqs, psd
+    
+    return (freqs, psd)
 
 
 def _integrate_band_power(freqs: np.ndarray, psd: np.ndarray, f_low: float, f_high: float) -> float:
@@ -238,6 +239,24 @@ def _integrate_band_power(freqs: np.ndarray, psd: np.ndarray, f_low: float, f_hi
     if not np.any(mask):
         return 0.0
     return np.trapezoid(psd[mask], freqs[mask])
+
+
+def _peak_frequency(freqs: np.ndarray, psd: np.ndarray, f_low: float = None, f_high: float = None) -> float:
+    if f_low is not None and f_high is not None:
+        mask = (freqs >= f_low) & (freqs <= f_high)
+        if not np.any(mask):
+            return float('nan')
+        freqs_sel = freqs[mask]
+        psd_sel = psd[mask]
+    else:
+        freqs_sel = freqs
+        psd_sel = psd
+    
+    if len(psd_sel) == 0 or np.max(psd_sel) <= 0:
+        return float('nan')
+    
+    peak_idx = np.argmax(psd_sel)
+    return float(freqs_sel[peak_idx])
 
 
 def _spectral_entropy(freqs: np.ndarray, psd: np.ndarray, f_low: float, f_high: float) -> float:
@@ -250,6 +269,58 @@ def _spectral_entropy(freqs: np.ndarray, psd: np.ndarray, f_low: float, f_high: 
     H = -np.sum(p * np.log(p))
     H_norm = H / np.log(len(p))
     return float(H_norm)
+
+
+def _extract_derivative_features(freqs: np.ndarray, psd: np.ndarray, f_low: float, f_high: float) -> dict:
+    """
+    Extract derivative features from power spectral density.
+    
+    Calculates first and second order derivatives of PSD and extracts
+    statistical features (mean, std, max, min, range, power).
+    
+    Args:
+        freqs (np.ndarray): Frequency array (Hz).
+        psd (np.ndarray): Power spectral density array.
+    
+    Returns:
+        dict: Dictionary containing derivative features.
+    """
+    mask = (freqs >= f_low) & (freqs <= f_high)
+    if not np.any(mask):
+        return {}
+    psd = psd[mask]
+    freqs = freqs[mask]
+    features = {}
+    
+    # Calculate frequency step
+    df = np.diff(freqs)[0] if len(np.diff(freqs)) > 0 else (freqs[-1] - freqs[0]) / len(freqs)
+    
+    # First-order derivative (dPSD/df) - reflects rate of change of power with frequency
+    psd_first_derivative = np.diff(psd) / df
+    
+    # First-order derivative statistics
+    features['deriv1_mean'] = np.mean(psd_first_derivative)
+    features['deriv1_std'] = np.std(psd_first_derivative)
+    features['deriv1_max'] = np.max(psd_first_derivative)
+    features['deriv1_min'] = np.min(psd_first_derivative)
+    features['deriv1_range'] = np.max(psd_first_derivative) - np.min(psd_first_derivative)
+    
+    # First-order derivative power (integral of squared derivative) - measures total spectral variation
+    features['deriv1_power'] = np.trapezoid(psd_first_derivative**2, freqs[1:])
+    
+    # Second-order derivative (d²PSD/df²) - reflects spectral curvature/sharpness
+    psd_second_derivative = np.diff(psd_first_derivative) / df
+    
+    # Second-order derivative statistics
+    features['deriv2_mean'] = np.mean(psd_second_derivative)
+    features['deriv2_std'] = np.std(psd_second_derivative)
+    features['deriv2_max'] = np.max(psd_second_derivative)
+    features['deriv2_min'] = np.min(psd_second_derivative)
+    
+    # Second-order derivative power
+    features['deriv2_power'] = np.trapezoid(psd_second_derivative**2, freqs[2:])
+    
+    return features
 
 
 def _spectral_edge_frequency(freqs: np.ndarray, psd: np.ndarray, f_low: float, f_high: float, percentile: float = 0.9) -> float:
@@ -271,20 +342,15 @@ def _spectral_edge_frequency(freqs: np.ndarray, psd: np.ndarray, f_low: float, f
 def extract_ar_features(epoch: np.ndarray,
                         fs: int,
                         bands: dict,
-                        order: int,
-                        se_percentile: float) -> dict:
+                        order: int) -> dict:
     """
-    Extract AR (Burg) spectral features for a single EEG epoch.
-
-    Features:
-    - Band powers (Delta/Theta/Alpha/Sigma/Beta)
-    - Relative band powers (normalized by total power 0.5–30 Hz)
-    - Spectral edge frequency (90% by default) within 0.5–30 Hz
-    - Peak frequency within 0.5–30 Hz
-    - Spectral entropy within 0.5–30 Hz
+    Extract AR (Burg) features for a single EEG epoch.
     """
-    fmin_total, fmax_total = 0.5, 30.0
+    fmin_total = bands['delta'][0]
+    fmax_total = bands['beta'][1]
     
+    # Compute PSD and extract AR coefficient features in one call
+    # This avoids redundant AR model estimation
     freqs, psd = _ar_compute_psd(epoch, fs, order=order, n_freqs=1024)
     total_power = _integrate_band_power(freqs, psd, fmin_total, fmax_total)
     features = {}
@@ -294,18 +360,18 @@ def extract_ar_features(epoch: np.ndarray,
         bp = _integrate_band_power(freqs, psd, f1, f2)
         features[f'ar_{name}_power'] = bp
         features[f'ar_{name}_rel_power'] = (bp / total_power) if total_power > 0 else 0.0
+        # Peak frequency within each band
+        features[f'ar_{name}_peak_freq'] = _peak_frequency(freqs, psd, f1, f2)
 
-    # Edge frequency, peak frequency, spectral entropy (within analysis band)
-    features['ar_spectral_edge_freq'] = _spectral_edge_frequency(freqs, psd, fmin_total, fmax_total, se_percentile)
-
-    mask = (freqs >= fmin_total) & (freqs <= fmax_total)
-    if np.any(mask):
-        peak_idx = np.argmax(psd[mask])
-        features['ar_peak_frequency'] = float(freqs[mask][peak_idx])
-    else:
-        features['ar_peak_frequency'] = float('nan')
-
+    # Spectral edge frequency (SEF90)
+    features['ar_spectral_edge_freq'] = _spectral_edge_frequency(freqs, psd, fmin_total, fmax_total, 0.9)
+    # Global peak frequency
+    features['ar_peak_frequency'] = _peak_frequency(freqs, psd, fmin_total, fmax_total)
+    # Spectral entropy
     features['ar_spectral_entropy'] = _spectral_entropy(freqs, psd, fmin_total, fmax_total)
+    # Derivative features
+    deriv_features = _extract_derivative_features(freqs, psd, fmin_total, fmax_total)
+    features.update(deriv_features)
 
     return features
 # ========== AR features computation ========== }
@@ -509,8 +575,8 @@ def process_epoch(epoch_idx, multi_channel_data, channel_info, config):
         epoch_features.extend(list(eeg_td.values()))
 
         # Add AR spectral features
-        eeg_ar = extract_ar_features(eeg_signal, channel_info['eeg_fs'], config.EEG_BANDS, config.AR_ORDER, config.EEG_SE_PERCENTILE)
-        epoch_features.extend(list[Any](eeg_ar.values()))
+        eeg_ar = extract_ar_features(eeg_signal, channel_info['eeg_fs'], config.EEG_BANDS, config.AR_ORDER)
+        epoch_features.extend(list(eeg_ar.values()))
 
         # Add wavelet features
         eeg_wavelet = wavelet_processing(eeg_signal, config.WAVELET_NAME)
