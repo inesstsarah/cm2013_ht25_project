@@ -9,6 +9,7 @@ from joblib import Parallel, delayed
 from spectrum import arburg
 import pywt
 from math import log, e
+import os
 
 
 def extract_hjorth_activity(epoch):
@@ -430,26 +431,37 @@ def extract_multi_channel_features(multi_channel_data, channel_info, config):
     print("selecting multi-channel features...")
     
     n_epochs = multi_channel_data['eeg'].shape[0]
-    all_features = []
+    # OPTIMIZATION: Pre-extract epoch data to avoid any slicing/copying in worker processes
+    # Extract all channel data upfront to minimize work inside parallel workers
+    epoch_data_list = [
+        {
+            'eeg': multi_channel_data['eeg'][epoch_idx, :, :],
+            'eog': multi_channel_data['eog'][epoch_idx, :, :] if config.CURRENT_ITERATION >= 2 else None,
+            'emg': multi_channel_data['emg'][epoch_idx, :, :] if config.CURRENT_ITERATION >= 3 else None
+        }
+        for epoch_idx in range(n_epochs)
+    ]
     
     if config.USE_PARALLEL:
-        all_features = Parallel(n_jobs=config.PARALLEL_N_JOBS, backend='loky', verbose=10)(
-            delayed(process_epoch)(i,multi_channel_data,channel_info,config) for i in range(n_epochs))
+        print(f"Preparing {n_epochs} epochs for parallel processing...")
+
+        all_features = Parallel(
+            n_jobs=config.PARALLEL_N_JOBS, 
+            backend='loky', 
+            verbose=10,
+            prefer='processes'
+        )(
+            delayed(_process_epoch)(epoch_data, channel_info, config) 
+            for epoch_data in epoch_data_list
+        )
     else:
+        all_features = []
         for epoch_idx in range(n_epochs):
-            print(f"Extracting EEG features for epoch {epoch_idx+1}/{n_epochs}")
-            epoch_features = process_epoch(epoch_idx, multi_channel_data, channel_info, config)
+            print(f"Extracting features for epoch {epoch_idx+1}/{n_epochs}")
+            epoch_features = _process_epoch(epoch_data_list[epoch_idx], channel_info, config)
             all_features.append(epoch_features)
 
     features = np.array(all_features)
-
-    if config.CURRENT_ITERATION == 1:
-        expected = 2 * 17  # 2 EEG channels × 17 features each
-        print(f"Multi-channel Iteration 1: {features.shape[1]} features (target: {expected}+)")
-    elif config.CURRENT_ITERATION >= 3:
-        print(f"Multi-channel features extracted: {features.shape[1]} total")
-        print("(2 EEG + 2 EOG + 1 EMG channels)")
-
     return features
 
 
@@ -552,24 +564,27 @@ def extract_emg_features(emg_signal):
     return features
 
 
-def process_epoch(epoch_idx: int, multi_channel_data: dict, channel_info: dict, config: dict) -> list:
+def _process_epoch(epoch_data: dict, channel_info: dict, config: dict) -> list:
     """
-    Process a single epoch to extract features from EEG, EOG, and EMG channels.
-
-    Args:
-        epoch_idx (int): The index of the epoch to process.
-        multi_channel_data (dict): Dictionary with keys 'eeg', 'eog', 'emg'.
-        config (module): The configuration module.
-    Returns:
-        epoch_features (list): A list of extracted features for the epoch.
+    Process a single epoch's data to extract features.
+    This is the core processing function that extracts all features from epoch data.
     
-    Example:
-        >>> epoch_features = process_epoch(epoch_idx, multi_channel_data, config)
+    Args:
+        epoch_data (dict): Dictionary with 'eeg', 'eog', 'emg' keys containing arrays.
+                          - 'eeg': shape (n_channels, n_samples)
+                          - 'eog': shape (n_channels, n_samples)
+                          - 'emg': shape (n_samples,)
+        channel_info (dict): Channel information (e.g., 'eeg_fs').
+        config: Config object or proxy with necessary parameters.
+    Returns:
+        epoch_features (list): List of extracted features for the epoch.
     """
     epoch_features = []
-    # EEG features (2 channels)
-    for ch in range(multi_channel_data['eeg'].shape[1]):
-        eeg_signal = multi_channel_data['eeg'][epoch_idx, ch, :].copy()
+    eeg_data = epoch_data['eeg']  # shape: (n_channels, n_samples)
+    
+    # EEG features (typically 2 channels)
+    for ch in range(eeg_data.shape[0]):
+        eeg_signal = eeg_data[ch, :]
         # Time-domain features
         eeg_td = extract_time_domain_features(eeg_signal)
         epoch_features.extend(list(eeg_td.values()))
@@ -589,15 +604,17 @@ def process_epoch(epoch_idx: int, multi_channel_data: dict, channel_info: dict, 
 
     if config.CURRENT_ITERATION >= 3:
         # Add EOG features (2 channels)
-        for ch in range(multi_channel_data['eog'].shape[1]):
-            eog_signal = multi_channel_data['eog'][epoch_idx, ch, :]
+        eog_data = epoch_data['eog']
+        for ch in range(eog_data.shape[0]):
+            eog_signal = eog_data[ch, :]
             eog_features = extract_eog_features(eog_signal)
             epoch_features.extend(list(eog_features.values()))
 
         # Add EMG features (1 channel)
-        emg_signal = multi_channel_data['emg'][epoch_idx, 0, :]
-        emg_features = extract_emg_features(emg_signal)
-        epoch_features.extend(list(emg_features.values()))
+        if epoch_data.get('emg') is not None:
+            emg_signal = epoch_data['emg']
+            emg_features = extract_emg_features(emg_signal)
+            epoch_features.extend(list(emg_features.values()))
 
     return epoch_features
 
