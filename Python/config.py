@@ -22,7 +22,7 @@ FIGURES_FEATURE_EXTRACTION_DIR = 'figure/Feature Extraction/'
 FIGURES_CLASSIFICATION_DIR = 'figure/Classification/'
 
 # Validate and create directories if needed
-def _create_dir_if_not_exists(directory):
+def _create_dir_if_not_exists(directory: str) -> None:
     if not os.path.exists(directory):
         print(f"Creating directory: {directory}")
         os.makedirs(directory, exist_ok=True)

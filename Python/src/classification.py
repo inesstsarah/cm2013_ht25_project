@@ -11,30 +11,27 @@ from imblearn.over_sampling import SMOTE
 from src.utils import calculate_sleep_metrics
 
 
-def get_model_from_config(config):
+def _get_model_from_config(classifier_type: str) -> object:
     """Get model instance based on config CLASSIFIER_TYPE"""
-    if config.CLASSIFIER_TYPE == 'knn':
+    if classifier_type == 'knn':
         return KNeighborsClassifier()
     
-    elif config.CLASSIFIER_TYPE == 'svm':
+    elif classifier_type == 'svm':
         return SVC(
             probability=True,
             random_state=42
         )
     
-    elif config.CLASSIFIER_TYPE == 'random_forest':
+    elif classifier_type == 'random_forest':
         return RandomForestClassifier(
-            n_estimators=getattr(config, 'RF_N_ESTIMATORS', 100),
-            max_depth=getattr(config, 'RF_MAX_DEPTH', None),
-            min_samples_split=getattr(config, 'RF_MIN_SAMPLES_SPLIT', 2),
             random_state=42,
             n_jobs=-1  # Use all available cores
         )
     else:
-        raise ValueError(f"Unknown classifier type: {config.CLASSIFIER_TYPE}")
+        raise ValueError(f"Unknown classifier type: {classifier_type}")
 
 
-def hyperparameter_optimization(X_train, y_train, config):
+def hyperparameter_optimization(base_model, X_train, y_train, grid_params):
     """
     Function to search for the optimal parameters in a hyperparameter space
 
@@ -48,10 +45,6 @@ def hyperparameter_optimization(X_train, y_train, config):
     # This ensures grid search evaluates models on properly scaled data
     scaler = StandardScaler()
     X_train_scaled = scaler.fit_transform(X_train)
-    
-    # Get model and parameters from config
-    base_model = get_model_from_config(config)
-    grid_params = config.GRID_PARAMS
 
     # Perform grid search on scaled features
     gs = GridSearchCV(base_model, grid_params, verbose=1, cv=3, n_jobs=-1)
@@ -95,12 +88,12 @@ def train_classifier(features, labels, record_ids, config):
     else:
         print("Training model...")
         # Use LOSO cross-validation for training
-        model = LOSO_split_training(features, labels, record_ids, config)
+        model = _LOSO_split_training(features, labels, record_ids, config)
     return model
 
 
 # TODO: Statistical comparison between iterations (t-test on kappa scores)
-def LOSO_split_training(features, labels, record_ids, config):
+def _LOSO_split_training(features: np.ndarray, labels: np.ndarray, record_ids: np.ndarray, config: dict) -> dict:
     # Create LOSO cross-validation split
     logo = LeaveOneGroupOut()
     loso_results = []
@@ -112,10 +105,10 @@ def LOSO_split_training(features, labels, record_ids, config):
     else:
         X_full, y_full = features, labels
     
-    model = get_model_from_config(config)
+    model = _get_model_from_config(config.CLASSIFIER_TYPE)
     if config.USE_HYPERPARAM_OPTIMAZATION:
         # Hyperparameter optimization and model creation
-        best_score, best_params = hyperparameter_optimization(X_full, y_full, config)
+        _, best_params = hyperparameter_optimization(model, X_full, y_full, config.GRID_PARAMS)
         # Create fresh model instance with best parameters for each fold
         model.set_params(**best_params)
         print(f"Model instance ID: {id(model)}, Params: {best_params}")
@@ -181,7 +174,7 @@ def LOSO_split_training(features, labels, record_ids, config):
     }
    
 
-def _training_evaluation(y_true, y_pred, y_pred_proba,record_ids):
+def _training_evaluation(y_true: np.ndarray, y_pred: np.ndarray, y_pred_proba: np.ndarray, record_ids: np.ndarray) -> dict:
     # Calculate metrics for this subject
     stage_names = ['Wake', 'N1', 'N2', 'N3', 'REM']
     stage_labels = list(range(5))
@@ -234,7 +227,7 @@ def _training_evaluation(y_true, y_pred, y_pred_proba,record_ids):
     _print_scoring_notes()
 
     # Clinical plausibility check
-    compare_sleep_metrics(y_true, y_pred,record_ids)
+    _compare_sleep_metrics(y_true, y_pred,record_ids)
 
     result = {
             'accuracy': accuracy,
@@ -249,7 +242,7 @@ def _training_evaluation(y_true, y_pred, y_pred_proba,record_ids):
     return result
 
 
-def _compute_auc(y_true, y_pred_proba):
+def _compute_auc(y_true: np.ndarray, y_pred_proba: np.ndarray) -> dict:
     """
     Compute per-class and macro ROC-AUC.
 
@@ -288,7 +281,7 @@ def _compute_auc(y_true, y_pred_proba):
     }
 
 
-def _compute_specificity(y_true, y_pred, stage_label):
+def _compute_specificity(y_true: np.ndarray, y_pred: np.ndarray, stage_label: list) -> list:
     specificity = []
     for i in range(len(stage_label)):
         tn = np.sum((y_true != i) & (y_pred != i))
@@ -298,7 +291,7 @@ def _compute_specificity(y_true, y_pred, stage_label):
     return specificity
 
 
-def _print_confusion_matrix(y_true, y_pred, stage_names, stage_labels):
+def _print_confusion_matrix(y_true: np.ndarray, y_pred: np.ndarray, stage_names: list, stage_labels: list):
     print("\nConfusion Matrix:")
     cm = confusion_matrix(y_true, y_pred, labels=stage_labels) 
     # Create a formatted confusion matrix
@@ -306,7 +299,7 @@ def _print_confusion_matrix(y_true, y_pred, stage_names, stage_labels):
     print(cm_df.to_string())
 
 
-def _print_sleep_stage_distribution(y_true):
+def _print_sleep_stage_distribution(y_true: np.ndarray) -> None:
     print("\nClass Distribution in Test Set:")
     stage_names = ['Wake', 'N1', 'N2', 'N3', 'REM']
     unique, counts = np.unique(y_true, return_counts=True)
@@ -318,7 +311,7 @@ def _print_sleep_stage_distribution(y_true):
         print(f"{stage_name}: {count} samples ({percentage:.1f}%)")
 
 
-def _print_scoring_notes():
+def _print_scoring_notes() -> None:
     print("\nNotes for Sleep Scoring:")
     print("- Sensitivity = Recall = True Positive Rate (correctly identified stages)")
     print("- Specificity = True Negative Rate (correctly rejected stages)")
@@ -327,7 +320,7 @@ def _print_scoring_notes():
     print("- Clinical focus: High sensitivity for REM and N3 stages")
 
 
-def _print_sleep_metrics_comparison_table(true_metrics, pred_metrics):
+def _print_sleep_metrics_comparison_table(true_metrics: dict, pred_metrics: dict) -> None:
     """
     Print formatted comparison table for sleep metrics.
     
@@ -422,7 +415,7 @@ def _print_sleep_metrics_comparison_table(true_metrics, pred_metrics):
     print("=" * 80, end="\n")
 
 
-def compare_sleep_metrics(y_true, y_pred, record_ids=None, epoch_duration=30):
+def _compare_sleep_metrics(y_true: np.ndarray, y_pred: np.ndarray, record_ids: np.ndarray = None, epoch_duration: int = 30) -> dict:
     """
     Compare sleep architecture metrics between ground truth and predictions.
     

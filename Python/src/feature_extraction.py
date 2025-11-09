@@ -552,7 +552,7 @@ def extract_emg_features(emg_signal):
     return features
 
 
-def process_epoch(epoch_idx, multi_channel_data, channel_info, config):
+def process_epoch(epoch_idx: int, multi_channel_data: dict, channel_info: dict, config: dict) -> list:
     """
     Process a single epoch to extract features from EEG, EOG, and EMG channels.
 
