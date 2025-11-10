@@ -33,12 +33,12 @@ def select_features(features, labels, config):
         print("⚠️  WARNING: No features to select from!")
         return features
 
-    if config.CURRENT_ITERATION <= 2:
+    if config.CURRENT_ITERATION < 2:
         # Early iterations: Use all available features
         print("Early iteration - using all available features")
         selected_features = features
 
-    elif config.CURRENT_ITERATION == 3:
+    elif config.CURRENT_ITERATION <= 3:
         # TODO: Students should implement feature selection here
         # Target: Select ~30 best features from larger set
         print("TODO: Students should implement feature selection for iteration 3")
