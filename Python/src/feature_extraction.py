@@ -6,7 +6,7 @@ import scipy.stats
 from scipy.signal import welch
 import nolds
 from joblib import Parallel, delayed
-from spectrum import arburg
+from spectrum import arburg, pburg
 import pywt
 from math import log, e
 import os
@@ -208,33 +208,6 @@ def extract_time_domain_features(epoch):
 
 
 # ========== AR features computation ========== {
-def _ar_compute_psd(epoch: np.ndarray, fs: float, order: int, n_freqs: int) -> tuple[np.ndarray, np.ndarray]:
-    """
-    Compute AR-based PSD using Burg's method.
-    """
-    # Estimate AR coefficients and driving noise variance
-    ar_coeffs, noise_var = arburg(epoch, order)[:2]
-    
-    # Compute PSD
-    # Frequency grid (0 .. fs/2)
-    freqs = np.linspace(0.0, fs / 2.0, n_freqs)
-    
-    # Evaluate A(e^{-j 2π f k / fs}) over grid
-    # ar_coeffs is [1, a1, ..., ap] as returned by arburg
-    k_indices = np.arange(1, len(ar_coeffs))
-    if len(k_indices) == 0:
-        # Degenerate case
-        psd = np.full_like(freqs, fill_value=noise_var / (1e-12))
-        return freqs, psd
-    
-    exp_matrix = np.exp(-1j * 2.0 * np.pi * np.outer(freqs / fs, k_indices))  # shape (n_freqs, p)
-    A_vals = 1.0 + exp_matrix @ ar_coeffs[1:]
-    psd = noise_var / (np.abs(A_vals) ** 2)
-    psd = np.real(psd)
-
-    return (freqs, psd)
-
-
 def _integrate_band_power(freqs: np.ndarray, psd: np.ndarray, f_low: float, f_high: float) -> float:
     mask = (freqs >= f_low) & (freqs <= f_high)
     if not np.any(mask):
@@ -304,8 +277,7 @@ def _extract_derivative_features(freqs: np.ndarray, psd: np.ndarray, f_low: floa
     features['deriv1_std'] = np.std(psd_first_derivative)
     features['deriv1_max'] = np.max(psd_first_derivative)
     features['deriv1_min'] = np.min(psd_first_derivative)
-    features['deriv1_range'] = np.max(psd_first_derivative) - np.min(psd_first_derivative)
-    
+
     # First-order derivative power (integral of squared derivative) - measures total spectral variation
     features['deriv1_power'] = np.trapezoid(psd_first_derivative**2, freqs[1:])
     
@@ -350,9 +322,11 @@ def extract_ar_features(epoch: np.ndarray,
     fmin_total = bands['delta'][0]
     fmax_total = bands['beta'][1]
     
-    # Compute PSD and extract AR coefficient features in one call
-    # This avoids redundant AR model estimation
-    freqs, psd = _ar_compute_psd(epoch, fs, order=order, n_freqs=256)
+    # Compute PSD and AR coefficients using pburg
+    p = pburg(epoch, order=order, sampling=fs, criteria='AIC', NFFT=4096)
+    psd = np.array(p.psd)
+    freqs = np.array(p.frequencies())
+
     total_power = _integrate_band_power(freqs, psd, fmin_total, fmax_total)
     features = {}
 

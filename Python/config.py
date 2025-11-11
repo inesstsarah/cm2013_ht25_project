@@ -49,7 +49,7 @@ HIGHPASS_FILTER_FREQ = 0.5 # Hz
 
 # -- Feature Extraction --
 # (Add feature-specific parameters here)
-AR_ORDER = 10 # usually 10-15
+AR_ORDER = 10 # 10 has better performance, but 15 is more common
 EEG_BANDS = {
     'delta': (0.5, 4.0),
     'theta': (4.0, 8.0),
