@@ -144,8 +144,8 @@ def wavelet_feature_extraction(coeff_arr):
     
 def wavelet_processing(epoch, wavelet_name):
     coeff_arr = wavelet_decomposition(signal = epoch, wavelet_name = wavelet_name)
-    print(f"Array of coeffs: {coeff_arr}")
-    print(f"Shape of array coeffs: {coeff_arr.shape}")
+    # print(f"Array of coeffs: {coeff_arr}")
+    # print(f"Shape of array coeffs: {coeff_arr.shape}")
     wavelet_features = wavelet_feature_extraction(coeff_arr=coeff_arr)
     return(wavelet_features)
 

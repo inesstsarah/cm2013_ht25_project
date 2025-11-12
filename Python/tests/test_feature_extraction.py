@@ -16,17 +16,33 @@ from src.feature_extraction import (
     extract_time_domain_features,
     extract_single_channel_features,
     extract_multi_channel_features,
-    extract_features
+    extract_features,
+    wavelet_processing,
+    wavelet_decomposition,
+    wavelet_feature_extraction
 )
 from src.data_loader import load_training_data
 from src.preprocessing import preprocess
 
 
-edf_path = os.path.join('data/sample/', 'R1.edf')
-xml_path = os.path.join('data/sample/', 'R1.xml')
+edf_path = os.path.join('../data/sample/', 'R1.edf')
+xml_path = os.path.join('../data/sample/', 'R1.xml')
 data,_,channel_info= load_training_data(edf_path, xml_path)
 preprocessed_data = preprocess(data,channel_info, config)
 epoch_eeg = preprocessed_data['eeg'][0,0,:]
+
+def test_wavelet_decomposition():
+    c = wavelet_decomposition(signal = epoch_eeg, wavelet_name = "coif1")
+    # Check if number of elements in array is more than one (there are more than one coefficients)
+    assert len(c)>1
+
+def test_wavelet_features():
+    """Test Wavelet Decomposition and Feature Extraction"""
+
+    wavelet_features = wavelet_processing(epoch_eeg, "coif1")
+    # Check if wavelet features returns a value
+    assert len(wavelet_features)>0
+
 
 def test_hjorth_activity():
     """Test Hjorth Activity (Variance)"""

@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 
 def select_features(features, labels, config):
     """
@@ -14,7 +15,7 @@ def select_features(features, labels, config):
     - Statistical tests (ANOVA F-test, chi-square)
     - Mutual information
     - Correlation-based selection
-    - Recursive feature elimination
+    - Recursive feature elimination 
     - L1 regularization (LASSO)
     - Tree-based feature importance
 
