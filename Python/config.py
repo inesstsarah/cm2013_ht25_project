@@ -5,7 +5,7 @@
 CURRENT_ITERATION = 2
 
 # Set to True to use cached data for preprocessing and feature extraction.
-USE_CACHE = True
+USE_CACHE = False
 USE_PARALLEL = True # Use parallel processing where applicable
 PARALLEL_N_JOBS = -1  # Number of parallel jobs (-1 uses all available cores)
 
@@ -67,7 +67,7 @@ WELCH_PARAMETERS = {
     'noverlap' : int(0.5*4*EEG_FS),
     'nfft' : 4*EEG_FS
 }
-WAVELET_NAME = 'db4'
+WAVELET_NAME = 'bior6.8'
 
 # -- Feature Selection --
 FEATURE_SELECTION_K = 50  # Number of top features to select

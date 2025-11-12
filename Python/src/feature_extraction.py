@@ -101,7 +101,6 @@ def wavelet_decomposition(signal, wavelet_name):
     
     return(coeff_arr)
 
-
 def wavelet_feature_extraction(coeff_arr):
     """Function to extract signals from wavelet coefficients from 
     the decomposition
@@ -114,35 +113,34 @@ def wavelet_feature_extraction(coeff_arr):
 
     wavelet_features = {}
     # Try extracting the entropy, and other statistics from every coefficient if possible
+    for i in range(len(coeff_arr)):
     #for coeff in coeff_arr:
         # Do the feature extraction here for every coeff
-    coeff = coeff_arr[-1]
-    energy = np.sum(coeff**2)
-    wavelet_features["energy"] = energy
+        energy = np.sum(coeff_arr[i]**2)
+        wavelet_features[f"energy_{i}"] = energy
+    
+        # Get statistical moments
+        # Mean
+        mean = np.mean(coeff_arr[i])
+        wavelet_features[f"mean_{i}"] = mean
 
-    # Get statistical moments
-    # Mean
-    mean = np.mean(coeff)
-    wavelet_features["mean"] = mean
+        # Standard Deviation
+        stdev = np.std(coeff_arr[i])
+        wavelet_features[f"stdev_{i}"] = stdev
 
-    # Standard Deviation
-    stdev = np.std(coeff)
-    wavelet_features["stdev"] = stdev
+        # Skewness
+        skewness = scipy.stats.skew(coeff_arr[i]) 
+        wavelet_features[f"skewness_{i}"] = skewness
 
-    # Skewness
-    skewness = scipy.stats.skew(coeff) 
-    wavelet_features["skewness"] = skewness
+        # Kurtosis
+        kurt = scipy.stats.kurtosis(coeff_arr[i])
+        wavelet_features[f"kurtosis_{i}"] = kurt
 
-    # Kurtosis
-    kurt = scipy.stats.kurtosis(coeff)
-    wavelet_features["kurtosis"] = kurt
-
-    # Entropy
-    entropy = entropy2(coeff)
-    wavelet_features["entropy"] = entropy
+        # Entropy
+        entropy = entropy2(coeff_arr[i])
+        wavelet_features[f"entropy_{i}"] = entropy
     
     return(wavelet_features)
-
 
 def wavelet_processing(epoch, wavelet_name):
     coeff_arr = wavelet_decomposition(signal = epoch, wavelet_name = wavelet_name)
