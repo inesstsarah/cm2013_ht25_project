@@ -5,36 +5,33 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import LeaveOneGroupOut,GridSearchCV
 from sklearn.metrics import accuracy_score, confusion_matrix, cohen_kappa_score
 from sklearn.metrics import precision_recall_fscore_support, roc_auc_score
+from sklearn.preprocessing import StandardScaler
 import pandas as pd
 from imblearn.over_sampling import SMOTE
 from src.utils import calculate_sleep_metrics
 
 
-def get_model_from_config(config):
+def _get_model_from_config(classifier_type: str) -> object:
     """Get model instance based on config CLASSIFIER_TYPE"""
-    if config.CLASSIFIER_TYPE == 'knn':
-        return KNeighborsClassifier(n_neighbors=config.KNN_N_NEIGHBORS)
+    if classifier_type == 'knn':
+        return KNeighborsClassifier()
     
-    elif config.CLASSIFIER_TYPE == 'svm':
+    elif classifier_type == 'svm':
         return SVC(
-            C=getattr(config, 'SVM_C', 1.0),
-            kernel=getattr(config, 'SVM_KERNEL', 'rbf'),
+            probability=True,
             random_state=42
         )
     
-    elif config.CLASSIFIER_TYPE == 'random_forest':
+    elif classifier_type == 'random_forest':
         return RandomForestClassifier(
-            n_estimators=getattr(config, 'RF_N_ESTIMATORS', 100),
-            max_depth=getattr(config, 'RF_MAX_DEPTH', None),
-            min_samples_split=getattr(config, 'RF_MIN_SAMPLES_SPLIT', 2),
             random_state=42,
             n_jobs=-1  # Use all available cores
         )
     else:
-        raise ValueError(f"Unknown classifier type: {config.CLASSIFIER_TYPE}")
+        raise ValueError(f"Unknown classifier type: {classifier_type}")
 
 
-def hyperparameter_optimization(X_train, y_train, config):
+def hyperparameter_optimization(base_model, X_train, y_train, grid_params):
     """
     Function to search for the optimal parameters in a hyperparameter space
 
@@ -44,13 +41,14 @@ def hyperparameter_optimization(X_train, y_train, config):
         config (dict): Config for repository.
     """
     
-    # Get model and parameters from config
-    base_model = get_model_from_config(config)
-    grid_params = config.GRID_PARAMS
+    # CRITICAL: Scale features before hyperparameter optimization
+    # This ensures grid search evaluates models on properly scaled data
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
 
-    # Perform grid search
+    # Perform grid search on scaled features
     gs = GridSearchCV(base_model, grid_params, verbose=1, cv=3, n_jobs=-1)
-    g_res = gs.fit(X_train, y_train)
+    g_res = gs.fit(X_train_scaled, y_train)
 
     # find the best score
     best_score = g_res.best_score_
@@ -82,7 +80,7 @@ def train_classifier(features, labels, record_ids, config):
     """
   
     print(f"Training {config.CLASSIFIER_TYPE} classifier...")
-    print(f"Features shape: {features.shape}, Labels shape: {labels.shape}")
+    print(f"Features shape: {features.shape}, Labels shape: {labels.shape}\n")
 
     # Basic validation
     if features.shape[0] == 0 or features.shape[1] == 0:
@@ -90,22 +88,34 @@ def train_classifier(features, labels, record_ids, config):
     else:
         print("Training model...")
         # Use LOSO cross-validation for training
-        model = LOSO_split_training(features, labels, record_ids, config)
-        
+        model = _LOSO_split_training(features, labels, record_ids, config)
     return model
 
 
-
-
-
 # TODO: Statistical comparison between iterations (t-test on kappa scores)
-def LOSO_split_training(features, labels, record_ids, config):
+def _LOSO_split_training(features: np.ndarray, labels: np.ndarray, record_ids: np.ndarray, config: dict) -> dict:
     # Create LOSO cross-validation split
     logo = LeaveOneGroupOut()
     loso_results = []
-    smote = SMOTE(random_state=42)
     all_y_test = []
     all_y_pred = []
+    if config.CURRENT_ITERATION == 1:
+        smote = SMOTE(random_state=42)
+        X_full, y_full = smote.fit_resample(features, labels)
+    else:
+        X_full, y_full = features, labels
+    
+    model = _get_model_from_config(config.CLASSIFIER_TYPE)
+    if config.USE_HYPERPARAM_OPTIMAZATION:
+        # Hyperparameter optimization and model creation
+        _, best_params = hyperparameter_optimization(model, X_full, y_full, config.GRID_PARAMS)
+        # Create fresh model instance with best parameters for each fold
+        model.set_params(**best_params)
+        print(f"Model instance ID: {id(model)}, Params: {best_params}")
+    else:
+        model.set_params(**config.BEST_PARAMS)
+        print(f"Model instance ID: {id(model)}, Params: {config.BEST_PARAMS}")
+
 
     for fold_idx, (train_idx, test_idx) in enumerate(logo.split(features, labels, groups=record_ids)):
         X_train, X_test = features[train_idx], features[test_idx]
@@ -113,29 +123,28 @@ def LOSO_split_training(features, labels, record_ids, config):
 
         # - Sleep stages are not equally distributed
         # Sleep stages are naturally imbalanced (more N2, less N1/REM)
-        # TODO: Use class weighting method in next iterations
-        X_train, y_train = smote.fit_resample(X_train, y_train)
-
-        # Hyperparameter optimization and model creation
-        best_score, best_params = hyperparameter_optimization(X_train, y_train, config)
+        if config.CURRENT_ITERATION == 1:
+            X_train, y_train = smote.fit_resample(X_train, y_train)
         
-        # Create fresh model instance with best parameters for each fold
-        model = get_model_from_config(config)
-        model.set_params(**best_params)
-        print(f"Model instance ID: {id(model)}, Params: {best_params}")
+        # CRITICAL: Feature scaling for SVM (and helpful for other classifiers)
+        # StandardScaler normalizes features to mean=0, std=1
+        # This is essential when features have different scales (e.g., power vs. frequency)
+        scaler = StandardScaler()
+        X_train_scaled = scaler.fit_transform(X_train)
+        X_test_scaled = scaler.transform(X_test)
         
         # Which subject is held out in this fold?
         train_subjects = np.unique(record_ids[train_idx])
         test_subject = np.unique(record_ids[test_idx])[0]
         print(f"\nFold {fold_idx+1}/{len(train_subjects)+1}: Training on {len(train_subjects)} subjects, testing on {test_subject}")
 
-        # Train classifier on 9 subjects
-        model.fit(X_train, y_train)
+        # Train classifier on scaled features
+        model.fit(X_train_scaled, y_train)
 
-        # Predict on held-out subject
-        y_pred = model.predict(X_test)
-        y_pred_proba = model.predict_proba(X_test) if hasattr(model, "predict_proba") else None
-        eva_results = training_evaluation(y_test, y_pred, y_pred_proba,record_ids[test_idx])
+        # Predict on held-out subject (use scaled test features)
+        y_pred = model.predict(X_test_scaled)
+        y_pred_proba = model.predict_proba(X_test_scaled) if hasattr(model, "predict_proba") else None
+        eva_results = _training_evaluation(y_test, y_pred, y_pred_proba,record_ids[test_idx])
         all_y_test.extend(y_test)
         all_y_pred.extend(y_pred)
 
@@ -156,21 +165,16 @@ def LOSO_split_training(features, labels, record_ids, config):
     print(f"  Kappa    = {mean_kappa:.3f} +/- {std_kappa:.3f}")
     print("="*60)
 
-    # NOTE: Doesnt this just get the last model's parameters
-    final_model_params = model.get_params() 
-    final_model = KNeighborsClassifier(**final_model_params)
-    X_full, y_full = SMOTE(random_state=42).fit_resample(features, labels)
-    final_model.fit(X_full, y_full)
+    model.fit(X_full, y_full)
 
     return {
-    'model': final_model,
+    'model': model,
     'y_true_aggregate': np.array(all_y_test),
     'y_pred_aggregate': np.array(all_y_pred)
     }
    
 
-
-def training_evaluation(y_true, y_pred, y_pred_proba,record_ids):
+def _training_evaluation(y_true: np.ndarray, y_pred: np.ndarray, y_pred_proba: np.ndarray, record_ids: np.ndarray) -> dict:
     # Calculate metrics for this subject
     stage_names = ['Wake', 'N1', 'N2', 'N3', 'REM']
     stage_labels = list(range(5))
@@ -182,7 +186,7 @@ def training_evaluation(y_true, y_pred, y_pred_proba,record_ids):
     precision, recall, f1, support = precision_recall_fscore_support(y_true, y_pred)
 
     # Specificity - True Negative Rate
-    specificity = compute_specificity(y_true, y_pred, stage_labels)
+    specificity = _compute_specificity(y_true, y_pred, stage_labels)
 
     # Macro and weighted averages
     macro_precision = np.mean(precision)
@@ -196,7 +200,7 @@ def training_evaluation(y_true, y_pred, y_pred_proba,record_ids):
     weighted_f1 = np.sum(f1 * support) / np.sum(support)
 
     # AUC
-    auc_results = compute_auc(y_true, y_pred_proba)
+    auc_results = _compute_auc(y_true, y_pred_proba)
 
     # Detailed report
     print("Per-Class Performance Metrics:")
@@ -212,18 +216,18 @@ def training_evaluation(y_true, y_pred, y_pred_proba,record_ids):
     print(f"{'Accuracy':<15} {accuracy:<10.3f} {'-':<10} {'-':<12} {'-':<10} {'-':<10} {len(y_true):<8}")
     print(f"{'Cohen Kappa':<15} {kappa:<10.3f} {'-':<10} {'-':<12} {'-':<10} {'-':<10} {np.sum(support):<8}")
     print("-" * 80)
-
+ 
     # Confusion Matrix
-    print_confusion_matrix(y_true, y_pred, stage_names, stage_labels)
+    _print_confusion_matrix(y_true, y_pred, stage_names, stage_labels)
     
     # Class distribution in test set
-    print_sleep_stage_distribution(y_true)
+    _print_sleep_stage_distribution(y_true)
 
     # Sleep scoring specific notes
-    print_scoring_notes()
+    _print_scoring_notes()
 
     # Clinical plausibility check
-    compare_sleep_metrics(y_true, y_pred,record_ids)
+    _compare_sleep_metrics(y_true, y_pred,record_ids)
 
     result = {
             'accuracy': accuracy,
@@ -238,7 +242,7 @@ def training_evaluation(y_true, y_pred, y_pred_proba,record_ids):
     return result
 
 
-def compute_auc(y_true, y_pred_proba):
+def _compute_auc(y_true: np.ndarray, y_pred_proba: np.ndarray) -> dict:
     """
     Compute per-class and macro ROC-AUC.
 
@@ -277,7 +281,7 @@ def compute_auc(y_true, y_pred_proba):
     }
 
 
-def compute_specificity(y_true, y_pred, stage_label):
+def _compute_specificity(y_true: np.ndarray, y_pred: np.ndarray, stage_label: list) -> list:
     specificity = []
     for i in range(len(stage_label)):
         tn = np.sum((y_true != i) & (y_pred != i))
@@ -287,7 +291,7 @@ def compute_specificity(y_true, y_pred, stage_label):
     return specificity
 
 
-def print_confusion_matrix(y_true, y_pred, stage_names, stage_labels):
+def _print_confusion_matrix(y_true: np.ndarray, y_pred: np.ndarray, stage_names: list, stage_labels: list):
     print("\nConfusion Matrix:")
     cm = confusion_matrix(y_true, y_pred, labels=stage_labels) 
     # Create a formatted confusion matrix
@@ -295,7 +299,7 @@ def print_confusion_matrix(y_true, y_pred, stage_names, stage_labels):
     print(cm_df.to_string())
 
 
-def print_sleep_stage_distribution(y_true):
+def _print_sleep_stage_distribution(y_true: np.ndarray) -> None:
     print("\nClass Distribution in Test Set:")
     stage_names = ['Wake', 'N1', 'N2', 'N3', 'REM']
     unique, counts = np.unique(y_true, return_counts=True)
@@ -307,7 +311,7 @@ def print_sleep_stage_distribution(y_true):
         print(f"{stage_name}: {count} samples ({percentage:.1f}%)")
 
 
-def print_scoring_notes():
+def _print_scoring_notes() -> None:
     print("\nNotes for Sleep Scoring:")
     print("- Sensitivity = Recall = True Positive Rate (correctly identified stages)")
     print("- Specificity = True Negative Rate (correctly rejected stages)")
@@ -316,7 +320,7 @@ def print_scoring_notes():
     print("- Clinical focus: High sensitivity for REM and N3 stages")
 
 
-def _print_sleep_metrics_comparison_table(true_metrics, pred_metrics):
+def _print_sleep_metrics_comparison_table(true_metrics: dict, pred_metrics: dict) -> None:
     """
     Print formatted comparison table for sleep metrics.
     
@@ -408,10 +412,10 @@ def _print_sleep_metrics_comparison_table(true_metrics, pred_metrics):
             mean_stage_mae = np.mean(stage_errors)
             print(f"Mean Absolute Error (stage percentages): {mean_stage_mae:.2f}%")
     
-    print("=" * 80)
+    print("=" * 80, end="\n")
 
 
-def compare_sleep_metrics(y_true, y_pred, record_ids=None, epoch_duration=30):
+def _compare_sleep_metrics(y_true: np.ndarray, y_pred: np.ndarray, record_ids: np.ndarray = None, epoch_duration: int = 30) -> dict:
     """
     Compare sleep architecture metrics between ground truth and predictions.
     

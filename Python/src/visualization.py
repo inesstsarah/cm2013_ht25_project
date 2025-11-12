@@ -289,7 +289,6 @@ def visualize_results(results, record_ids, config):
     print("Visualizing results...")
     # TODO: Add more visualizations as needed (e.g., feature importance).
     class_names = ['Wake', 'N1', 'N2', 'N3', 'REM']
-    #y_pred = model.predict(features)
     
     # visualize confusion matrix
     print("Visualizing confusion matrix...")
@@ -312,7 +311,7 @@ def visualize_results(results, record_ids, config):
     _plot_from_sleep_metrics(sleep_metrics_data, config)
 
 
-def visualize_fft(signal, fs, ax=None, title="FFT of Signal"):
+def visualize_fft(signal: np.ndarray, fs: float, ax: plt.Axes = None, title: str = "FFT of Signal") -> None:
     """
     Plot the FFT of a signal on a given matplotlib Axes.
 
@@ -338,7 +337,7 @@ def visualize_fft(signal, fs, ax=None, title="FFT of Signal"):
     ax.grid(True)
 
 
-def visualize_signal(signal, fs, ax=None, title="Time-domain Signal"):
+def visualize_signal(signal: np.ndarray, fs: float, ax: plt.Axes = None, title: str = "Time-domain Signal") -> None:
     """
     Plot the time-domain waveform of a signal on a given matplotlib Axes.
 
@@ -350,18 +349,19 @@ def visualize_signal(signal, fs, ax=None, title="Time-domain Signal"):
         title (str, optional): Plot title.
     """
     n = len(signal)
-    t = np.arange(n) / fs / 3600 # Convert to hours
+    t = np.arange(n) / fs  # 时间轴
+
     if ax is None:
         fig, ax = plt.subplots(figsize=(10, 5))
 
     ax.plot(t, signal)
     ax.set_title(title)
-    ax.set_xlabel("Time (h)")
+    ax.set_xlabel("Time (s)")
     ax.set_ylabel("Amplitude")
     ax.grid(True)
 
 
-def _calculate_all_sleep_metrics(y_true, y_pred, record_ids, config, epoch_duration=30):
+def _calculate_all_sleep_metrics(y_true: np.ndarray, y_pred: np.ndarray, record_ids: np.ndarray, config: dict, epoch_duration: int = 30) -> dict:
     """
     Calculate sleep metrics for all subjects once.
     
@@ -400,7 +400,7 @@ def _calculate_all_sleep_metrics(y_true, y_pred, record_ids, config, epoch_durat
     }
 
 
-def _plot_confusion_matrix(y_true, y_pred, class_names, config):
+def _plot_confusion_matrix(y_true: np.ndarray, y_pred: np.ndarray, class_names: list, config: dict) -> None:
     """
     Plots a confusion matrix.
 
@@ -420,7 +420,7 @@ def _plot_confusion_matrix(y_true, y_pred, class_names, config):
     plt.close(plt.gcf()) # release memory
 
 
-def _visualize_sidebyside_hypnograms(y_true, y_pred, record_ids, config):
+def _visualize_sidebyside_hypnograms(y_true: np.ndarray, y_pred: np.ndarray, record_ids: np.ndarray, config: dict) -> None:
     # Plot as step function
     # find ids
     unique_records = np.unique(record_ids)
@@ -482,7 +482,7 @@ def _visualize_sidebyside_hypnograms(y_true, y_pred, record_ids, config):
     plt.close(fig)  # release memory for the reused figure after all saves
 
 
-def _compute_percentages(labels, config):
+def _compute_percentages(labels: np.ndarray, config: dict) -> np.ndarray:
     counts = np.bincount(labels.astype(int), minlength=len(config.STAGE_NAMES))
     total = counts.sum()
     if total == 0:
@@ -490,7 +490,7 @@ def _compute_percentages(labels, config):
     return counts / total * 100.0
 
 
-def _print_stage_percentage_table(y_true, y_pred, config, record_id=None):
+def _print_stage_percentage_table(y_true: np.ndarray, y_pred: np.ndarray, config: dict, record_id: str = None) -> None:
     """
     Print a table showing stage percentage comparison with error column.
     
@@ -519,7 +519,7 @@ def _print_stage_percentage_table(y_true, y_pred, config, record_id=None):
     print("=" * 60)
 
 
-def _visualize_stage_percentage_comparison(y_true, y_pred, config, record_ids=None):
+def _visualize_stage_percentage_comparison(y_true: np.ndarray, y_pred: np.ndarray, config: dict, record_ids: np.ndarray = None) -> None:
     """
     Plot bar charts comparing sleep stage percentage distributions (Ground Truth vs Prediction).
 
@@ -635,7 +635,7 @@ def _visualize_stage_percentage_comparison(y_true, y_pred, config, record_ids=No
     plt.close(fig)
 
 
-def _create_bland_altman_plots(all_true_metrics, all_pred_metrics, metric_keys, metric_names, metric_units, config):
+def _create_bland_altman_plots(all_true_metrics: list, all_pred_metrics: list, metric_keys: list, metric_names: dict, metric_units: dict, config: dict) -> None:
     """
     Create Bland-Altman plots with multiple subjects (each subject is one data point).
     
@@ -751,7 +751,7 @@ def _create_bland_altman_plots(all_true_metrics, all_pred_metrics, metric_keys, 
     plt.close(fig)
 
 
-def _create_correlation_plots(all_true_metrics, all_pred_metrics, metric_keys, metric_names, metric_units, config):
+def _create_correlation_plots(all_true_metrics: list, all_pred_metrics: list, metric_keys: list, metric_names: dict, metric_units: dict, config: dict) -> None:
     """
     Create correlation plots with multiple subjects (each subject is one data point).
     
@@ -872,7 +872,7 @@ def _create_correlation_plots(all_true_metrics, all_pred_metrics, metric_keys, m
     plt.close(fig)
 
 
-def _create_distribution_plots(all_true_metrics, all_pred_metrics, metric_keys, metric_names, metric_units, config):
+def _create_distribution_plots(all_true_metrics: list, all_pred_metrics: list, metric_keys: list, metric_names: dict, metric_units: dict, config: dict) -> None:
     """
     Create distribution plots showing metric variability across subjects.
     
@@ -1009,7 +1009,7 @@ def _create_distribution_plots(all_true_metrics, all_pred_metrics, metric_keys, 
     plt.close(fig)
 
 
-def _perform_paired_t_tests(all_true_metrics, all_pred_metrics, metric_keys, metric_names, metric_units, config):
+def _perform_paired_t_tests(all_true_metrics: list, all_pred_metrics: list, metric_keys: list, metric_names: dict, metric_units: dict, config: dict) -> None:
     """
     Perform paired t-tests to compare true vs predicted sleep metrics.
     
@@ -1081,7 +1081,7 @@ def _perform_paired_t_tests(all_true_metrics, all_pred_metrics, metric_keys, met
     print("=" * 95)
 
 
-def _plot_from_sleep_metrics(sleep_metrics_data, config):
+def _plot_from_sleep_metrics(sleep_metrics_data: dict, config: dict) -> None:
     """
     Create correlation plots from pre-calculated sleep metrics.
     

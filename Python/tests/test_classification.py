@@ -20,7 +20,7 @@ def get_model_from_config(config):
     else:
         raise ValueError(f"Unknown classifier type: {config.CLASSIFIER_TYPE}")
 
-def hyperparameter_optimization(X_train, y_train, config):
+def test_hyperparameter_optimization(X_train, y_train, config):
     """
     Function to search for the optimal parameters in a hyperparameter space
 
@@ -44,15 +44,3 @@ def hyperparameter_optimization(X_train, y_train, config):
     # Get dictionary of best params
     best_params = g_res.best_params_
     return(best_score, best_params)
-
-
-def test_hyperparameter_optimization():
-    # TODO: Add to this test by using artificial data and using the hyperparameter optimization function
-    X_train, y_train = datasets.make_classification(
-    n_samples=100)
-    '''X_train = [[4, 5, 10, 4, 3, 11, 14 , 8, 10, 12]]
-    y_train = [21, 21, 24, 24, 21, 24, 24, 21, 21, 21]'''
-    best_score, best_params = hyperparameter_optimization(X_train, y_train, config)
-    print(f"Best score: {best_score}")
-    print(f"Best params: {best_params}")
-    

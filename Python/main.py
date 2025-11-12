@@ -1,6 +1,5 @@
-
 import config
-from src.data_loader import load_training_data, load_all_training_data
+from src.data_loader import load_all_training_data
 from src.preprocessing import preprocess
 from src.feature_extraction import extract_features
 from src.feature_selection import select_features
@@ -12,6 +11,25 @@ import sys
 import io
 
 
+class TeeIO:
+    """ 
+        A class to duplicate stdout to both terminal and a string buffer.
+    """
+    def __init__(self, original_stdout, string_buffer, show_terminal=True):
+        self.original_stdout = original_stdout
+        self.string_buffer = string_buffer
+        self.show_terminal = show_terminal
+
+    def write(self, text):
+        if self.show_terminal:
+            self.original_stdout.write(text)
+        self.string_buffer.write(text)
+
+    def flush(self):
+        if self.show_terminal:
+            self.original_stdout.flush()
+        self.string_buffer.flush()
+
 def main():
     # Create a string buffer
     stdout_buffer = io.StringIO()
@@ -19,13 +37,17 @@ def main():
     original_stdout = sys.stdout
 
     # Redirect stdout to the buffer
-    sys.stdout = stdout_buffer
+    # sys.stdout = stdout_buffer
+
+    # Redirect stdout to both terminal and buffer
+    sys.stdout = TeeIO(original_stdout, stdout_buffer, show_terminal=True)
+
     print("=== PROCESSING LOG ===")
 
     print(f"--- Sleep Scoring Pipeline - Iteration {config.CURRENT_ITERATION} ---")
 
     # 1. Load Data
-    # Example uses R1.edf and R1.xml from training directory
+    # Example uses R1.edf and R1.xml - students should adapt for their dataset
     print("\n=== STEP 1: DATA LOADING ===")
     # Handle both new multi-channel format and old single-channel format for compatibility
     try:
@@ -49,7 +71,7 @@ def main():
             print("Loaded preprocessed data from cache")
 
     if preprocessed_data is None:
-        preprocessed_data = preprocess(multi_channel_data,channel_info, config)
+        preprocessed_data = preprocess(multi_channel_data, channel_info, config)
         print(f"Preprocessed EEG shape: {preprocessed_data['eeg'].shape}")
         if config.USE_CACHE:
             save_cache(preprocessed_data, cache_filename_preprocess, config.CACHE_DIR)
@@ -65,7 +87,7 @@ def main():
             print("Loaded features from cache")
 
     if features is None:
-        features = extract_features(preprocessed_data, config)
+        features = extract_features(preprocessed_data, channel_info, config)
         print(f"Extracted features shape: {features.shape}")
         if features.shape[1] == 0:
             print("⚠️  WARNING: No features extracted! Students must implement feature extraction.")
@@ -80,9 +102,13 @@ def main():
 
     # 5. Classification
     print("\n=== STEP 5: CLASSIFICATION ===")
+    cache_filename_model = f"model_iter{config.CURRENT_ITERATION}.joblib"
     if selected_features.shape[1] > 0:
         model = train_classifier(selected_features, labels, record_ids, config)
         print(f"Trained {config.CLASSIFIER_TYPE} classifier")
+        if config.USE_CACHE:
+            save_cache(model['model'], cache_filename_model, config.CACHE_DIR)
+            print("Saved model to cache")
     else:
         print("⚠️  WARNING: Cannot train classifier - no features available!")
         print("Students must implement feature extraction first.")
@@ -105,7 +131,7 @@ def main():
     processing_log = stdout_buffer.getvalue()   
      
     if model is not None:
-        generate_report(model['model'], selected_features, labels, config, processing_log)
+        generate_report(model, selected_features, labels, config, processing_log)
     else:
         print("Skipping report - no trained model")
 
@@ -115,5 +141,8 @@ def main():
         print("⚠️  Students need to implement missing components!")
     print("="*50)
 
+from src.visualization import plot_sample_epoch
 if __name__ == "__main__":
     main()
+    # edf_file = os.path.join(config.SAMPLE_DIR, "R1.edf")  # Example EDF file
+    # plot_sample_epoch(edf_file, epoch_idx=150)

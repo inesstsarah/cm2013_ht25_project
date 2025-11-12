@@ -10,3 +10,4 @@ nolds
 imblearn
 pyedflib
 PyWavelets
+spectrum

@@ -1,93 +1,85 @@
-from scipy.signal import butter, lfilter, iirnotch, filtfilt, welch
+from scipy.signal import butter, iirnotch, filtfilt
 import numpy as np
 import os
 import matplotlib.pyplot as plt
 from src.visualization import visualize_fft, visualize_signal
 
 
-
-def highpass_filter(data,cutoff,fs,order=5):
+def highpass_filter(signal,cutoff,fs,order=5):
     """
-    Simple highpass filter for baseline wander removal
+    Butterworth highpass filter for baseline wander removal.
 
     Args:
-        data: (np.ndarray): The input signal.
-        cutoff (float): Cutoff frequency of the filter. 
+        signal (np.ndarray): The input signal.    
+        cutoff (float): The cutoff frequency of the filter.
         fs (int): The sampling frequency of the signal.
         order (int): The order of the filter. 
     Returns:
-        np.ndarray: The filtered signal.
+        filtered_signal (np.ndarray): The filtered signal.
+    
+    Example:
+        >>> filtered_signal = highpass_filter(signal, cutoff, fs, order)
     """
+
     nyquist = 0.5 * fs
     normal_cutoff = cutoff / nyquist
     b, a = butter(order, normal_cutoff, btype='high', analog=False)
-    y = filtfilt(b, a, data)
+    filtered_signal = filtfilt(b, a, signal, padlen = 3*order, padtype="odd")
     
-    #, padlen = 3*order, padtype="odd"
-    return y
+    return filtered_signal
 
-def lowpass_filter(data, cutoff, fs, order=5):
+def notch_filter(signal, f0, Q, fs):
     """
-    Simple low-pass Butterworth filter.
+    IIR notch filter to remove powerline noise.
 
     Args:
-        data (np.ndarray): The input signal.
-        cutoff (float): The cutoff frequency of the filter.
+        filter (np.ndarray): The input signal.
+        f0 (float): The target frequency to remove.
+        Q (float): Quality factor.
+        fs (int): The sampling frequency of the signal.
+        
+    Returns:
+        filtered_signal (np.ndarray): The filtered signal.
+
+    Example:
+        >>> filtered_signal = notch_filter(signal, f0, Q, fs)
+    """
+
+    b, a = iirnotch(f0, Q, fs)        
+    filtered_signal = filtfilt(b,a,signal, padlen = 15, padtype="odd")
+
+    return filtered_signal
+
+def bandpass_filter(signal, lowcut , highcut, fs, order):
+    """
+    Butterworth bandpass filter to retain frequencies within a specific range.
+    
+    Args:
+        signal (np.ndarray): The input signal.
+        lowcut (float): The lower cutoff frequency.
+        highcut (float): The higher cutoff frequency.
         fs (int): The sampling frequency of the signal.
         order (int): The order of the filter.
 
     Returns:
-        np.ndarray: The filtered signal.
+        filtered_signal (np.ndarray): The filtered signal.
+
+    Example:
+        >>> filtered_signal = bandpass_filter(signal, lowcut, highcut, fs, order)
     """
 
-    nyquist = 0.5 * fs
-    normal_cutoff = cutoff / nyquist
-    b, a = butter(order, normal_cutoff, btype='low', analog=False)
-    y = lfilter(b, a, data)
-    return y
-
-def notch_filter(data, f0, Q, fs):
-    """
-    Simple notch/bandstop filter 
-
-    Args:
-        data: (np.ndarray): The input signal.
-        f0 (float): Frequency to remove from a signal. 
-        Q (float): Quality factor.
-        fs (int): The sampling frequency of the signal. 
-    Returns:
-        np.ndarray: The filtered signal."""
-    b, a = iirnotch(f0, Q, fs)  
-    order = 3      
-    y = filtfilt(b,a,data,padlen = 3*order, padtype="odd") 
-    return y
-
-def bandpass_filter(data, lowcut, highcut, fs, order):
-    """
-    Simple bandpass filter for electronic line frequency (50-60Hz) removal
-
-    Args:
-        data: (np.ndarray): The input signal.
-        lowcut (float): Low cutoff frequency of the filter.
-        highcut (float): High cutoff frequency of the filter. 
-        fs (int): The sampling frequency of the signal.
-        order (int): The order of the filter. 
-    Returns:
-        np.ndarray: The filtered signal."""
     nyquist = 0.5 * fs
     normal_lowcut = lowcut / nyquist
     normal_highcut = highcut/nyquist
     b, a = butter(order, [normal_lowcut, normal_highcut], btype='band', analog=False)
-    y = filtfilt(b, a, data)
-    return y
+    filtered_signal = filtfilt(b, a, signal, padlen = 3*order, padtype="odd")
+
+    return filtered_signal
 
 
-def preprocess(data,channel_info, config):
+def preprocess(data, channel_info, config):
     """
-    STUDENT IMPLEMENTATION AREA: Preprocess data based on current iteration.
-
-    This function should handle both single-channel and multi-channel data
-    (2 EEG + 2 EOG + 1 EMG channels) based on the data structure.
+    Preprocess input data based on current iteration settings.
 
     Args:
         data: Either np.ndarray (single-channel) or dict (multi-channel)
@@ -95,7 +87,11 @@ def preprocess(data,channel_info, config):
 
     Returns:
         Same format as input: preprocessed data.
+
+    Example:
+        >>> preprocessed_data = preprocess(data, channel_info, config)
     """
+
     print(f"Preprocessing data for iteration {config.CURRENT_ITERATION}...")
 
     # Detect data format
@@ -119,22 +115,26 @@ def preprocess_multi_channel(multi_channel_data,channel_info, config):
 
     Returns:
         dict: Preprocessed multi-channel data with same keys.
+    
+    Example:
+        >>> preprocessed_data = preprocess_multi_channel(multi_channel_data, channel_info, config)
     """
+
     preprocessed_data = {}
-    preprocessed_data['eeg'] = _preprocess_eeg_channel(multi_channel_data['eeg'],channel_info, config)
+    preprocessed_data['eeg'] = preprocess_eeg_channel(multi_channel_data['eeg'],channel_info, config)
 
     if config.CURRENT_ITERATION >= 2:  # EOG starts in iteration 2
         # Process EOG channels (2 channels) - may need different filtering
         eog_data = multi_channel_data['eog']
-        eog_fs = 50  # Actual sampling rate: 50 Hz (TODO: Get from channel_info)
+        eog_fs = channel_info['eog_fs']  # Actual sampling rate: 50 Hz (TODO: Get from channel_info)
         preprocessed_eog = np.zeros_like(eog_data)
 
         for ch in range(eog_data.shape[1]):
             for epoch in range(eog_data.shape[0]):
                 signal = eog_data[epoch, ch, :]
                 # EOG may need different filter settings (preserve slow eye movements)
-                filtered_signal = lowpass_filter(signal, 30, eog_fs)  # Lower cutoff for EOG
-                preprocessed_eog[epoch, ch, :] = filtered_signal
+                #filtered_signal = lowpass_filter(signal, 30, eog_fs)  # Lower cutoff for EOG
+                #preprocessed_eog[epoch, ch, :] = filtered_signal
 
         preprocessed_data['eog'] = preprocessed_eog
 
@@ -147,8 +147,8 @@ def preprocess_multi_channel(multi_channel_data,channel_info, config):
         for epoch in range(emg_data.shape[0]):
             signal = emg_data[epoch, 0, :]
             # EMG needs higher frequency content preserved (muscle activity)
-            filtered_signal = lowpass_filter(signal, 70, emg_fs)  # Higher cutoff for EMG
-            preprocessed_emg[epoch, 0, :] = filtered_signal
+            #filtered_signal = lowpass_filter(signal, 70, emg_fs)  # Higher cutoff for EMG
+            #preprocessed_emg[epoch, 0, :] = filtered_signal
 
         preprocessed_data['emg'] = preprocessed_emg
         print("Multi-channel preprocessing applied to EEG + EOG + EMG")
@@ -170,9 +170,13 @@ def preprocess_single_channel(data, channel_info, config):
 
     Returns:
         np.ndarray: A 2D array of preprocessed data (n_epochs, n_samples
+    
+    Example:
+        >>> preprocessed_data = preprocess_single_channel(single_channel_data, channel_info, config)
     """
+
     if config.CURRENT_ITERATION == 1:
-        preprocessed_data = _preprocess_eeg_channel(data, channel_info, config)
+        preprocessed_data = preprocess_eeg_channel(data, channel_info, config)
 
     elif config.CURRENT_ITERATION == 2:
         print("TODO: Implement enhanced preprocessing for iteration 2")
@@ -188,10 +192,20 @@ def preprocess_single_channel(data, channel_info, config):
     return preprocessed_data
 
 
-def _preprocess_eeg_channel(eeg_data,channel_info, config):
+def preprocess_eeg_channel(eeg_data,channel_info, config):
     """
     Preprocess single EEG channel data.
+    Args:
+        eeg_data (np.ndarray): A 2D array of shape (n_epochs, n_samples, n_channels).
+        config (module): The configuration module.
+
+    Returns:
+        np.ndarray: Preprocessed EEG data of same shape.
+
+    Example:
+        >>> preprocessed_eeg = preprocess_eeg_channel(eeg_data, channel_info, config)
     """
+
     # Process EEG channels (2 channels)
     eeg_fs = channel_info['eeg_fs'] 
     print(f"EEG sampling frequency: {eeg_fs} Hz")

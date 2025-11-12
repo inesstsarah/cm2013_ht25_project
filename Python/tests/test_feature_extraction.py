@@ -12,21 +12,27 @@ from src.feature_extraction import (
     extract_hjorth_activity,
     extract_hjorth_mobility,
     extract_hjorth_complexity,
-    extract_sample_entropy,
     extract_time_domain_features,
     extract_single_channel_features,
     extract_multi_channel_features,
     extract_features,
     wavelet_processing,
     wavelet_decomposition,
-    wavelet_feature_extraction
+    wavelet_feature_extraction,
+    # AR features
+    extract_ar_features,
+    _integrate_band_power,
+    _peak_frequency,
+    _spectral_entropy,
+    _extract_derivative_features,
+    _spectral_edge_frequency
 )
 from src.data_loader import load_training_data
 from src.preprocessing import preprocess
 
 
-edf_path = os.path.join('../data/sample/', 'R1.edf')
-xml_path = os.path.join('../data/sample/', 'R1.xml')
+edf_path = os.path.join(config.TRAINING_DIR, 'R1.edf')
+xml_path = os.path.join(config.TRAINING_DIR, 'R1.xml')
 data,_,channel_info= load_training_data(edf_path, xml_path)
 preprocessed_data = preprocess(data,channel_info, config)
 epoch_eeg = preprocessed_data['eeg'][0,0,:]
@@ -72,12 +78,6 @@ def test_hjorth_complexity():
     assert np.isclose(complexity, expected_complexity)
     assert isinstance(complexity, float)
 
-def test_sample_entropy():
-    """Test Sample Entropy calculation"""
-    entropy = extract_sample_entropy(epoch_eeg)
-    assert isinstance(entropy, float)
-    assert entropy >= 0.0  # Entropy should be non-negative
-
 def test_extract_time_domain_features():
     """Test that extract_time_domain_features returns the correct number of features (18)"""
  
@@ -89,7 +89,7 @@ def test_extract_time_domain_features():
     float_features = [
     'mean', 'median', 'std', 'variance', 'rms', 'min', 'max', 'range', 
     'skewness', 'kurtosis', 'hjorth_activity', 'hjorth_mobility', 
-    'hjorth_complexity', 'total_energy', 'mean_power', 'Entropy'
+    'hjorth_complexity', 'total_energy', 'entropy'
     ]
 
     # Zero crossings
@@ -122,7 +122,7 @@ def test_extract_multi_channel_features_iter1():
     features = extract_multi_channel_features(preprocessed_data, config)
     # 2 EEG channels * 16 features/channel
     expected_n_features = 2 * 16
-    expected_n_epochs = 2
+    expected_n_epochs = 1083
     assert isinstance(features, np.ndarray)
     assert features.shape == (expected_n_epochs, expected_n_features)
     
@@ -144,6 +144,123 @@ def test_extract_features_router():
     # Should route to extract_multi_channel_features (1083 epochs, 2 EEG * 16 = 32 features)
     assert isinstance(multi_features, np.ndarray)
     assert multi_features.shape == (1083, 32)
+
+
+# ========== Tests for AR spectral feature functions ==========
+
+def test_integrate_band_power():
+    """Test _integrate_band_power function"""
+    freqs = np.linspace(0, 50, 100)
+    psd = np.ones(100)  # Flat PSD
+    power = _integrate_band_power(freqs, psd, 5.0, 15.0)
+    assert isinstance(power, float)
+    assert power >= 0
+    # For flat PSD, power should be approximately (15-5) * 1 = 10
+    assert np.isclose(power, 10.0, rtol=0.2)
+
+
+def test_peak_frequency():
+    """Test _peak_frequency function"""
+    freqs = np.linspace(0, 50, 100)
+    psd = np.zeros(100)
+    # Create peak at 10 Hz
+    peak_idx = int(10 / 50 * 100)
+    psd[peak_idx] = 100.0
+    peak_freq = _peak_frequency(freqs, psd, 5.0, 15.0)
+    assert isinstance(peak_freq, float)
+    assert np.isclose(peak_freq, 10.0, rtol=0.2)
+
+
+def test_spectral_entropy():
+    """Test _spectral_entropy function"""
+    freqs = np.linspace(0, 50, 100)
+    psd = np.ones(100)  # Uniform PSD
+    entropy = _spectral_entropy(freqs, psd, 0.0, 50.0)
+    assert isinstance(entropy, float)
+    assert 0 <= entropy <= 1
+    # For uniform distribution, normalized entropy should be close to 1
+    assert np.isclose(entropy, 1.0, rtol=0.2)
+
+
+def test_extract_derivative_features():
+    """Test _extract_derivative_features function"""
+    freqs = np.linspace(0, 50, 100)
+    psd = np.sin(2 * np.pi * freqs / 10) + 1  # Sinusoidal PSD
+    features = _extract_derivative_features(freqs, psd, 0.0, 50.0)
+    
+    # Check all expected keys are present
+    expected_keys = [
+        'deriv1_mean', 'deriv1_std', 'deriv1_max', 'deriv1_min', 'deriv1_power',
+        'deriv2_mean', 'deriv2_std', 'deriv2_max', 'deriv2_min', 'deriv2_power'
+    ]
+    assert len(features) == len(expected_keys)
+    for key in expected_keys:
+        assert key in features
+        assert isinstance(features[key], (float, np.floating))
+        assert np.isfinite(features[key])
+
+
+def test_spectral_edge_frequency():
+    """Test _spectral_edge_frequency function"""
+    freqs = np.linspace(0, 50, 100)
+    psd = np.ones(100)  # Uniform PSD
+    sef90 = _spectral_edge_frequency(freqs, psd, 0.0, 50.0, percentile=0.9)
+    assert isinstance(sef90, float)
+    assert 0 <= sef90 <= 50.0
+    # For uniform PSD, 90% edge should be at 90% of frequency range
+    assert np.isclose(sef90, 45.0, rtol=0.2)
+
+
+def test_extract_ar_features():
+    """Test extract_ar_features function with synthetic signal"""
+    bands = config.EEG_BANDS
+    features = extract_ar_features(epoch_eeg, channel_info['eeg_fs'], bands, config.AR_ORDER)
+    
+    # Check that features is a dictionary
+    assert isinstance(features, dict)
+    assert len(features) > 0
+    
+    # Check for expected band power features
+    for band_name in bands.keys():
+        assert f'ar_{band_name}_power' in features
+        assert f'ar_{band_name}_rel_power' in features
+        assert f'ar_{band_name}_peak_freq' in features
+        
+        # Check that power values are non-negative
+        assert features[f'ar_{band_name}_power'] >= 0
+        assert 0 <= features[f'ar_{band_name}_rel_power'] <= 1
+        # Peak frequency should be within band or NaN
+        peak_freq = features[f'ar_{band_name}_peak_freq']
+        assert np.isnan(peak_freq) or (bands[band_name][0] <= peak_freq <= bands[band_name][1])
+    
+    # Check for global features
+    assert 'ar_spectral_edge_freq' in features
+    assert 'ar_peak_frequency' in features
+    assert 'ar_spectral_entropy' in features
+    
+    # Check spectral edge frequency is reasonable
+    sef = features['ar_spectral_edge_freq']
+    assert np.isnan(sef) or (0 <= sef <= 30.0)
+    
+    # Check spectral entropy is between 0 and 1
+    entropy = features['ar_spectral_entropy']
+    assert 0 <= entropy <= 1
+    
+    # Check derivative features are present
+    assert 'deriv1_mean' in features
+    assert 'deriv1_std' in features
+    assert 'deriv2_mean' in features
+    assert 'deriv2_std' in features
+    
+    # Check that all feature values are finite (not inf or nan, except for peak frequencies which can be nan)
+    for key, value in features.items():
+        if 'peak_freq' in key or 'edge_freq' in key:
+            # Peak frequencies can be NaN
+            assert np.isnan(value) or np.isfinite(value)
+        else:
+            # Other features should be finite
+            assert np.isfinite(value), f"Feature {key} is not finite: {value}"
+
 
 if __name__ == "__main__":
     # Run tests if script is executed directly
