@@ -31,8 +31,8 @@ from src.data_loader import load_training_data
 from src.preprocessing import preprocess
 
 
-edf_path = os.path.join(config.TRAINING_DIR, 'R1.edf')
-xml_path = os.path.join(config.TRAINING_DIR, 'R1.xml')
+edf_path = "../data/training/R2.edf"
+xml_path = "../data/training/R2.xml"
 data,_,channel_info= load_training_data(edf_path, xml_path)
 preprocessed_data = preprocess(data,channel_info, config)
 epoch_eeg = preprocessed_data['eeg'][0,0,:]

@@ -1,5 +1,7 @@
 import numpy as np
 from sklearn.feature_selection import SelectKBest, mutual_info_classif
+import pandas as pd
+
 
 def select_features(features, labels, config):
     """
@@ -36,6 +38,7 @@ def select_features(features, labels, config):
 
     if config.CURRENT_ITERATION <= 2:
         selected_features = features
+        # selected_features = _select_features_correlation(features)
         # selected_features = _select_features_mutual_information(features, labels, config.FEATURE_SELECTION_K)
         
     elif config.CURRENT_ITERATION == 3:
@@ -52,6 +55,23 @@ def select_features(features, labels, config):
     #print(f"Selected features shape: {selected_features.shape}")
     return selected_features
 
+def _select_features_correlation(features: np.ndarray) -> np.ndarray:
+    """
+    Select features using correlation, and remove features with high 
+    correlation (above 0.95).
+    Args: 
+        features (np.ndarray): The input features (n_samples, n_features).
+    """
+    df = pd.DataFrame(features)
+    corr_matrix = df.corr(method='pearson', min_periods=1).abs()
+    # Select upper triangle
+    upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
+    # Find features with correlation greater than 0.95
+    to_drop = [column for column in upper.columns if any(upper[column] > 0.95)]
+    df.drop(to_drop, axis=1, inplace=True)
+    # Turn df back into numpy arr
+    dropped_features_arr = df.to_numpy()
+    return(dropped_features_arr)
 
 def _select_features_mutual_information(features: np.ndarray, labels: np.ndarray, k: int) -> np.ndarray:
     """
