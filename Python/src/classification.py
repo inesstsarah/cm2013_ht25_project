@@ -5,6 +5,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import LeaveOneGroupOut,GridSearchCV
 from sklearn.metrics import accuracy_score, confusion_matrix, cohen_kappa_score
 from sklearn.metrics import precision_recall_fscore_support, roc_auc_score
+from sklearn.preprocessing import StandardScaler
 import pandas as pd
 from imblearn.over_sampling import SMOTE
 from src.utils import calculate_sleep_metrics
@@ -100,6 +101,8 @@ def LOSO_split_training(features, labels, record_ids, config):
     loso_results = []
     all_y_test = []
     all_y_pred = []
+    scaler = StandardScaler()
+
     if config.CURRENT_ITERATION == 1:
         smote = SMOTE(random_state=42)
         X_full, y_full = smote.fit_resample(features, labels)
@@ -121,6 +124,10 @@ def LOSO_split_training(features, labels, record_ids, config):
     for fold_idx, (train_idx, test_idx) in enumerate(logo.split(features, labels, groups=record_ids)):
         X_train, X_test = features[train_idx], features[test_idx]
         y_train, y_test = labels[train_idx], labels[test_idx]
+
+        # Standardize features
+        X_train = scaler.fit_transform(X_train)
+        X_test = scaler.transform(X_test)
 
         # - Sleep stages are not equally distributed
         # Sleep stages are naturally imbalanced (more N2, less N1/REM)
