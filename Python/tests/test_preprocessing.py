@@ -1,5 +1,5 @@
 import numpy as np
-from src.preprocessing import lowpass_filter, preprocess, highpass_filter, notch_filter, bandpass_filter
+from src.preprocessing import preprocess, highpass_filter, notch_filter, bandpass_filter
 import config
 from src.data_loader import load_training_data
 import matplotlib.pyplot as plt

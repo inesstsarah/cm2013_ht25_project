@@ -99,14 +99,14 @@ def _LOSO_split_training(features: np.ndarray, labels: np.ndarray, record_ids: n
     loso_results = []
     all_y_test = []
     all_y_pred = []
+    scaler = StandardScaler()
+
     if config.CURRENT_ITERATION == 1:
         # - Sleep stages are not equally distributed
         smote = SMOTE(random_state=42)
         X_full, y_full = smote.fit_resample(features, labels)
     else:
-        scaler = StandardScaler()
-        X_full = scaler.fit_transform(features)
-        y_full = labels
+        X_full, y_full = features, labels
     
     model = _get_model_from_config(config.CLASSIFIER_TYPE)
     if config.USE_HYPERPARAM_OPTIMAZATION:
@@ -119,10 +119,18 @@ def _LOSO_split_training(features: np.ndarray, labels: np.ndarray, record_ids: n
         model.set_params(**config.BEST_PARAMS)
         print(f"Model instance ID: {id(model)}, Params: {config.BEST_PARAMS}")
 
-
     for fold_idx, (train_idx, test_idx) in enumerate(logo.split(features, labels, groups=record_ids)):
-        X_train, X_test = X_full[train_idx], X_full[test_idx]
-        y_train, y_test = y_full[train_idx], y_full[test_idx]
+        X_train, X_test = features[train_idx], features[test_idx]
+        y_train, y_test = labels[train_idx], labels[test_idx]
+
+        # Standardize features
+        X_train = scaler.fit_transform(X_train)
+        X_test = scaler.transform(X_test)
+
+        # - Sleep stages are not equally distributed
+        # Sleep stages are naturally imbalanced (more N2, less N1/REM)
+        if config.CURRENT_ITERATION == 1:
+            X_train, y_train = smote.fit_resample(X_train, y_train)
         
         # Which subject is held out in this fold?
         train_subjects = np.unique(record_ids[train_idx])
