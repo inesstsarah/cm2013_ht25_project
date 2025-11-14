@@ -67,7 +67,7 @@ WELCH_PARAMETERS = {
     'noverlap' : int(0.5*4*EEG_FS),
     'nfft' : 4*EEG_FS
 }
-WAVELET_NAME = 'bior6.8'
+WAVELET_NAME = 'coif1'
 
 # -- Feature Selection --
 FEATURE_SELECTION_K = 50  # Number of top features to select
