@@ -100,10 +100,13 @@ def _LOSO_split_training(features: np.ndarray, labels: np.ndarray, record_ids: n
     all_y_test = []
     all_y_pred = []
     if config.CURRENT_ITERATION == 1:
+        # - Sleep stages are not equally distributed
         smote = SMOTE(random_state=42)
         X_full, y_full = smote.fit_resample(features, labels)
     else:
-        X_full, y_full = features, labels
+        scaler = StandardScaler()
+        X_full = scaler.fit_transform(features)
+        y_full = labels
     
     model = _get_model_from_config(config.CLASSIFIER_TYPE)
     if config.USE_HYPERPARAM_OPTIMAZATION:
@@ -118,20 +121,8 @@ def _LOSO_split_training(features: np.ndarray, labels: np.ndarray, record_ids: n
 
 
     for fold_idx, (train_idx, test_idx) in enumerate(logo.split(features, labels, groups=record_ids)):
-        X_train, X_test = features[train_idx], features[test_idx]
-        y_train, y_test = labels[train_idx], labels[test_idx]
-
-        # - Sleep stages are not equally distributed
-        # Sleep stages are naturally imbalanced (more N2, less N1/REM)
-        if config.CURRENT_ITERATION == 1:
-            X_train, y_train = smote.fit_resample(X_train, y_train)
-        
-        # CRITICAL: Feature scaling for SVM (and helpful for other classifiers)
-        # StandardScaler normalizes features to mean=0, std=1
-        # This is essential when features have different scales (e.g., power vs. frequency)
-        scaler = StandardScaler()
-        X_train_scaled = scaler.fit_transform(X_train)
-        X_test_scaled = scaler.transform(X_test)
+        X_train, X_test = X_full[train_idx], X_full[test_idx]
+        y_train, y_test = y_full[train_idx], y_full[test_idx]
         
         # Which subject is held out in this fold?
         train_subjects = np.unique(record_ids[train_idx])
@@ -139,11 +130,11 @@ def _LOSO_split_training(features: np.ndarray, labels: np.ndarray, record_ids: n
         print(f"\nFold {fold_idx+1}/{len(train_subjects)+1}: Training on {len(train_subjects)} subjects, testing on {test_subject}")
 
         # Train classifier on scaled features
-        model.fit(X_train_scaled, y_train)
+        model.fit(X_train, y_train)
 
         # Predict on held-out subject (use scaled test features)
-        y_pred = model.predict(X_test_scaled)
-        y_pred_proba = model.predict_proba(X_test_scaled) if hasattr(model, "predict_proba") else None
+        y_pred = model.predict(X_test)
+        y_pred_proba = model.predict_proba(X_test) if hasattr(model, "predict_proba") else None
         eva_results = _training_evaluation(y_test, y_pred, y_pred_proba,record_ids[test_idx])
         all_y_test.extend(y_test)
         all_y_pred.extend(y_pred)
