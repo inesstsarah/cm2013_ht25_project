@@ -41,13 +41,14 @@ def select_features(features, labels, config):
         print("⚠️  WARNING: No features to select from!")
         return features
 
-    if config.CURRENT_ITERATION < 2:
+    if config.CURRENT_ITERATION == 1:
         # Early iterations: Use all available features
         print("Early iteration - using all available features")
-    if config.CURRENT_ITERATION <= 2:
+    if config.CURRENT_ITERATION == 2:
         selected_features = features
-        # selected_features = _select_features_correlation(features)
-        # selected_features = _select_features_mutual_information(features, labels, config.FEATURE_SELECTION_K)
+        selected_features = variance_threshold_selector(features,threshold=0.1)
+        selected_features = _select_features_correlation(selected_features)
+        selected_features = _select_features_mutual_information(selected_features, labels, config.FEATURE_SELECTION_K)
         
     elif config.CURRENT_ITERATION == 3:
         selected_features = features
