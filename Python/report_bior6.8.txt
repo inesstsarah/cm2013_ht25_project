@@ -1,0 +1,821 @@
+=== PROCESSING LOG ===
+--- Sleep Scoring Pipeline - Iteration 2 ---
+
+=== STEP 1: DATA LOADING ===
+Loading all training data from ../data/training/...
+Found 7 recordings
+
+Loading R2...
+Loading training data from ../data/training\R2.edf and ../data/training\R2.xml...
+Identified channels:
+  EEG: ['EEG(sec)', 'EEG']
+  EOG: ['EOG(L)', 'EOG(R)']
+  EMG: ['EMG']
+  EEG: 2 channels, 3750 samples/epoch, 125.0 Hz
+  EOG: 2 channels, 3750 samples/epoch, 125.0 Hz
+  EMG: 1 channels, 3750 samples/epoch, 125.0 Hz
+
+Loaded 1078 epochs (8.98 hours)
+Sleep stage distribution:
+  Wake: 715 epochs (66.3%)
+  N1: 3 epochs (0.3%)
+  N2: 238 epochs (22.1%)
+  N3: 61 epochs (5.7%)
+  REM: 61 epochs (5.7%)
+
+Loading R3...
+Loading training data from ../data/training\R3.edf and ../data/training\R3.xml...
+Identified channels:
+  EEG: ['EEG(sec)', 'EEG']
+  EOG: ['EOG(L)', 'EOG(R)']
+  EMG: ['EMG']
+  EEG: 2 channels, 3750 samples/epoch, 125.0 Hz
+  EOG: 2 channels, 3750 samples/epoch, 125.0 Hz
+  EMG: 1 channels, 3750 samples/epoch, 125.0 Hz
+
+Loaded 1048 epochs (8.73 hours)
+Sleep stage distribution:
+  Wake: 331 epochs (31.6%)
+  N1: 35 epochs (3.3%)
+  N2: 289 epochs (27.6%)
+  N3: 307 epochs (29.3%)
+  REM: 86 epochs (8.2%)
+
+Loading R4...
+Loading training data from ../data/training\R4.edf and ../data/training\R4.xml...
+Identified channels:
+  EEG: ['EEG(sec)', 'EEG']
+  EOG: ['EOG(L)', 'EOG(R)']
+  EMG: ['EMG']
+  EEG: 2 channels, 3750 samples/epoch, 125.0 Hz
+  EOG: 2 channels, 3750 samples/epoch, 125.0 Hz
+  EMG: 1 channels, 3750 samples/epoch, 125.0 Hz
+
+Loaded 874 epochs (7.28 hours)
+Sleep stage distribution:
+  Wake: 272 epochs (31.1%)
+  N1: 18 epochs (2.1%)
+  N2: 177 epochs (20.3%)
+  N3: 315 epochs (36.0%)
+  REM: 92 epochs (10.5%)
+
+Loading R5...
+Loading training data from ../data/training\R5.edf and ../data/training\R5.xml...
+Identified channels:
+  EEG: ['EEG(sec)', 'EEG']
+  EOG: ['EOG(L)', 'EOG(R)']
+  EMG: ['EMG']
+  EEG: 2 channels, 3750 samples/epoch, 125.0 Hz
+  EOG: 2 channels, 3750 samples/epoch, 125.0 Hz
+  EMG: 1 channels, 3750 samples/epoch, 125.0 Hz
+
+Loaded 1083 epochs (9.03 hours)
+Sleep stage distribution:
+  Wake: 343 epochs (31.7%)
+  N1: 42 epochs (3.9%)
+  N2: 508 epochs (46.9%)
+  N3: 99 epochs (9.1%)
+  REM: 91 epochs (8.4%)
+
+Loading R6...
+Loading training data from ../data/training\R6.edf and ../data/training\R6.xml...
+Identified channels:
+  EEG: ['EEG(sec)', 'EEG']
+  EOG: ['EOG(L)', 'EOG(R)']
+  EMG: ['EMG']
+  EEG: 2 channels, 3750 samples/epoch, 125.0 Hz
+  EOG: 2 channels, 3750 samples/epoch, 125.0 Hz
+  EMG: 1 channels, 3750 samples/epoch, 125.0 Hz
+
+Loaded 1083 epochs (9.03 hours)
+Sleep stage distribution:
+  Wake: 309 epochs (28.5%)
+  N1: 48 epochs (4.4%)
+  N2: 529 epochs (48.8%)
+  N3: 39 epochs (3.6%)
+  REM: 158 epochs (14.6%)
+
+Loading R7...
+Loading training data from ../data/training\R7.edf and ../data/training\R7.xml...
+Identified channels:
+  EEG: ['EEG(sec)', 'EEG']
+  EOG: ['EOG(L)', 'EOG(R)']
+  EMG: ['EMG']
+  EEG: 2 channels, 3750 samples/epoch, 125.0 Hz
+  EOG: 2 channels, 3750 samples/epoch, 125.0 Hz
+  EMG: 1 channels, 3750 samples/epoch, 125.0 Hz
+
+Loaded 918 epochs (7.65 hours)
+Sleep stage distribution:
+  Wake: 253 epochs (27.6%)
+  N1: 18 epochs (2.0%)
+  N2: 459 epochs (50.0%)
+  N3: 40 epochs (4.4%)
+  REM: 148 epochs (16.1%)
+
+Loading R8...
+Loading training data from ../data/training\R8.edf and ../data/training\R8.xml...
+Identified channels:
+  EEG: ['EEG(sec)', 'EEG']
+  EOG: ['EOG(L)', 'EOG(R)']
+  EMG: ['EMG']
+  EEG: 2 channels, 3750 samples/epoch, 125.0 Hz
+  EOG: 2 channels, 3750 samples/epoch, 125.0 Hz
+  EMG: 1 channels, 3750 samples/epoch, 125.0 Hz
+
+Loaded 958 epochs (7.98 hours)
+Sleep stage distribution:
+  Wake: 287 epochs (30.0%)
+  N1: 15 epochs (1.6%)
+  N2: 362 epochs (37.8%)
+  N3: 213 epochs (22.2%)
+  REM: 81 epochs (8.5%)
+
+Combined EEG shape: (7042, 2, 3750)
+Combined EOG shape: (7042, 2, 3750)
+Combined EMG shape: (7042, 1, 3750)
+
+Total loaded: 7042 epochs from 7 recordings
+Sleep stage distribution:
+  Wake: 2510 epochs (35.6%)
+  N1: 179 epochs (2.5%)
+  N2: 2562 epochs (36.4%)
+  N3: 1074 epochs (15.3%)
+  REM: 717 epochs (10.2%)
+Multi-channel data loaded:
+  EEG: (7042, 2, 3750)
+  EOG: (7042, 2, 3750)
+  EMG: (7042, 1, 3750)
+Labels shape: (7042,)
+
+=== STEP 2: PREPROCESSING ===
+Preprocessing data for iteration 2...
+Processing multi-channel data (EEG + EOG + EMG)
+EEG sampling frequency: 125.0 Hz
+Processing EEG channel 1
+Processing EEG channel 2
+Iteration 2: Processing EEG + EOG channels
+Preprocessed EEG shape: (7042, 2, 3750)
+
+=== STEP 3: FEATURE EXTRACTION ===
+Extracting features for iteration 2...
+Processing multi-channel data (EEG + EOG + EMG)
+selecting multi-channel features...
+Preparing 7042 epochs for parallel processing...
+Using 22 workers with batch_size: 106
+Extracted features shape: (7042, 204)
+
+=== STEP 4: FEATURE SELECTION ===
+Selecting features for iteration 2...
+Input features shape: (7042, 204)
+Selected features shape: (7042, 204)
+
+=== STEP 5: CLASSIFICATION ===
+Training svm classifier...
+Features shape: (7042, 204), Labels shape: (7042,)
+
+Training model...
+Model instance ID: 1831952493200, Params: {'C': 5.0, 'gamma': 'auto', 'kernel': 'rbf', 'class_weight': 'balanced'}
+
+Fold 1/7: Training on 6 subjects, testing on R2
+Per-Class Performance Metrics:
+--------------------------------------------------------------------------------
+Stage           Precision  Recall     Specificity  F1-Score   ROC-AUC    Support 
+--------------------------------------------------------------------------------
+Wake            0.983      0.955      0.967        0.969      0.990      715     
+N1              0.033      0.667      0.946        0.063      0.909      3       
+N2              0.815      0.647      0.958        0.721      0.896      238     
+N3              0.494      0.689      0.958        0.575      0.943      61      
+REM             0.714      0.574      0.986        0.636      0.939      61      
+--------------------------------------------------------------------------------
+Macro           0.608      0.706      0.963        0.593      0.935      1078    
+Weighted        0.900      0.850      0.966        0.871      0.963      1078    
+Accuracy        0.850      -          -            -          -          1078    
+Cohen Kappa     0.715      -          -            -          -          1078    
+--------------------------------------------------------------------------------
+
+Confusion Matrix:
+      Wake  N1   N2  N3  REM
+Wake   683  19   10   1    2
+N1       1   2    0   0    0
+N2       9  21  154  42   12
+N3       0   1   18  42    0
+REM      2  17    7   0   35
+
+Class Distribution in Test Set:
+Wake: 715 samples (66.3%)
+N1: 3 samples (0.3%)
+N2: 238 samples (22.1%)
+N3: 61 samples (5.7%)
+REM: 61 samples (5.7%)
+
+Notes for Sleep Scoring:
+- Sensitivity = Recall = True Positive Rate (correctly identified stages)
+- Specificity = True Negative Rate (correctly rejected stages)
+- Sleep stage imbalance is natural (more N2, less N1/REM)
+- Consider Cohen's kappa for chance-corrected agreement
+- Clinical focus: High sensitivity for REM and N3 stages
+
+Sleep Architecture Metrics Comparison - R2
+================================================================================
+Metric                    Ground Truth    Predicted       Error      Unit    
+--------------------------------------------------------------------------------
+Sleep Onset Latency       0.0             0.0             0.0        min     
+Total Sleep Time          181.5           191.5           10.0       min     
+Sleep Efficiency          33.7            35.5            1.9        %       
+Wake After Sleep Onset    357.5           347.5           10.0       min     
+REM Latency               37.0            5.0             32.0       min     
+Number of Awakenings      15.0            26.0            11.0       count   
+REM Cycles                3.0             27.0            24.0       count   
+REM Duration              30.5            24.5            6.0        min     
+
+Sleep Stage Percentages (relative to TST):
+------------------------------------------------------------
+Stage      Ground Truth    Predicted       Error     
+------------------------------------------------------------
+N1         0.8             15.7            14.8      
+N2         65.6            49.3            16.2      
+N3         16.8            22.2            5.4       
+REM        16.8            12.8            4.0       
+
+Summary Statistics:
+----------------------------------------
+Mean Absolute Error (numeric metrics): 11.86
+Mean Absolute Error (stage percentages): 10.11%
+================================================================================
+
+Fold 2/7: Training on 6 subjects, testing on R3
+Per-Class Performance Metrics:
+--------------------------------------------------------------------------------
+Stage           Precision  Recall     Specificity  F1-Score   ROC-AUC    Support 
+--------------------------------------------------------------------------------
+Wake            0.862      0.909      0.933        0.885      0.960      331     
+N1              0.250      0.200      0.979        0.222      0.820      35      
+N2              0.757      0.744      0.909        0.750      0.898      289     
+N3              0.878      0.938      0.946        0.907      0.978      307     
+REM             0.746      0.512      0.984        0.607      0.950      86      
+--------------------------------------------------------------------------------
+Macro           0.699      0.661      0.950        0.674      0.921      1048    
+Weighted        0.808      0.816      0.936        0.809      0.943      1048    
+Accuracy        0.816      -          -            -          -          1048    
+Cohen Kappa     0.745      -          -            -          -          1048    
+--------------------------------------------------------------------------------
+
+Confusion Matrix:
+      Wake  N1   N2   N3  REM
+Wake   301   6   18    6    0
+N1      21   7    2    0    5
+N2      23   8  215   33   10
+N3       4   0   15  288    0
+REM      0   7   34    1   44
+
+Class Distribution in Test Set:
+Wake: 331 samples (31.6%)
+N1: 35 samples (3.3%)
+N2: 289 samples (27.6%)
+N3: 307 samples (29.3%)
+REM: 86 samples (8.2%)
+
+Notes for Sleep Scoring:
+- Sensitivity = Recall = True Positive Rate (correctly identified stages)
+- Specificity = True Negative Rate (correctly rejected stages)
+- Sleep stage imbalance is natural (more N2, less N1/REM)
+- Consider Cohen's kappa for chance-corrected agreement
+- Clinical focus: High sensitivity for REM and N3 stages
+
+Sleep Architecture Metrics Comparison - R3
+================================================================================
+Metric                    Ground Truth    Predicted       Error      Unit    
+--------------------------------------------------------------------------------
+Sleep Onset Latency       83.0            84.0            1.0        min     
+Total Sleep Time          358.5           349.5           9.0        min     
+Sleep Efficiency          68.4            66.7            1.7        %       
+Wake After Sleep Onset    82.5            90.5            8.0        min     
+REM Latency               142.0           97.0            45.0       min     
+Number of Awakenings      32.0            43.0            11.0       count   
+REM Cycles                8.0             22.0            14.0       count   
+REM Duration              43.0            29.5            13.5       min     
+
+Sleep Stage Percentages (relative to TST):
+------------------------------------------------------------
+Stage      Ground Truth    Predicted       Error     
+------------------------------------------------------------
+N1         4.9             4.0             0.9       
+N2         40.3            40.6            0.3       
+N3         42.8            46.9            4.1       
+REM        12.0            8.4             3.6       
+
+Summary Statistics:
+----------------------------------------
+Mean Absolute Error (numeric metrics): 12.90
+Mean Absolute Error (stage percentages): 2.21%
+================================================================================
+
+Fold 3/7: Training on 6 subjects, testing on R4
+Per-Class Performance Metrics:
+--------------------------------------------------------------------------------
+Stage           Precision  Recall     Specificity  F1-Score   ROC-AUC    Support 
+--------------------------------------------------------------------------------
+Wake            0.890      0.386      0.978        0.538      0.904      272     
+N1              0.000      0.000      0.954        0.000      0.740      18      
+N2              0.351      0.780      0.634        0.484      0.811      177     
+N3              0.883      0.867      0.936        0.875      0.970      315     
+REM             0.400      0.065      0.988        0.112      0.703      92      
+--------------------------------------------------------------------------------
+Macro           0.505      0.420      0.898        0.402      0.826      874     
+Weighted        0.709      0.597      0.894        0.593      0.884      874     
+Accuracy        0.597      -          -            -          -          874     
+Cohen Kappa     0.453      -          -            -          -          874     
+--------------------------------------------------------------------------------
+
+Confusion Matrix:
+      Wake  N1   N2   N3  REM
+Wake   105  39  120    4    4
+N1       3   0   13    0    2
+N2       7   0  138   29    3
+N3       2   0   40  273    0
+REM      1   0   82    3    6
+
+Class Distribution in Test Set:
+Wake: 272 samples (31.1%)
+N1: 18 samples (2.1%)
+N2: 177 samples (20.3%)
+N3: 315 samples (36.0%)
+REM: 92 samples (10.5%)
+
+Notes for Sleep Scoring:
+- Sensitivity = Recall = True Positive Rate (correctly identified stages)
+- Specificity = True Negative Rate (correctly rejected stages)
+- Sleep stage imbalance is natural (more N2, less N1/REM)
+- Consider Cohen's kappa for chance-corrected agreement
+- Clinical focus: High sensitivity for REM and N3 stages
+
+Sleep Architecture Metrics Comparison - R4
+================================================================================
+Metric                    Ground Truth    Predicted       Error      Unit    
+--------------------------------------------------------------------------------
+Sleep Onset Latency       40.5            1.5             39.0       min     
+Total Sleep Time          301.0           378.0           77.0       min     
+Sleep Efficiency          68.9            86.5            17.6       %       
+Wake After Sleep Onset    95.5            57.5            38.0       min     
+REM Latency               45.0            0.0             45.0       min     
+Number of Awakenings      24.0            51.0            27.0       count   
+REM Cycles                14.0            14.0            0.0        count   
+REM Duration              46.0            7.5             38.5       min     
+
+Sleep Stage Percentages (relative to TST):
+------------------------------------------------------------
+Stage      Ground Truth    Predicted       Error     
+------------------------------------------------------------
+N1         3.0             5.2             2.2       
+N2         29.4            52.0            22.6      
+N3         52.3            40.9            11.5      
+REM        15.3            2.0             13.3      
+
+Summary Statistics:
+----------------------------------------
+Mean Absolute Error (numeric metrics): 35.27
+Mean Absolute Error (stage percentages): 12.38%
+================================================================================
+
+Fold 4/7: Training on 6 subjects, testing on R5
+Per-Class Performance Metrics:
+--------------------------------------------------------------------------------
+Stage           Precision  Recall     Specificity  F1-Score   ROC-AUC    Support 
+--------------------------------------------------------------------------------
+Wake            0.861      0.883      0.934        0.872      0.947      343     
+N1              0.152      0.119      0.973        0.133      0.810      42      
+N2              0.937      0.728      0.957        0.819      0.940      508     
+N3              0.736      0.960      0.965        0.833      0.985      99      
+REM             0.420      0.802      0.898        0.551      0.926      91      
+--------------------------------------------------------------------------------
+Macro           0.621      0.699      0.945        0.642      0.921      1083    
+Weighted        0.820      0.781      0.946        0.788      0.940      1083    
+Accuracy        0.781      -          -            -          -          1083    
+Cohen Kappa     0.688      -          -            -          -          1083    
+--------------------------------------------------------------------------------
+
+Confusion Matrix:
+      Wake  N1   N2  N3  REM
+Wake   303   9   17   3   11
+N1      23   5    1   0   13
+N2      19  12  370  30   77
+N3       0   0    4  95    0
+REM      7   7    3   1   73
+
+Class Distribution in Test Set:
+Wake: 343 samples (31.7%)
+N1: 42 samples (3.9%)
+N2: 508 samples (46.9%)
+N3: 99 samples (9.1%)
+REM: 91 samples (8.4%)
+
+Notes for Sleep Scoring:
+- Sensitivity = Recall = True Positive Rate (correctly identified stages)
+- Specificity = True Negative Rate (correctly rejected stages)
+- Sleep stage imbalance is natural (more N2, less N1/REM)
+- Consider Cohen's kappa for chance-corrected agreement
+- Clinical focus: High sensitivity for REM and N3 stages
+
+Sleep Architecture Metrics Comparison - R5
+================================================================================
+Metric                    Ground Truth    Predicted       Error      Unit    
+--------------------------------------------------------------------------------
+Sleep Onset Latency       9.5             10.0            0.5        min     
+Total Sleep Time          370.0           365.5           4.5        min     
+Sleep Efficiency          68.3            67.5            0.8        %       
+Wake After Sleep Onset    162.0           166.0           4.0        min     
+REM Latency               126.5           77.0            49.5       min     
+Number of Awakenings      36.0            48.0            12.0       count   
+REM Cycles                6.0             73.0            67.0       count   
+REM Duration              45.5            87.0            41.5       min     
+
+Sleep Stage Percentages (relative to TST):
+------------------------------------------------------------
+Stage      Ground Truth    Predicted       Error     
+------------------------------------------------------------
+N1         5.7             4.5             1.2       
+N2         68.6            54.0            14.6      
+N3         13.4            17.6            4.3       
+REM        12.3            23.8            11.5      
+
+Summary Statistics:
+----------------------------------------
+Mean Absolute Error (numeric metrics): 22.48
+Mean Absolute Error (stage percentages): 7.89%
+================================================================================
+
+Fold 5/7: Training on 6 subjects, testing on R6
+Per-Class Performance Metrics:
+--------------------------------------------------------------------------------
+Stage           Precision  Recall     Specificity  F1-Score   ROC-AUC    Support 
+--------------------------------------------------------------------------------
+Wake            0.780      0.851      0.904        0.814      0.952      309     
+N1              0.216      0.167      0.972        0.188      0.850      48      
+N2              0.701      0.155      0.937        0.254      0.826      529     
+N3              0.232      0.846      0.896        0.365      0.946      39      
+REM             0.198      0.563      0.610        0.293      0.663      158     
+--------------------------------------------------------------------------------
+Macro           0.426      0.516      0.864        0.383      0.847      1083    
+Weighted        0.612      0.439      0.880        0.421      0.843      1083    
+Accuracy        0.439      -          -            -          -          1083    
+Cohen Kappa     0.291      -          -            -          -          1083    
+--------------------------------------------------------------------------------
+
+Confusion Matrix:
+      Wake  N1  N2  N3  REM
+Wake   263  19   2   1   24
+N1      17   8   0   0   23
+N2      36   2  82  97  312
+N3       1   0   3  33    2
+REM     20   8  30  11   89
+
+Class Distribution in Test Set:
+Wake: 309 samples (28.5%)
+N1: 48 samples (4.4%)
+N2: 529 samples (48.8%)
+N3: 39 samples (3.6%)
+REM: 158 samples (14.6%)
+
+Notes for Sleep Scoring:
+- Sensitivity = Recall = True Positive Rate (correctly identified stages)
+- Specificity = True Negative Rate (correctly rejected stages)
+- Sleep stage imbalance is natural (more N2, less N1/REM)
+- Consider Cohen's kappa for chance-corrected agreement
+- Clinical focus: High sensitivity for REM and N3 stages
+
+Sleep Architecture Metrics Comparison - R6
+================================================================================
+Metric                    Ground Truth    Predicted       Error      Unit    
+--------------------------------------------------------------------------------
+Sleep Onset Latency       61.0            60.5            0.5        min     
+Total Sleep Time          387.0           373.0           14.0       min     
+Sleep Efficiency          71.5            68.9            2.6        %       
+Wake After Sleep Onset    93.5            108.0           14.5       min     
+REM Latency               74.0            1.5             72.5       min     
+Number of Awakenings      38.0            78.0            40.0       count   
+REM Cycles                9.0             125.0           116.0      count   
+REM Duration              79.0            225.0           146.0      min     
+
+Sleep Stage Percentages (relative to TST):
+------------------------------------------------------------
+Stage      Ground Truth    Predicted       Error     
+------------------------------------------------------------
+N1         6.2             5.0             1.2       
+N2         68.3            15.7            52.7      
+N3         5.0             19.0            14.0      
+REM        20.4            60.3            39.9      
+
+Summary Statistics:
+----------------------------------------
+Mean Absolute Error (numeric metrics): 50.76
+Mean Absolute Error (stage percentages): 26.95%
+================================================================================
+
+Fold 6/7: Training on 6 subjects, testing on R7
+Per-Class Performance Metrics:
+--------------------------------------------------------------------------------
+Stage           Precision  Recall     Specificity  F1-Score   ROC-AUC    Support 
+--------------------------------------------------------------------------------
+Wake            0.327      0.759      0.406        0.457      0.656      253     
+N1              0.091      0.056      0.989        0.069      0.593      18      
+N2              0.746      0.192      0.935        0.305      0.651      459     
+N3              0.593      0.400      0.987        0.478      0.789      40      
+REM             0.229      0.270      0.825        0.248      0.538      148     
+--------------------------------------------------------------------------------
+Macro           0.397      0.335      0.828        0.311      0.645      918     
+Weighted        0.527      0.367      0.775        0.341      0.639      918     
+Accuracy        0.367      -          -            -          -          918     
+Cohen Kappa     0.130      -          -            -          -          918     
+--------------------------------------------------------------------------------
+
+Confusion Matrix:
+      Wake  N1  N2  N3  REM
+Wake   192   5  12   0   44
+N1      15   1   0   0    2
+N2     268   4  88  10   89
+N3      23   0   1  16    0
+REM     89   1  17   1   40
+
+Class Distribution in Test Set:
+Wake: 253 samples (27.6%)
+N1: 18 samples (2.0%)
+N2: 459 samples (50.0%)
+N3: 40 samples (4.4%)
+REM: 148 samples (16.1%)
+
+Notes for Sleep Scoring:
+- Sensitivity = Recall = True Positive Rate (correctly identified stages)
+- Specificity = True Negative Rate (correctly rejected stages)
+- Sleep stage imbalance is natural (more N2, less N1/REM)
+- Consider Cohen's kappa for chance-corrected agreement
+- Clinical focus: High sensitivity for REM and N3 stages
+
+Sleep Architecture Metrics Comparison - R7
+================================================================================
+Metric                    Ground Truth    Predicted       Error      Unit    
+--------------------------------------------------------------------------------
+Sleep Onset Latency       69.5            0.0             69.5       min     
+Total Sleep Time          332.5           165.5           167.0      min     
+Sleep Efficiency          72.4            36.1            36.4       %       
+Wake After Sleep Onset    57.0            293.5           236.5      min     
+REM Latency               49.0            0.0             49.0       min     
+Number of Awakenings      25.0            225.0           200.0      count   
+REM Cycles                4.0             136.0           132.0      count   
+REM Duration              74.0            87.5            13.5       min     
+
+Sleep Stage Percentages (relative to TST):
+------------------------------------------------------------
+Stage      Ground Truth    Predicted       Error     
+------------------------------------------------------------
+N1         2.7             3.3             0.6       
+N2         69.0            35.6            33.4      
+N3         6.0             8.2             2.1       
+REM        22.3            52.9            30.6      
+
+Summary Statistics:
+----------------------------------------
+Mean Absolute Error (numeric metrics): 112.99
+Mean Absolute Error (stage percentages): 16.69%
+================================================================================
+
+Fold 7/7: Training on 6 subjects, testing on R8
+Per-Class Performance Metrics:
+--------------------------------------------------------------------------------
+Stage           Precision  Recall     Specificity  F1-Score   ROC-AUC    Support 
+--------------------------------------------------------------------------------
+Wake            0.692      0.627      0.881        0.658      0.911      287     
+N1              0.013      0.067      0.917        0.021      0.744      15      
+N2              0.837      0.412      0.951        0.552      0.906      362     
+N3              0.701      0.934      0.886        0.801      0.976      213     
+REM             0.223      0.432      0.861        0.294      0.825      81      
+--------------------------------------------------------------------------------
+Macro           0.493      0.494      0.899        0.465      0.873      958     
+Weighted        0.699      0.589      0.907        0.609      0.914      958     
+Accuracy        0.589      -          -            -          -          958     
+Cohen Kappa     0.464      -          -            -          -          958     
+--------------------------------------------------------------------------------
+
+Confusion Matrix:
+      Wake  N1   N2   N3  REM
+Wake   180   3    8   12   84
+N1       6   1    2    1    5
+N2      52  59  149   69   33
+N3      12   0    2  199    0
+REM     10  16   17    3   35
+
+Class Distribution in Test Set:
+Wake: 287 samples (30.0%)
+N1: 15 samples (1.6%)
+N2: 362 samples (37.8%)
+N3: 213 samples (22.2%)
+REM: 81 samples (8.5%)
+
+Notes for Sleep Scoring:
+- Sensitivity = Recall = True Positive Rate (correctly identified stages)
+- Specificity = True Negative Rate (correctly rejected stages)
+- Sleep stage imbalance is natural (more N2, less N1/REM)
+- Consider Cohen's kappa for chance-corrected agreement
+- Clinical focus: High sensitivity for REM and N3 stages
+
+Sleep Architecture Metrics Comparison - R8
+================================================================================
+Metric                    Ground Truth    Predicted       Error      Unit    
+--------------------------------------------------------------------------------
+Sleep Onset Latency       41.0            8.0             33.0       min     
+Total Sleep Time          335.5           349.0           13.5       min     
+Sleep Efficiency          70.0            72.9            2.8        %       
+Wake After Sleep Onset    102.5           122.0           19.5       min     
+REM Latency               92.5            0.0             92.5       min     
+Number of Awakenings      18.0            103.0           85.0       count   
+REM Cycles                6.0             63.0            57.0       count   
+REM Duration              40.5            78.5            38.0       min     
+
+Sleep Stage Percentages (relative to TST):
+------------------------------------------------------------
+Stage      Ground Truth    Predicted       Error     
+------------------------------------------------------------
+N1         2.2             11.3            9.1       
+N2         53.9            25.5            28.4      
+N3         31.7            40.7            8.9       
+REM        12.1            22.5            10.4      
+
+Summary Statistics:
+----------------------------------------
+Mean Absolute Error (numeric metrics): 42.66
+Mean Absolute Error (stage percentages): 14.22%
+================================================================================
+
+============================================================
+LOSO Cross-Validation Results (7 subjects):
+  Accuracy = 63.4% +/- 17.5%
+  Kappa    = 0.498 +/- 0.216
+============================================================
+Trained svm classifier
+
+=== STEP 6: VISUALIZATION ===
+Visualizing results...
+Visualizing confusion matrix...
+Visualizing hypnograms side by side...
+Visualizing hypnogram for record R2...
+Saved hypnogram to figure/Classification/sidebyde_hypnograms_R2.png
+Visualizing hypnogram for record R3...
+Saved hypnogram to figure/Classification/sidebyde_hypnograms_R3.png
+Visualizing hypnogram for record R4...
+Saved hypnogram to figure/Classification/sidebyde_hypnograms_R4.png
+Visualizing hypnogram for record R5...
+Saved hypnogram to figure/Classification/sidebyde_hypnograms_R5.png
+Visualizing hypnogram for record R6...
+Saved hypnogram to figure/Classification/sidebyde_hypnograms_R6.png
+Visualizing hypnogram for record R7...
+Saved hypnogram to figure/Classification/sidebyde_hypnograms_R7.png
+Visualizing hypnogram for record R8...
+Saved hypnogram to figure/Classification/sidebyde_hypnograms_R8.png
+Visualizing stage percentage comparison...
+
+Visualizing stage percentage comparison for record R2...
+
+Stage Percentage Comparison - R2
+============================================================
+Stage    Ground Truth  Predicted   Error   
+------------------------------------------------------------
+Wake           66.3%       64.5%    1.9%
+N1              0.3%        5.6%    5.3%
+N2             22.1%       17.5%    4.5%
+N3              5.7%        7.9%    2.2%
+REM             5.7%        4.5%    1.1%
+------------------------------------------------------------
+Total         100.0%      100.0%   15.0%
+============================================================
+
+Visualizing stage percentage comparison for record R3...
+
+Stage Percentage Comparison - R3
+============================================================
+Stage    Ground Truth  Predicted   Error   
+------------------------------------------------------------
+Wake           31.6%       33.3%    1.7%
+N1              3.3%        2.7%    0.7%
+N2             27.6%       27.1%    0.5%
+N3             29.3%       31.3%    2.0%
+REM             8.2%        5.6%    2.6%
+------------------------------------------------------------
+Total         100.0%      100.0%    7.4%
+============================================================
+
+Visualizing stage percentage comparison for record R4...
+
+Stage Percentage Comparison - R4
+============================================================
+Stage    Ground Truth  Predicted   Error   
+------------------------------------------------------------
+Wake           31.1%       13.5%   17.6%
+N1              2.1%        4.5%    2.4%
+N2             20.3%       45.0%   24.7%
+N3             36.0%       35.4%    0.7%
+REM            10.5%        1.7%    8.8%
+------------------------------------------------------------
+Total         100.0%      100.0%   54.2%
+============================================================
+
+Visualizing stage percentage comparison for record R5...
+
+Stage Percentage Comparison - R5
+============================================================
+Stage    Ground Truth  Predicted   Error   
+------------------------------------------------------------
+Wake           31.7%       32.5%    0.8%
+N1              3.9%        3.0%    0.8%
+N2             46.9%       36.5%   10.4%
+N3              9.1%       11.9%    2.8%
+REM             8.4%       16.1%    7.7%
+------------------------------------------------------------
+Total         100.0%      100.0%   22.5%
+============================================================
+
+Visualizing stage percentage comparison for record R6...
+
+Stage Percentage Comparison - R6
+============================================================
+Stage    Ground Truth  Predicted   Error   
+------------------------------------------------------------
+Wake           28.5%       31.1%    2.6%
+N1              4.4%        3.4%    1.0%
+N2             48.8%       10.8%   38.0%
+N3              3.6%       13.1%    9.5%
+REM            14.6%       41.6%   27.0%
+------------------------------------------------------------
+Total         100.0%      100.0%   78.1%
+============================================================
+
+Visualizing stage percentage comparison for record R7...
+
+Stage Percentage Comparison - R7
+============================================================
+Stage    Ground Truth  Predicted   Error   
+------------------------------------------------------------
+Wake           27.6%       63.9%   36.4%
+N1              2.0%        1.2%    0.8%
+N2             50.0%       12.9%   37.1%
+N3              4.4%        2.9%    1.4%
+REM            16.1%       19.1%    2.9%
+------------------------------------------------------------
+Total         100.0%      100.0%   78.6%
+============================================================
+
+Visualizing stage percentage comparison for record R8...
+
+Stage Percentage Comparison - R8
+============================================================
+Stage    Ground Truth  Predicted   Error   
+------------------------------------------------------------
+Wake           30.0%       27.1%    2.8%
+N1              1.6%        8.2%    6.7%
+N2             37.8%       18.6%   19.2%
+N3             22.2%       29.6%    7.4%
+REM             8.5%       16.4%    7.9%
+------------------------------------------------------------
+Total         100.0%      100.0%   44.1%
+============================================================
+
+Calculating sleep architecture metrics...
+
+Visualizing sleep architecture metrics...
+Creating Bland-Altman plots...
+Saved Bland-Altman plot to figure/Classification/bland_altman_all_subjects.png
+
+Creating Correlation plots...
+Saved correlation plot to figure/Classification/correlation_analysis.png
+
+Creating Distribution plots...
+Saved distribution plot to figure/Classification/distribution_analysis.png
+
+Performing paired t-tests...
+===============================================================================================
+Metric                    True Mean±SD    Pred Mean±SD    t-statistic  p-value    Significant 
+===============================================================================================
+Sleep Onset Latency       43.5±30.6       23.4±34.3       1.913        0.1042     No          
+Total Sleep Time          323.7±68.7      310.3±91.0      0.478        0.6495     No          
+Sleep Efficiency          64.7±13.8       62.0±19.1       0.445        0.6723     No          
+Wake After Sleep Onset    135.8±102.8     169.3±109.5     -0.968       0.3704     No          
+REM Latency               80.9±41.3       25.8±42.3       7.127        0.0004     Yes         
+Number of Awakenings      26.9±8.8        82.0±67.9       -2.111       0.0792     No          
+REM Cycles                7.1±3.7         65.7±49.3       -3.061       0.0222     Yes         
+REM Duration              51.2±18.1       77.1±73.0       -1.138       0.2985     No          
+===============================================================================================
+Summary: 2/8 metrics showed significant differences (p < 0.05)
+
+===============================================================================================
+Statistical Interpretation:
+- p < 0.05: Significant difference between true and predicted values
+- p ≥ 0.05: No significant difference (values are statistically similar)
+===============================================================================================
+
+=== STEP 7: PROCESSING LOG & REPORT GENERATION ===
+# Sleep Scoring Report - Iteration 2
+## Model
+dict
+## Features
+Number of features: 204
+## Labels
+Number of samples: 7042

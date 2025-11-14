@@ -36,7 +36,7 @@ def load_cache(filename, cache_dir):
 
 
 # Clinical plausibility check
-def calculate_sleep_metrics(labels, epoch_duration=30):
+def calculate_sleep_metrics(labels: np.ndarray, epoch_duration: int = 30) -> dict:
     """
     Calculate sleep architecture metrics from epoch labels.
 

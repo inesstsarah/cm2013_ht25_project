@@ -22,7 +22,7 @@ FIGURES_FEATURE_EXTRACTION_DIR = 'figure/Feature Extraction/'
 FIGURES_CLASSIFICATION_DIR = 'figure/Classification/'
 
 # Validate and create directories if needed
-def _create_dir_if_not_exists(directory):
+def _create_dir_if_not_exists(directory: str) -> None:
     if not os.path.exists(directory):
         print(f"Creating directory: {directory}")
         os.makedirs(directory, exist_ok=True)
@@ -49,7 +49,7 @@ HIGHPASS_FILTER_FREQ = 0.5 # Hz
 
 # -- Feature Extraction --
 # (Add feature-specific parameters here)
-AR_ORDER = 15
+AR_ORDER = 10 # 10 has better performance, but 15 is more common
 EEG_BANDS = {
     'delta': (0.5, 4.0),
     'theta': (4.0, 8.0),
@@ -57,7 +57,6 @@ EEG_BANDS = {
     # 'sigma': (12.0, 15.0),
     'beta': (13.0, 30.0),
 }
-EEG_SE_PERCENTILE = 0.9
 EEG_FS = 125
 EEG_LOWER = 0.5
 EEG_UPPER = 30
@@ -68,7 +67,10 @@ WELCH_PARAMETERS = {
     'noverlap' : int(0.5*4*EEG_FS),
     'nfft' : 4*EEG_FS
 }
-WAVELET_NAME = 'db4'
+WAVELET_NAME = 'coif1'
+
+# -- Feature Selection --
+FEATURE_SELECTION_K = 50  # Number of top features to select
 
 # -- Classification --
 USE_HYPERPARAM_OPTIMAZATION = False
