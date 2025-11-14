@@ -122,7 +122,7 @@ def _select_features_mutual_information(features: np.ndarray, labels: np.ndarray
         np.ndarray: The selected features (n_samples, n_selected_features).
     """
     k = min(k, features.shape[1])
-    print(f"Using Mutual Information to select top {k} features...")
+    print(f"\nUsing Mutual Information to select top {k} features...")
     print(f"  Method: mutual_info_classif (Option B)")
     print(f"  Captures both linear and non-linear relationships")
 
@@ -133,5 +133,5 @@ def _select_features_mutual_information(features: np.ndarray, labels: np.ndarray
     selected_indices = selector.get_support(indices=True)
     print(f"  Selected {len(selected_indices)} features from {features.shape[1]} total")
     print(f"  Selected features shape: {selected_features.shape}")
-    print(f"  Top 5 feature scores: {sorted(feature_scores, reverse=True)[:5]}")
+    print(f"  Top 5 feature scores: {sorted(feature_scores, reverse=True)[:5]}\n")
     return selected_features
