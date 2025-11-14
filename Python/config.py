@@ -60,6 +60,7 @@ EEG_BANDS = {
 EEG_FS = 125
 EEG_LOWER = 0.5
 EEG_UPPER = 30
+EEG_SE_PERCENTILE = 0.95
 
 WELCH_PARAMETERS = {
     'window' : 'hann',
@@ -67,7 +68,7 @@ WELCH_PARAMETERS = {
     'noverlap' : int(0.5*4*EEG_FS),
     'nfft' : 4*EEG_FS
 }
-WAVELET_NAME = 'coif1'
+WAVELET_NAME = 'bior6.8'
 
 # -- Feature Selection --
 FEATURE_SELECTION_K = 50  # Number of top features to select
