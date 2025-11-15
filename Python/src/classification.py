@@ -259,13 +259,25 @@ def _compute_auc(y_true: np.ndarray, y_pred_proba: np.ndarray) -> dict:
     #  Compute ROC-AUC
     auc_per_class = []
     for i in range(n_classes):
-        try:
-            auc = roc_auc_score(y_true_onehot[:, i], y_pred_proba[:, i])
-        except ValueError:
-            auc = np.nan  # if class missing
+        # Check if class i is present in y_true and has at least 2 unique values
+        class_labels = y_true_onehot[:, i]
+        unique_values = np.unique(class_labels)
+        
+        # ROC-AUC requires at least 2 classes (0 and 1) to be meaningful
+        if len(unique_values) < 2:
+            auc = np.nan  # if class missing or only one class present
+        else:
+            try:
+                auc = roc_auc_score(class_labels, y_pred_proba[:, i])
+            except ValueError:
+                auc = np.nan  # fallback if still fails
         auc_per_class.append(auc)
 
-    macro_auc = np.nanmean(auc_per_class)
+    # Only compute mean if there are non-NaN values
+    if np.any(~np.isnan(auc_per_class)):
+        macro_auc = np.nanmean(auc_per_class)
+    else:
+        macro_auc = np.nan
 
     unique, counts = np.unique(y_true, return_counts=True)
     weights = np.zeros(n_classes)
