@@ -47,7 +47,7 @@ def select_features(features, labels, config):
         selected_features = features
         selected_features = variance_threshold_selector(features,threshold=0.1)
         selected_features = _select_features_correlation(selected_features)
-        selected_features = _select_features_mutual_information(selected_features, labels, config.FEATURE_SELECTION_K)
+        selected_features, selected_indices = _select_features_mutual_information(selected_features, labels, config.FEATURE_SELECTION_K)
         
     elif config.CURRENT_ITERATION == 3:
         selected_features = features
@@ -61,7 +61,7 @@ def select_features(features, labels, config):
         selected_features = features  # No selection implemented yet
 
     #print(f"Selected features shape: {selected_features.shape}")
-    return selected_features
+    return selected_features, selected_indices
 
 
 def variance_threshold_selector(features, threshold=0.0):
@@ -111,7 +111,7 @@ def _select_features_correlation(features: np.ndarray) -> np.ndarray:
     dropped_features_arr = df.to_numpy()
     return(dropped_features_arr)
 
-def _select_features_mutual_information(features: np.ndarray, labels: np.ndarray, k: int) -> np.ndarray:
+def _select_features_mutual_information(features: np.ndarray, labels: np.ndarray, k: int) -> tuple[np.ndarray, list[int]]:
     """
     Select features using mutual information.
     Args:
@@ -134,4 +134,4 @@ def _select_features_mutual_information(features: np.ndarray, labels: np.ndarray
     print(f"  Selected {len(selected_indices)} features from {features.shape[1]} total")
     print(f"  Selected features shape: {selected_features.shape}")
     print(f"  Top 5 feature scores: {sorted(feature_scores, reverse=True)[:5]}\n")
-    return selected_features
+    return selected_features, selected_indices

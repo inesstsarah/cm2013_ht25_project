@@ -1,5 +1,5 @@
 import config
-from src.data_loader import load_holdout_data
+from src.data_loader import load_all_holdout_data
 from src.preprocessing import preprocess
 from src.feature_extraction import extract_features
 from src.inference import make_inference, generate_submission_file
@@ -18,9 +18,7 @@ def run_inference():
         return
 
     # 1. Load Hold-out Data
-    # For jumpstart, we're using dummy data. In a real scenario, you'd iterate through files.
-    holdout_edf_file = os.path.join(config.HOLDOUT_DIR, "H1.edf") # Placeholder
-    holdout_eeg_data, channel_info = load_holdout_data(holdout_edf_file)
+    holdout_multi_channel_data, holdout_record_ids, channel_info = load_all_holdout_data(config.HOLDOUT_DIR)
 
     # 2. Preprocessing (using the same logic as training)
     preprocessed_holdout_data = None
@@ -29,7 +27,7 @@ def run_inference():
         preprocessed_holdout_data = load_cache(cache_filename_preprocess_holdout, config.CACHE_DIR)
     
     if preprocessed_holdout_data is None:
-        preprocessed_holdout_data = preprocess(holdout_eeg_data,channel_info, config)
+        preprocessed_holdout_data = preprocess(holdout_multi_channel_data, channel_info, config)
         if config.USE_CACHE:
             save_cache(preprocessed_holdout_data, cache_filename_preprocess_holdout, config.CACHE_DIR)
 
@@ -40,19 +38,22 @@ def run_inference():
         holdout_features = load_cache(cache_filename_features_holdout, config.CACHE_DIR)
 
     if holdout_features is None:
-        holdout_features = extract_features(preprocessed_holdout_data, config)
+        holdout_features = extract_features(preprocessed_holdout_data, channel_info, config)
         if config.USE_CACHE:
             save_cache(holdout_features, cache_filename_features_holdout, config.CACHE_DIR)
 
-    # 4. Make Inference
-    predictions = make_inference(model, holdout_features, config)
+    # 4. Feature Selection
+    cache_filename_selected_indices = f"selected_indices_iter{config.CURRENT_ITERATION}.joblib"
+    selected_indices = load_cache(cache_filename_selected_indices, config.CACHE_DIR)
+    selected_features = holdout_features[:, selected_indices]
 
-    # Dummy record and epoch numbers for submission file
-    record_numbers = [1] * len(predictions) # Assuming one record for dummy data
+    # 5. Make Inference
+    predictions = make_inference(model, selected_features, config)
+
     epoch_numbers = list(range(len(predictions)))
 
     # 5. Generate Submission File
-    generate_submission_file(predictions, record_numbers, epoch_numbers, config)
+    generate_submission_file(predictions, holdout_record_ids, epoch_numbers, config)
 
     print("--- Inference Finished ---")
 

@@ -1,5 +1,7 @@
 MATLAB/
 data/
+cache/
+figure/
 Python/cache/
 Python/figure/
 Python/.DS_Store
