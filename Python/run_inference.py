@@ -4,6 +4,7 @@ from src.preprocessing import preprocess
 from src.feature_extraction import extract_features
 from src.inference import make_inference, generate_submission_file
 from src.utils import save_cache, load_cache
+from sklearn.preprocessing import StandardScaler
 import os
 import joblib
 
@@ -45,6 +46,10 @@ def run_inference():
     # 4. Feature Selection
     cache_filename_selected_indices = f"selected_indices_iter{config.CURRENT_ITERATION}.joblib"
     selected_indices = load_cache(cache_filename_selected_indices, config.CACHE_DIR)
+
+    scaler = StandardScaler()
+    holdout_features = scaler.fit_transform(holdout_features)
+
     selected_features = holdout_features[:, selected_indices]
 
     # 5. Make Inference

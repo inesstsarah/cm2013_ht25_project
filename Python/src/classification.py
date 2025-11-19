@@ -164,7 +164,7 @@ def _LOSO_split_training(features: np.ndarray, labels: np.ndarray, record_ids: n
     print(f"  Kappa    = {mean_kappa:.3f} +/- {std_kappa:.3f}")
     print("="*60)
 
-    model.fit(X_full, y_full)
+    model.fit(scaler.fit_transform(X_full), y_full)
 
     return {
     'model': model,
