@@ -36,3 +36,4 @@ def test_select_features_mutual_information():
 
 if __name__ == "__main__":
     # Run tests if script is executed directly
+    pytest.main([__file__, "-v"])
