@@ -33,7 +33,7 @@ def select_features(features, labels, config):
     """
     print(f"Selecting features for iteration {config.CURRENT_ITERATION}...")
     print(f"Input features shape: {features.shape}")
-
+    selected_indices = np.arange(features.shape[1])
 
     if features.shape[1] == 0:
         print("⚠️  WARNING: No features to select from!")
@@ -44,10 +44,13 @@ def select_features(features, labels, config):
         print("Early iteration - using all available features")
     
     elif config.CURRENT_ITERATION == 2:
-        selected_features = features
-        selected_features = variance_threshold_selector(features,threshold=0.1)
-        selected_features = _select_features_correlation(selected_features)
-        selected_features, selected_indices = _select_features_mutual_information(selected_features, labels, config.FEATURE_SELECTION_K)
+       
+        selected_features, selected_mask = variance_threshold_selector(features,threshold=0.1)
+        selected_indices = selected_indices[selected_mask]
+        selected_features, selected_mask = _select_features_correlation(selected_features)
+        selected_indices = selected_indices[selected_mask]
+        selected_features, selected_mask = _select_features_mutual_information(selected_features, labels, config.FEATURE_SELECTION_K)
+        selected_indices = selected_indices[selected_mask]
         
     elif config.CURRENT_ITERATION == 3:
         selected_features = features
@@ -96,7 +99,9 @@ def variance_threshold_selector(features, threshold=0.0):
 
     print(f"Selected features shape after VarianceThreshold: {selected_features.shape}")
 
-    return selected_features
+    support_mask = selector.get_support()
+
+    return selected_features, support_mask
 
 def _select_features_correlation(features: np.ndarray) -> np.ndarray:
     """
@@ -109,12 +114,19 @@ def _select_features_correlation(features: np.ndarray) -> np.ndarray:
     corr_matrix = df.corr(method='pearson', min_periods=1).abs()
     # Select upper triangle
     upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
+   
     # Find features with correlation greater than 0.95
     to_drop = [column for column in upper.columns if any(upper[column] > 0.95)]
+    
+    all_indices = set(range(features.shape[1]))
+    drop_indices = set(to_drop)
+    kept_indices = sorted(list(all_indices - drop_indices))
+
     df.drop(to_drop, axis=1, inplace=True)
     # Turn df back into numpy arr
     dropped_features_arr = df.to_numpy()
-    return(dropped_features_arr)
+
+    return dropped_features_arr, kept_indices
 
 def _select_features_mutual_information(features: np.ndarray, labels: np.ndarray, k: int) -> tuple[np.ndarray, list[int]]:
     """
