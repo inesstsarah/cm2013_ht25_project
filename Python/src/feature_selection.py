@@ -82,17 +82,22 @@ def variance_threshold_selector(features, threshold=0.0):
     Example:
         selected_features = variance_threshold_selector(features, threshold=0.1)
     """
-    scaler = StandardScaler()
-    scaled_features = scaler.fit_transform(features)
-
     max_variance = np.var(features, axis=0).max()
     min_variance = np.var(features, axis=0).min()
     print(f"Feature variance range: [{min_variance:.4f}, {max_variance:.4f}]")
 
-    print(f"Applying VarianceThreshold with threshold: {threshold}")
-    selector = VarianceThreshold(threshold=threshold)
-    selector = selector.fit(scaled_features)
-    selected_features = selector.transform(features)
+    if threshold <= 0:
+        selector = VarianceThreshold(threshold=0)
+        selector.fit(features)
+        selected_features = selector.transform(features)
+    else:
+        print(f"Applying VarianceThreshold with threshold: {threshold}")
+        variances = np.var(features, axis=0)
+        cutoff = np.percentile(variances, threshold * 100)
+        selector = VarianceThreshold(threshold=cutoff)
+        selector = selector.fit(features)
+        selected_features = selector.transform(features)
+
     print(f"Selected features shape after VarianceThreshold: {selected_features.shape}")
 
     return selected_features
