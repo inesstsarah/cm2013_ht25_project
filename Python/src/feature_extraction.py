@@ -1,15 +1,12 @@
 from typing import Any
-import matplotlib
-matplotlib.use('Agg')  # Non-interactive backend (must be set before pyplot import)
 import numpy as np
 import scipy.stats   
 from scipy.signal import welch
 import nolds
 from joblib import Parallel, delayed
-from spectrum import arburg, pburg
+from spectrum import arburg
 import pywt
 from math import log, e
-import os
 
 
 def extract_hjorth_activity(epoch):
@@ -61,28 +58,37 @@ def extract_hjorth_complexity(epoch):
 
 
 # ---- WAVELET FEATURE EXTRACTION ----
-def entropy2(labels, base=None):
-  """ Computes entropy of label distribution. """
+def extract_sample_entropy(labels, base=None):
+    """Function to compute the sample entropy of a signal
+    Args:
+        labels (np.ndarray): 1D array of signal values
+        base (int, optional): Base of logarithm. Defaults to e.
 
-  n_labels = len(labels)
-  if n_labels <= 1:
-    return 0
+    Returns:
+        float: Sample entropy of the signal
 
-  value,counts = np.unique(labels, return_counts=True)
-  probs = counts / n_labels
-  n_classes = np.count_nonzero(probs)
+    Example:
+        >>> entropy = extract_sample_entropy(signal)
+    """
+    n_labels = len(labels)
+    if n_labels <= 1:
+        return 0
 
-  if n_classes <= 1:
-    return 0
+    _,counts = np.unique(labels, return_counts=True)
+    probs = counts / n_labels
+    n_classes = np.count_nonzero(probs)
 
-  ent = 0.
+    if n_classes <= 1:
+        return 0
 
-  # Compute entropy
-  base = e if base is None else base
-  for i in probs:
-    ent -= i * log(i, base)
+    ent = 0.
 
-  return ent
+    # Compute entropy
+    base = e if base is None else base
+    for i in probs:
+        ent -= i * log(i, base)
+
+    return ent
 
 def wavelet_decomposition(signal, wavelet_name):
     """Function to do wavelet decomposition on a signal
@@ -101,6 +107,7 @@ def wavelet_decomposition(signal, wavelet_name):
     
     return(coeff_arr)
 
+
 def wavelet_feature_extraction(coeff_arr):
     """Function to extract signals from wavelet coefficients from 
     the decomposition
@@ -113,34 +120,35 @@ def wavelet_feature_extraction(coeff_arr):
 
     wavelet_features = {}
     # Try extracting the entropy, and other statistics from every coefficient if possible
-    for i in range(len(coeff_arr)):
     #for coeff in coeff_arr:
         # Do the feature extraction here for every coeff
-        energy = np.sum(coeff_arr[i]**2)
-        wavelet_features[f"energy_{i}"] = energy
-    
-        # Get statistical moments
-        # Mean
-        mean = np.mean(coeff_arr[i])
-        wavelet_features[f"mean_{i}"] = mean
+    coeff = coeff_arr[-1]
+    energy = np.sum(coeff**2)
+    wavelet_features["energy"] = energy
 
-        # Standard Deviation
-        stdev = np.std(coeff_arr[i])
-        wavelet_features[f"stdev_{i}"] = stdev
+    # Get statistical moments
+    # Mean
+    mean = np.mean(coeff)
+    wavelet_features["mean"] = mean
 
-        # Skewness
-        skewness = scipy.stats.skew(coeff_arr[i]) 
-        wavelet_features[f"skewness_{i}"] = skewness
+    # Standard Deviation
+    stdev = np.std(coeff)
+    wavelet_features["stdev"] = stdev
 
-        # Kurtosis
-        kurt = scipy.stats.kurtosis(coeff_arr[i])
-        wavelet_features[f"kurtosis_{i}"] = kurt
+    # Skewness
+    skewness = scipy.stats.skew(coeff) 
+    wavelet_features["skewness"] = skewness
 
-        # Entropy
-        entropy = entropy2(coeff_arr[i])
-        wavelet_features[f"entropy_{i}"] = entropy
+    # Kurtosis
+    kurt = scipy.stats.kurtosis(coeff)
+    wavelet_features["kurtosis"] = kurt
+
+    # Entropy
+    entropy = extract_sample_entropy(coeff)
+    wavelet_features["entropy"] = entropy
     
     return(wavelet_features)
+
 
 def wavelet_processing(epoch, wavelet_name):
     coeff_arr = wavelet_decomposition(signal = epoch, wavelet_name = wavelet_name)
@@ -153,13 +161,7 @@ def wavelet_processing(epoch, wavelet_name):
 # ---- TIME DOMAIN FEATURE EXTRACTION ----
 def extract_time_domain_features(epoch):
     """
-    EXAMPLE: Extract basic time-domain features from a single epoch.
-
-    This is a MINIMAL example with only 3 features.
-    Students must implement the remaining 13+ time-domain features.
-
-    Works for any signal type (EEG, EOG, EMG) but students should consider
-    signal-specific features for optimal performance.
+    Extract time-domain features from a single epoch of signal data.
 
     Args:
         epoch (np.ndarray): A 1D array representing one epoch of signal data.
@@ -200,35 +202,45 @@ def extract_time_domain_features(epoch):
     features['zero_crossings'] = np.sum(np.diff(np.sign(epoch)) != 0)
     
     # Complexity Feature:
-    features['entropy'] = entropy2(epoch)
+    features['entropy'] = extract_sample_entropy(epoch)
 
     return features
 
 
-# ========== AR features computation ========== {
+#  ---- AR features computation ----
+def _ar_compute_psd(epoch, fs, order, n_freqs):
+    """
+    Compute AR-based PSD using Burg's method.
+
+    Returns frequencies (Hz) and one-sided PSD.
+    """
+    # Estimate AR coefficients and driving noise variance
+    ar_coeffs, noise_var = arburg(epoch, order)[:2]
+
+    # Frequency grid (0 .. fs/2)
+    freqs = np.linspace(0.0, fs / 2.0, n_freqs)
+
+    # Evaluate A(e^{-j 2π f k / fs}) over grid
+    # ar_coeffs is [1, a1, ..., ap] as returned by arburg
+    k_indices = np.arange(1, len(ar_coeffs))
+    if len(k_indices) == 0:
+        # Degenerate case
+        psd = np.full_like(freqs, fill_value=noise_var / (1e-12))
+        return freqs, psd
+
+    exp_matrix = np.exp(-1j * 2.0 * np.pi * np.outer(freqs / fs, k_indices))  # shape (n_freqs, p)
+    A_vals = 1.0 + exp_matrix @ ar_coeffs[1:]
+    psd = noise_var / (np.abs(A_vals) ** 2)
+    psd = np.real(psd)
+
+    return freqs, psd
+
+
 def _integrate_band_power(freqs: np.ndarray, psd: np.ndarray, f_low: float, f_high: float) -> float:
     mask = (freqs >= f_low) & (freqs <= f_high)
     if not np.any(mask):
         return 0.0
     return np.trapezoid(psd[mask], freqs[mask])
-
-
-def _peak_frequency(freqs: np.ndarray, psd: np.ndarray, f_low: float = None, f_high: float = None) -> float:
-    if f_low is not None and f_high is not None:
-        mask = (freqs >= f_low) & (freqs <= f_high)
-        if not np.any(mask):
-            return float('nan')
-        freqs_sel = freqs[mask]
-        psd_sel = psd[mask]
-    else:
-        freqs_sel = freqs
-        psd_sel = psd
-    
-    if len(psd_sel) == 0 or np.max(psd_sel) <= 0:
-        return float('nan')
-    
-    peak_idx = np.argmax(psd_sel)
-    return float(freqs_sel[peak_idx])
 
 
 def _spectral_entropy(freqs: np.ndarray, psd: np.ndarray, f_low: float, f_high: float) -> float:
@@ -241,57 +253,6 @@ def _spectral_entropy(freqs: np.ndarray, psd: np.ndarray, f_low: float, f_high: 
     H = -np.sum(p * np.log(p))
     H_norm = H / np.log(len(p))
     return float(H_norm)
-
-
-def _extract_derivative_features(freqs: np.ndarray, psd: np.ndarray, f_low: float, f_high: float) -> dict:
-    """
-    Extract derivative features from power spectral density.
-    
-    Calculates first and second order derivatives of PSD and extracts
-    statistical features (mean, std, max, min, range, power).
-    
-    Args:
-        freqs (np.ndarray): Frequency array (Hz).
-        psd (np.ndarray): Power spectral density array.
-    
-    Returns:
-        dict: Dictionary containing derivative features.
-    """
-    mask = (freqs >= f_low) & (freqs <= f_high)
-    if not np.any(mask):
-        return {}
-    psd = psd[mask]
-    freqs = freqs[mask]
-    features = {}
-    
-    # Calculate frequency step
-    df = np.diff(freqs)[0] if len(np.diff(freqs)) > 0 else (freqs[-1] - freqs[0]) / len(freqs)
-    
-    # First-order derivative (dPSD/df) - reflects rate of change of power with frequency
-    psd_first_derivative = np.diff(psd) / df
-    
-    # First-order derivative statistics
-    features['deriv1_mean'] = np.mean(psd_first_derivative)
-    features['deriv1_std'] = np.std(psd_first_derivative)
-    features['deriv1_max'] = np.max(psd_first_derivative)
-    features['deriv1_min'] = np.min(psd_first_derivative)
-
-    # First-order derivative power (integral of squared derivative) - measures total spectral variation
-    features['deriv1_power'] = np.trapezoid(psd_first_derivative**2, freqs[1:])
-    
-    # Second-order derivative (d²PSD/df²) - reflects spectral curvature/sharpness
-    psd_second_derivative = np.diff(psd_first_derivative) / df
-    
-    # Second-order derivative statistics
-    features['deriv2_mean'] = np.mean(psd_second_derivative)
-    features['deriv2_std'] = np.std(psd_second_derivative)
-    features['deriv2_max'] = np.max(psd_second_derivative)
-    features['deriv2_min'] = np.min(psd_second_derivative)
-    
-    # Second-order derivative power
-    features['deriv2_power'] = np.trapezoid(psd_second_derivative**2, freqs[2:])
-    
-    return features
 
 
 def _spectral_edge_frequency(freqs: np.ndarray, psd: np.ndarray, f_low: float, f_high: float, percentile: float = 0.9) -> float:
@@ -313,18 +274,22 @@ def _spectral_edge_frequency(freqs: np.ndarray, psd: np.ndarray, f_low: float, f
 def extract_ar_features(epoch: np.ndarray,
                         fs: int,
                         bands: dict,
-                        order: int) -> dict:
+                        order: int,
+                        se_percentile: float,
+                        config: Any) -> dict:
     """
-    Extract AR (Burg) features for a single EEG epoch.
-    """
-    fmin_total = bands['delta'][0]
-    fmax_total = bands['beta'][1]
-    
-    # Compute PSD and AR coefficients using pburg
-    p = pburg(epoch, order=order, sampling=fs, criteria='AIC', NFFT=4096)
-    psd = np.array(p.psd)
-    freqs = np.array(p.frequencies())
+    Extract AR (Burg) spectral features for a single EEG epoch.
 
+    Features:
+    - Band powers (Delta/Theta/Alpha/Sigma/Beta)
+    - Relative band powers (normalized by total power 0.5–30 Hz)
+    - Spectral edge frequency (90% by default) within 0.5–30 Hz
+    - Peak frequency within 0.5–30 Hz
+    - Spectral entropy within 0.5–30 Hz
+    """
+    fmin_total, fmax_total = config.EEG_LOWER, config.EEG_UPPER
+    
+    freqs, psd = _ar_compute_psd(epoch, fs, order=order, n_freqs=1024)
     total_power = _integrate_band_power(freqs, psd, fmin_total, fmax_total)
     features = {}
 
@@ -333,21 +298,102 @@ def extract_ar_features(epoch: np.ndarray,
         bp = _integrate_band_power(freqs, psd, f1, f2)
         features[f'ar_{name}_power'] = bp
         features[f'ar_{name}_rel_power'] = (bp / total_power) if total_power > 0 else 0.0
-        # Peak frequency within each band
-        features[f'ar_{name}_peak_freq'] = _peak_frequency(freqs, psd, f1, f2)
 
-    # Spectral edge frequency (SEF90)
-    features['ar_spectral_edge_freq'] = _spectral_edge_frequency(freqs, psd, fmin_total, fmax_total, 0.9)
-    # Global peak frequency
-    features['ar_peak_frequency'] = _peak_frequency(freqs, psd, fmin_total, fmax_total)
-    # Spectral entropy
+    # Edge frequency, peak frequency, spectral entropy (within analysis band)
+    features['ar_spectral_edge_freq'] = _spectral_edge_frequency(freqs, psd, fmin_total, fmax_total, se_percentile)
+
+    mask = (freqs >= fmin_total) & (freqs <= fmax_total)
+    if np.any(mask):
+        peak_idx = np.argmax(psd[mask])
+        features['ar_peak_frequency'] = float(freqs[mask][peak_idx])
+    else:
+        features['ar_peak_frequency'] = float('nan')
+
     features['ar_spectral_entropy'] = _spectral_entropy(freqs, psd, fmin_total, fmax_total)
-    # Derivative features
-    deriv_features = _extract_derivative_features(freqs, psd, fmin_total, fmax_total)
-    features.update(deriv_features)
 
     return features
-# ========== AR features computation ========== }
+
+# ---- WELCH METHOD ----
+def welch_method(signal,fs, config):
+    """
+    Computes the Power Spectral Density (PSD) using Welch's method.
+
+    Args:
+        epoch (np.ndarray): A 1D array representing one epoch of signal data.
+        fs (int): Sampling frequency of the signal.
+        nperseg (int): Length of each segment for Welch's method.
+        noverlap (int): Number of overlapping samples between segments.
+        nfft (int): Number of points for the FFT.
+        window (str or tuple or array_like): Desired window to use.
+        scaling (str): Selects between 'density' and 'spectrum' scaling of the PSD.
+
+    Returns:
+        f (np.ndarray): Array of sample frequencies.
+        Pxx (np.ndarray): Power spectral density of the signal.
+
+    Example:
+        >>> freqs, psd = welch_psd(epoch, fs=100, nperseg=256)
+    """
+   
+    freqs, psd = welch(
+    signal,
+    fs,    # Sampling frequency
+    **config.WELCH_PARAMETERS            
+    )
+
+    return freqs, psd
+
+
+def extract_welch_features(signal, fs, config):
+    """ Function to extract spectral features from the PSD
+    Args:   
+        freqs (np.ndarray): 1D array of frequencies 
+        psd (np.ndarray): 1D array of power spectral density values
+        config (module): The configuration module.      
+    Returns:
+        spectral_features (dict): A dictionary of all spectral features
+    Example:
+        >>> spectral_features = extract_spectral_features(freqs, psd, config)
+    """
+    freqs, psd = welch_method(signal,fs, config)
+
+    spectral_features = {}
+    indices = np.where((freqs>=config.EEG_LOWER)&(freqs<=config.EEG_UPPER))
+    freqs = freqs[indices]
+    psd = psd[indices]
+    total_power = np.trapezoid(psd, freqs)
+
+    #Band Powers
+    for band,(lower,upper) in config.EEG_BANDS.items():
+        band_i = np.where((freqs>=lower) & (freqs<=upper))
+        band_freqs = freqs[band_i]
+        band_psd = psd[band_i]
+        band_power = np.trapezoid(band_psd,band_freqs)
+        spectral_features['welch_'+band+'_power'] = band_power
+       
+        try:
+            spectral_features['welch_'+band+'_power_rel'] = spectral_features['welch_'+band+'_power'] / total_power
+        except ZeroDivisionError:
+            spectral_features['welch_'+band+'_power_rel'] = 0.0
+   
+
+    #Spectral Entropy
+    psd_norm = psd / np.sum(psd)
+    spectral_entropy = (-np.sum(psd_norm * np.log2(psd_norm))) / np.log2(len(psd_norm))
+    spectral_features['welch_spectral_entropy'] = spectral_entropy
+
+    #Peak Frequency
+    spectral_features['welch_peak_freq'] = freqs[np.argmax(psd)]
+
+    #Spectral Edge Frequencies
+    P90 = 0.9*total_power
+    P95 = 0.95*total_power
+    power_per_bin = psd*np.diff(freqs)[0]
+    cumulative_power = np.cumsum(power_per_bin)
+    spectral_features['welch_sef90'] = np.interp(P90, cumulative_power, freqs)
+    spectral_features['welch_sef95']= np.interp(P95, cumulative_power, freqs)
+
+    return spectral_features
 
 def extract_features(data, channel_info, config):
     """
@@ -403,42 +449,26 @@ def extract_multi_channel_features(multi_channel_data, channel_info, config):
     print("selecting multi-channel features...")
     
     n_epochs = multi_channel_data['eeg'].shape[0]
-    # OPTIMIZATION: Pre-extract epoch data to avoid any slicing/copying in worker processes
-    # Extract all channel data upfront to minimize work inside parallel workers
-    epoch_data_list = [
-        {
-            'eeg': multi_channel_data['eeg'][epoch_idx, :, :],
-            'eog': multi_channel_data['eog'][epoch_idx, :, :] if config.CURRENT_ITERATION >= 2 else None,
-            'emg': multi_channel_data['emg'][epoch_idx, :, :] if config.CURRENT_ITERATION >= 3 else None
-        }
-        for epoch_idx in range(n_epochs)
-    ]
+    all_features = []
     
     if config.USE_PARALLEL:
-        # from threadpoolctl import threadpool_limits
-        # threadpool_limits(limits=1)
-        print(f"Preparing {n_epochs} epochs for parallel processing...")
-        n_jobs = config.PARALLEL_N_JOBS if config.PARALLEL_N_JOBS > 0 else os.cpu_count() or 4
-        batch_size = max(1, n_epochs // (n_jobs * 3))
-        print(f"Using {n_jobs} workers with batch_size: {batch_size}")
-        all_features = Parallel(
-            n_jobs=config.PARALLEL_N_JOBS, 
-            backend='loky', 
-            verbose=10,
-            prefer='processes',
-            batch_size=batch_size
-        )(
-            delayed(_process_epoch)(epoch_data, channel_info, config) 
-            for epoch_data in epoch_data_list
-        )
+        all_features = Parallel(n_jobs=config.PARALLEL_N_JOBS, backend='loky', verbose=10)(
+            delayed(process_epoch)(i,multi_channel_data,channel_info,config) for i in range(n_epochs))
     else:
-        all_features = []
         for epoch_idx in range(n_epochs):
-            print(f"Extracting features for epoch {epoch_idx+1}/{n_epochs}")
-            epoch_features = _process_epoch(epoch_data_list[epoch_idx], channel_info, config)
+            print(f"Extracting EEG features for epoch {epoch_idx+1}/{n_epochs}")
+            epoch_features = process_epoch(epoch_idx, multi_channel_data, channel_info, config)
             all_features.append(epoch_features)
 
     features = np.array(all_features)
+
+    if config.CURRENT_ITERATION == 1:
+        expected = 2 * 17  # 2 EEG channels × 17 features each
+        print(f"Multi-channel Iteration 1: {features.shape[1]} features (target: {expected}+)")
+    elif config.CURRENT_ITERATION >= 3:
+        print(f"Multi-channel features extracted: {features.shape[1]} total")
+        print("(2 EEG + 2 EOG + 1 EMG channels)")
+
     return features
 
 
@@ -495,7 +525,8 @@ def extract_single_channel_features(data, channel_info, config):
     return features
 
 
-def extract_eog_features(eog_signal):
+def extract_eog_features(eog_signal): # TODO: make sure this function takes a 2D array of both EOG channels
+    # TODO: Also
     """
     STUDENT TODO: Extract EOG-specific features for eye movement detection.
 
@@ -504,10 +535,22 @@ def extract_eog_features(eog_signal):
     - Slow eye movements
     - Eye blinks and artifacts
     """
+    """
+    Function to extract features from EOG signal
+    Args:
+        eog_signal (np.ndarray): 2D array of EOG Signal [EOG_left, EOG_right]
+    Returns:
+        eog_features (dict): Dictionary of EOG features
+    """
+    # Do highpass filter
+
     features = {
-        'eog_mean': np.mean(eog_signal),
+        'eog_mean_right': np.mean(eog_signal),
         'eog_std': np.std(eog_signal),
         'eog_range': np.max(eog_signal) - np.min(eog_signal),
+        'eog_max': np.max(eog_signal),
+        'eog_REM' : 0 # Change this
+
     }
 
     # TODO: Students should add:
@@ -541,127 +584,54 @@ def extract_emg_features(emg_signal):
     return features
 
 
-def _process_epoch(epoch_data: dict, channel_info: dict, config: dict) -> list:
+def process_epoch(epoch_idx, multi_channel_data, channel_info, config):
     """
-    Process a single epoch's data to extract features.
-    This is the core processing function that extracts all features from epoch data.
-    
+    Process a single epoch to extract features from EEG, EOG, and EMG channels.
+
     Args:
-        epoch_data (dict): Dictionary with 'eeg', 'eog', 'emg' keys containing arrays.
-                          - 'eeg': shape (n_channels, n_samples)
-                          - 'eog': shape (n_channels, n_samples)
-                          - 'emg': shape (n_samples,)
-        channel_info (dict): Channel information (e.g., 'eeg_fs').
-        config: Config object or proxy with necessary parameters.
+        epoch_idx (int): The index of the epoch to process.
+        multi_channel_data (dict): Dictionary with keys 'eeg', 'eog', 'emg'.
+        config (module): The configuration module.
     Returns:
-        epoch_features (list): List of extracted features for the epoch.
+        epoch_features (list): A list of extracted features for the epoch.
+    
+    Example:
+        >>> epoch_features = process_epoch(epoch_idx, multi_channel_data, config)
     """
     epoch_features = []
-    eeg_data = epoch_data['eeg']  # shape: (n_channels, n_samples)
-    
-    # EEG features (typically 2 channels)
-    for ch in range(eeg_data.shape[0]):
-        eeg_signal = eeg_data[ch, :]
+    # EEG features (2 channels)
+    for ch in range(multi_channel_data['eeg'].shape[1]):
+        eeg_signal = multi_channel_data['eeg'][epoch_idx, ch, :].copy()
         # Time-domain features
         eeg_td = extract_time_domain_features(eeg_signal)
         epoch_features.extend(list(eeg_td.values()))
 
         # Add AR spectral features
-        eeg_ar = extract_ar_features(eeg_signal, channel_info['eeg_fs'], config.EEG_BANDS, config.AR_ORDER)
-        epoch_features.extend(list(eeg_ar.values()))
+        eeg_ar = extract_ar_features(eeg_signal, channel_info['eeg_fs'], config.EEG_BANDS, config.AR_ORDER, config.EEG_SE_PERCENTILE, config)
+        epoch_features.extend(list[Any](eeg_ar.values()))
 
         # Add wavelet features
         eeg_wavelet = wavelet_processing(eeg_signal, config.WAVELET_NAME)
         epoch_features.extend(list(eeg_wavelet.values()))
 
         # Add welch features
-        freqs, psd = welch_method(eeg_signal, channel_info, config)
-        eeg_features = extract_spectral_features(freqs, psd, config)
-        epoch_features.extend(list(eeg_features.values()))
+        eeg_welch = extract_welch_features(eeg_signal, channel_info['eeg_fs'], config)
+        epoch_features.extend(list(eeg_welch.values()))
 
     if config.CURRENT_ITERATION >= 3:
         # Add EOG features (2 channels)
-        eog_data = epoch_data['eog']
-        for ch in range(eog_data.shape[0]):
-            eog_signal = eog_data[ch, :]
+        for ch in range(multi_channel_data['eog'].shape[1]):
+            eog_signal = multi_channel_data['eog'][epoch_idx, ch, :]
             eog_features = extract_eog_features(eog_signal)
             epoch_features.extend(list(eog_features.values()))
 
         # Add EMG features (1 channel)
-        if epoch_data.get('emg') is not None:
-            emg_signal = epoch_data['emg']
-            emg_features = extract_emg_features(emg_signal)
-            epoch_features.extend(list(emg_features.values()))
+        emg_signal = multi_channel_data['emg'][epoch_idx, 0, :]
+        emg_features = extract_emg_features(emg_signal)
+        epoch_features.extend(list(emg_features.values()))
 
     return epoch_features
 
 
-def welch_method(signal,channel_info, config):
-    """
-    Computes the Power Spectral Density (PSD) using Welch's method.
 
-    Args:
-        epoch (np.ndarray): A 1D array representing one epoch of signal data.
-        fs (int): Sampling frequency of the signal.
-        nperseg (int): Length of each segment for Welch's method.
-        noverlap (int): Number of overlapping samples between segments.
-        nfft (int): Number of points for the FFT.
-        window (str or tuple or array_like): Desired window to use.
-        scaling (str): Selects between 'density' and 'spectrum' scaling of the PSD.
-
-    Returns:
-        f (np.ndarray): Array of sample frequencies.
-        Pxx (np.ndarray): Power spectral density of the signal.
-
-    Example:
-        >>> freqs, psd = welch_psd(epoch, fs=100, nperseg=256)
-    """
-   
-    freqs, psd = welch(
-    signal,
-    channel_info['eeg_fs'],    # Sampling frequency
-    **config.WELCH_PARAMETERS            
-    )
-
-    return freqs, psd
-
-
-def extract_spectral_features(freqs, psd, config):
-    spectral_features = {}
-    indices = np.where((freqs>=config.EEG_LOWER)&(freqs<=config.EEG_UPPER))
-    freqs = freqs[indices]
-    psd = psd[indices]
-    total_power = np.trapezoid(psd, freqs)
-
-    #Band Powers
-    for band,(lower,upper) in config.EEG_BANDS.items():
-        band_i = np.where((freqs>=lower) & (freqs<=upper))
-        band_freqs = freqs[band_i]
-        band_psd = psd[band_i]
-        band_power = np.trapezoid(band_psd,band_freqs)
-        spectral_features[band+'_power'] = band_power
-       
-        try:
-            spectral_features[band+'_power_rel'] = spectral_features[band+'_power'] / total_power
-        except ZeroDivisionError:
-            spectral_features[band+'_power_rel'] = 0.0
-   
-
-    #Spectral Entropy
-    psd_norm = psd / np.sum(psd)
-    spectral_entropy = (-np.sum(psd_norm * np.log2(psd_norm))) / np.log2(len(psd_norm))
-    spectral_features['spectral_entropy'] = spectral_entropy
-
-    #Peak Frequency
-    spectral_features['peak_freq'] = freqs[np.argmax(psd)]
-
-    #Spectral Edge Frequencies
-    P90 = 0.9*total_power
-    P95 = 0.95*total_power
-    power_per_bin = psd*np.diff(freqs)[0]
-    cumulative_power = np.cumsum(power_per_bin)
-    spectral_features['sef90'] = np.interp(P90, cumulative_power, freqs)
-    spectral_features['sef95']= np.interp(P95, cumulative_power, freqs)
-
-    return spectral_features
 
