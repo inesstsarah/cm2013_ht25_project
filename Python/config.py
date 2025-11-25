@@ -2,7 +2,7 @@
 
 # Set the current iteration of the project (1-4). 
 # This controls which parts of the pipeline are active.
-CURRENT_ITERATION = 2
+CURRENT_ITERATION = 3
 
 # Set to True to use cached data for preprocessing and feature extraction.
 USE_CACHE = True
@@ -46,6 +46,11 @@ BANDPASS_FILTER_LOWER_FREQ = 0.5 # Hz
 BANDPASS_FILTER_HIGHER_FREQ = 33 # Hz
 BANDPASS_FILTER_ORDER = 5
 HIGHPASS_FILTER_FREQ = 0.5 # Hz
+EOG_BANDPASS_FILTER_LOWER_FREQ = 0.3 # Hz
+EOG_BANDPASS_FILTER_HIGHER_FREQ = 24 # Hz
+EOG_BANDPASS_FILTER_ORDER = 5
+EMG_HIGHPASS_FILTER_FREQ = 10 # Hz
+EMG_LOWPASS_FILTER_FREQ = 62 # Hz
 
 # -- Feature Extraction --
 # (Add feature-specific parameters here)
