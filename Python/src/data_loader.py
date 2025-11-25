@@ -391,6 +391,50 @@ def load_all_training_data(training_dir, epoch_length=30):
     return combined_data, combined_labels, combined_record_ids, channel_info
 
 
+def load_all_holdout_data(holdout_dir, epoch_length=30):
+    """
+    Load all holdout recordings from a directory.
+    """
+    from glob import glob
+    print(f"Loading all holdout data from {holdout_dir}...")
+    edf_files = sorted(glob(os.path.join(holdout_dir, '*.edf')))
+    if not edf_files:
+        raise FileNotFoundError(f"No EDF files found in {holdout_dir}")
+    print(f"Found {len(edf_files)} recordings")
+    all_eeg = []
+    all_eog = []
+    all_emg = []
+    all_record_ids = []
+    channel_info = None
+    for edf_file in edf_files:
+        record_id = Path(edf_file).stem
+        print(f"\nLoading {record_id}...")
+        multi_channel_data, info = load_holdout_data(edf_file, epoch_length)
+        if channel_info is None:
+            channel_info = info
+        if 'eeg' in multi_channel_data:
+            all_eeg.append(multi_channel_data['eeg'])
+        if 'eog' in multi_channel_data:
+            all_eog.append(multi_channel_data['eog'])
+        if 'emg' in multi_channel_data:
+            all_emg.append(multi_channel_data['emg'])
+        all_record_ids.extend([record_id] * len(multi_channel_data['eeg']))
+        print(f"Loaded {len(multi_channel_data['eeg'])} epochs")
+    combined_data = {}
+    if all_eeg:
+        combined_data['eeg'] = np.concatenate(all_eeg, axis=0)
+        print(f"\nCombined EEG shape: {combined_data['eeg'].shape}")
+    if all_eog:
+        combined_data['eog'] = np.concatenate(all_eog, axis=0)
+        print(f"Combined EOG shape: {combined_data['eog'].shape}")
+    if all_emg:
+        combined_data['emg'] = np.concatenate(all_emg, axis=0)
+        print(f"Combined EMG shape: {combined_data['emg'].shape}")
+    combined_record_ids = np.array(all_record_ids)
+    return combined_data, combined_record_ids, channel_info
+
+
+
 if __name__ == '__main__':
     # Example usage
     import sys

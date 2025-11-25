@@ -97,8 +97,12 @@ def main():
 
     # 4. Feature Selection
     print("\n=== STEP 4: FEATURE SELECTION ===")
-    selected_features = select_features(features, labels, config)
+    selected_features, selected_indices = select_features(features, labels, config)
     print(f"Selected features shape: {selected_features.shape}")
+
+    cache_filename_selected_indices = f"selected_indices_iter{config.CURRENT_ITERATION}.joblib"
+    save_cache(selected_indices, cache_filename_selected_indices, config.CACHE_DIR)
+    print("Saved selected indices to cache")
 
     # 5. Classification
     print("\n=== STEP 5: CLASSIFICATION ===")
@@ -141,8 +145,9 @@ def main():
         print("⚠️  Students need to implement missing components!")
     print("="*50)
 
-from src.visualization import plot_sample_epoch
+
 if __name__ == "__main__":
     main()
-    # edf_file = os.path.join(config.SAMPLE_DIR, "R1.edf")  # Example EDF file
-    # plot_sample_epoch(edf_file, epoch_idx=150)
+    # from src.visualization import plot_sample_epoch
+    # plot_sample_epoch('../data/Holdout/H1.edf', epoch_idx=10)
+    # plot_sample_epoch('../data/training/R1.edf', epoch_idx=0)

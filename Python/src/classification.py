@@ -99,7 +99,10 @@ def _LOSO_split_training(features: np.ndarray, labels: np.ndarray, record_ids: n
     loso_results = []
     all_y_test = []
     all_y_pred = []
+    scaler = StandardScaler()
+
     if config.CURRENT_ITERATION == 1:
+        # - Sleep stages are not equally distributed
         smote = SMOTE(random_state=42)
         X_full, y_full = smote.fit_resample(features, labels)
     else:
@@ -116,22 +119,18 @@ def _LOSO_split_training(features: np.ndarray, labels: np.ndarray, record_ids: n
         model.set_params(**config.BEST_PARAMS)
         print(f"Model instance ID: {id(model)}, Params: {config.BEST_PARAMS}")
 
-
     for fold_idx, (train_idx, test_idx) in enumerate(logo.split(features, labels, groups=record_ids)):
         X_train, X_test = features[train_idx], features[test_idx]
         y_train, y_test = labels[train_idx], labels[test_idx]
+
+        # Standardize features
+        X_train = scaler.fit_transform(X_train)
+        X_test = scaler.transform(X_test)
 
         # - Sleep stages are not equally distributed
         # Sleep stages are naturally imbalanced (more N2, less N1/REM)
         if config.CURRENT_ITERATION == 1:
             X_train, y_train = smote.fit_resample(X_train, y_train)
-        
-        # CRITICAL: Feature scaling for SVM (and helpful for other classifiers)
-        # StandardScaler normalizes features to mean=0, std=1
-        # This is essential when features have different scales (e.g., power vs. frequency)
-        scaler = StandardScaler()
-        X_train_scaled = scaler.fit_transform(X_train)
-        X_test_scaled = scaler.transform(X_test)
         
         # Which subject is held out in this fold?
         train_subjects = np.unique(record_ids[train_idx])
@@ -139,11 +138,11 @@ def _LOSO_split_training(features: np.ndarray, labels: np.ndarray, record_ids: n
         print(f"\nFold {fold_idx+1}/{len(train_subjects)+1}: Training on {len(train_subjects)} subjects, testing on {test_subject}")
 
         # Train classifier on scaled features
-        model.fit(X_train_scaled, y_train)
+        model.fit(X_train, y_train)
 
         # Predict on held-out subject (use scaled test features)
-        y_pred = model.predict(X_test_scaled)
-        y_pred_proba = model.predict_proba(X_test_scaled) if hasattr(model, "predict_proba") else None
+        y_pred = model.predict(X_test)
+        y_pred_proba = model.predict_proba(X_test) if hasattr(model, "predict_proba") else None
         eva_results = _training_evaluation(y_test, y_pred, y_pred_proba,record_ids[test_idx])
         all_y_test.extend(y_test)
         all_y_pred.extend(y_pred)
@@ -165,7 +164,7 @@ def _LOSO_split_training(features: np.ndarray, labels: np.ndarray, record_ids: n
     print(f"  Kappa    = {mean_kappa:.3f} +/- {std_kappa:.3f}")
     print("="*60)
 
-    model.fit(X_full, y_full)
+    model.fit(scaler.fit_transform(X_full), y_full)
 
     return {
     'model': model,
@@ -260,13 +259,25 @@ def _compute_auc(y_true: np.ndarray, y_pred_proba: np.ndarray) -> dict:
     #  Compute ROC-AUC
     auc_per_class = []
     for i in range(n_classes):
-        try:
-            auc = roc_auc_score(y_true_onehot[:, i], y_pred_proba[:, i])
-        except ValueError:
-            auc = np.nan  # if class missing
+        # Check if class i is present in y_true and has at least 2 unique values
+        class_labels = y_true_onehot[:, i]
+        unique_values = np.unique(class_labels)
+        
+        # ROC-AUC requires at least 2 classes (0 and 1) to be meaningful
+        if len(unique_values) < 2:
+            auc = np.nan  # if class missing or only one class present
+        else:
+            try:
+                auc = roc_auc_score(class_labels, y_pred_proba[:, i])
+            except ValueError:
+                auc = np.nan  # fallback if still fails
         auc_per_class.append(auc)
 
-    macro_auc = np.nanmean(auc_per_class)
+    # Only compute mean if there are non-NaN values
+    if np.any(~np.isnan(auc_per_class)):
+        macro_auc = np.nanmean(auc_per_class)
+    else:
+        macro_auc = np.nan
 
     unique, counts = np.unique(y_true, return_counts=True)
     weights = np.zeros(n_classes)

@@ -131,6 +131,8 @@ def calculate_sleep_metrics(labels: np.ndarray, epoch_duration: int = 30) -> dic
         for i in range(1, len(rem_binary)):
             if rem_binary[i-1] == 0 and rem_binary[i] == 1:
                 rem_cycles += 1
+    else:
+        rem_duration = 0
     
     # Store all metrics
     metrics = {

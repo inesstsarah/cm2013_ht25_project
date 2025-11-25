@@ -139,6 +139,7 @@ def wavelet_feature_extraction(coeff_arr):
     skewness = scipy.stats.skew(coeff) 
     wavelet_features["skewness"] = skewness
 
+<<<<<<< HEAD
     # Kurtosis
     kurt = scipy.stats.kurtosis(coeff)
     wavelet_features["kurtosis"] = kurt
@@ -146,6 +147,11 @@ def wavelet_feature_extraction(coeff_arr):
     # Entropy
     entropy = extract_sample_entropy(coeff)
     wavelet_features["entropy"] = entropy
+=======
+        # Entropy
+        entropy = extract_sample_entropy(coeff_arr[i])
+        wavelet_features[f"entropy_{i}"] = entropy
+>>>>>>> main
     
     return(wavelet_features)
 
@@ -279,6 +285,24 @@ def extract_ar_features(epoch: np.ndarray,
                         config: Any) -> dict:
     """
     Extract AR (Burg) spectral features for a single EEG epoch.
+<<<<<<< HEAD
+=======
+
+    Features:
+    - Band powers (Delta/Theta/Alpha/Sigma/Beta)
+    - Relative band powers (normalized by total power 0.5–30 Hz)
+    - Spectral edge frequency (90% by default) within 0.5–30 Hz
+    - Peak frequency within 0.5–30 Hz
+    - Spectral entropy within 0.5–30 Hz
+    """
+    fmin_total = bands['delta'][0]
+    fmax_total = bands['beta'][1]
+    
+    # Compute PSD and AR coefficients using pburg
+    p = pburg(epoch, order=order, sampling=fs, criteria='AIC', NFFT=4096)
+    psd = np.array(p.psd)
+    freqs = np.array(p.frequencies())
+>>>>>>> main
 
     Features:
     - Band powers (Delta/Theta/Alpha/Sigma/Beta)
@@ -394,6 +418,10 @@ def extract_welch_features(signal, fs, config):
     spectral_features['welch_sef95']= np.interp(P95, cumulative_power, freqs)
 
     return spectral_features
+<<<<<<< HEAD
+=======
+
+>>>>>>> main
 
 def extract_features(data, channel_info, config):
     """
@@ -607,7 +635,11 @@ def process_epoch(epoch_idx, multi_channel_data, channel_info, config):
         epoch_features.extend(list(eeg_td.values()))
 
         # Add AR spectral features
+<<<<<<< HEAD
         eeg_ar = extract_ar_features(eeg_signal, channel_info['eeg_fs'], config.EEG_BANDS, config.AR_ORDER, config.EEG_SE_PERCENTILE, config)
+=======
+        eeg_ar = extract_ar_features(eeg_signal, channel_info['eeg_fs'], config.EEG_BANDS, config.AR_ORDER)
+>>>>>>> main
         epoch_features.extend(list[Any](eeg_ar.values()))
 
         # Add wavelet features

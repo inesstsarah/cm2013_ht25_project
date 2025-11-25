@@ -16,6 +16,8 @@ from src.feature_extraction import (
     extract_single_channel_features,
     extract_multi_channel_features,
     extract_features,
+    welch_method,
+    extract_welch_features,
     wavelet_processing,
     wavelet_decomposition,
     wavelet_feature_extraction,
@@ -31,8 +33,8 @@ from src.data_loader import load_training_data
 from src.preprocessing import preprocess
 
 
-edf_path = "../data/training/R2.edf"
-xml_path = "../data/training/R2.xml"
+edf_path = os.path.join('../data/training/', 'R1.edf')
+xml_path = os.path.join('../data/training/', 'R1.xml')
 data,_,channel_info= load_training_data(edf_path, xml_path)
 preprocessed_data = preprocess(data,channel_info, config)
 epoch_eeg = preprocessed_data['eeg'][0,0,:]
@@ -129,27 +131,49 @@ def test_extract_multi_channel_features_iter1():
 """def test_extract_multi_channel_features_iter3():
     Test multi-channel feature extraction for Iteration 3 (EEG + EOG + EMG)"""
 
-def test_extract_features_router():
+def test_extract_features_router_iter1():
     """Test the main extract_features function routes correctly"""
     # Single-channel routing
     single_data = preprocessed_data['eeg'][0:2,0,:]
-    single_features = extract_features(single_data, config)
+    single_features = extract_features(single_data, channel_info, config)
     # Should route to extract_single_channel_features (1083 epochs, 16 features)
     assert isinstance(single_features, np.ndarray)
     assert single_features.shape == (2, 16)
 
     # Multi-channel routing
     multi_data = preprocessed_data
-    multi_features = extract_features(multi_data, config)
+    multi_features = extract_features(multi_data,channel_info, config)
     # Should route to extract_multi_channel_features (1083 epochs, 2 EEG * 16 = 32 features)
     assert isinstance(multi_features, np.ndarray)
     assert multi_features.shape == (1083, 32)
+
+def test_welch_method():
+    freqs, psd = welch_method(epoch_eeg, channel_info['eeg_fs'], config)
+    assert isinstance(freqs, np.ndarray)
+    assert isinstance(psd, np.ndarray)
+    assert len(freqs) == len(psd)
+    assert np.all(freqs >= 0)
+    assert np.all(psd >= 0)
+
+def test_extract_welch_features():
+    features = extract_welch_features(epoch_eeg,channel_info['eeg_fs'], config)
+    assert isinstance(features, dict)
+    for band in config.EEG_BANDS.keys():
+        assert "welch_" + band + "_power" in features
+        assert "welch_" + band + "_power_rel" in features
+        assert isinstance(features["welch_" + band + "_power"], float)
+        assert isinstance(features["welch_" + band + "_power_rel"], float)
+    assert "welch_spectral_entropy" in features
+    assert isinstance(features["welch_spectral_entropy"], float)
+    assert "welch_peak_freq" in features
+    assert isinstance(features["welch_peak_freq"], float)
+    assert "welch_sef90" in features
+    assert "welch_sef95" in features
 
 
 # ========== Tests for AR spectral feature functions ==========
 
 def test_integrate_band_power():
-    """Test _integrate_band_power function"""
     freqs = np.linspace(0, 50, 100)
     psd = np.ones(100)  # Flat PSD
     power = _integrate_band_power(freqs, psd, 5.0, 15.0)
@@ -160,7 +184,6 @@ def test_integrate_band_power():
 
 
 def test_peak_frequency():
-    """Test _peak_frequency function"""
     freqs = np.linspace(0, 50, 100)
     psd = np.zeros(100)
     # Create peak at 10 Hz
@@ -172,7 +195,6 @@ def test_peak_frequency():
 
 
 def test_spectral_entropy():
-    """Test _spectral_entropy function"""
     freqs = np.linspace(0, 50, 100)
     psd = np.ones(100)  # Uniform PSD
     entropy = _spectral_entropy(freqs, psd, 0.0, 50.0)
@@ -183,7 +205,6 @@ def test_spectral_entropy():
 
 
 def test_extract_derivative_features():
-    """Test _extract_derivative_features function"""
     freqs = np.linspace(0, 50, 100)
     psd = np.sin(2 * np.pi * freqs / 10) + 1  # Sinusoidal PSD
     features = _extract_derivative_features(freqs, psd, 0.0, 50.0)
@@ -201,7 +222,6 @@ def test_extract_derivative_features():
 
 
 def test_spectral_edge_frequency():
-    """Test _spectral_edge_frequency function"""
     freqs = np.linspace(0, 50, 100)
     psd = np.ones(100)  # Uniform PSD
     sef90 = _spectral_edge_frequency(freqs, psd, 0.0, 50.0, percentile=0.9)
@@ -212,7 +232,6 @@ def test_spectral_edge_frequency():
 
 
 def test_extract_ar_features():
-    """Test extract_ar_features function with synthetic signal"""
     bands = config.EEG_BANDS
     features = extract_ar_features(epoch_eeg, channel_info['eeg_fs'], bands, config.AR_ORDER)
     
