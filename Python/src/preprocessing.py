@@ -389,7 +389,7 @@ def remove_emg_artifacts(eeg_data, emg_data, fs):
     # Determine Threshold (Mean + 1 STD of the dataset's EMG activity)
     threshold = np.mean(emg_rms) + np.std(emg_rms)
     
-    print(f"EMG Adaptive Filter: Threshold set at {threshold:.2f} uV")
+    print(f"EMG Adaptive Filter: Threshold set at {threshold:.4f} uV")
     count_affected = 0
 
     for i in range(n_epochs):
