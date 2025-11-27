@@ -45,6 +45,9 @@ def select_features(features, labels, config):
     
     elif config.CURRENT_ITERATION == 2:
         selected_features = features
+        # I think we can try to only pass the selected indices from each feature selection
+        # Method. Then we pass all features through each feature selection method
+        # and in the end we can just delete the features that have been selected in the indices
         selected_features = variance_threshold_selector(features,threshold=0.1)
         selected_features = _select_features_correlation(selected_features)
         selected_features, selected_indices = _select_features_mutual_information(selected_features, labels, config.FEATURE_SELECTION_K)
