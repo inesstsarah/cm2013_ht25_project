@@ -1,6 +1,7 @@
 import os
 import joblib
 import numpy as np
+import math
 
 def save_cache(data, filename, cache_dir):
     """
@@ -150,3 +151,25 @@ def calculate_sleep_metrics(labels: np.ndarray, epoch_duration: int = 30) -> dic
     }
     
     return metrics
+
+
+# Functions to extract EOG features 
+# Define a function to calculate mean
+def mean(arr):
+    return sum(arr) / len(arr)
+# function to calculate cross-correlation
+def cross_correlation(x, y):
+    # Calculate means
+    x_mean = mean(x)
+    y_mean = mean(y)
+    
+    # Calculate numerator
+    numerator = sum((a - x_mean) * (b - y_mean) for a, b in zip(x, y))
+    
+    # Calculate denominators
+    x_sq_diff = sum((a - x_mean) ** 2 for a in x)
+    y_sq_diff = sum((b - y_mean) ** 2 for b in y)
+    denominator = math.sqrt(x_sq_diff * y_sq_diff)
+    correlation = numerator / denominator
+    
+    return correlation

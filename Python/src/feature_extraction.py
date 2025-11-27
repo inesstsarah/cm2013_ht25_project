@@ -9,6 +9,9 @@ from spectrum import arburg, pburg
 import pywt
 from math import log, e
 import os
+from src.preprocessing import highpass_filter, bandpass_filter
+from src.utils import cross_correlation
+from scipy.signal import find_peaks
 
 
 def extract_hjorth_activity(epoch):
@@ -440,7 +443,7 @@ def extract_welch_features(signal, fs, config):
     return spectral_features
 
 
-def extract_features(data, channel_info, config):
+def extract_features(data, channel_info, config):  
     """
     Extract features from the preprocessed data.
 
@@ -586,7 +589,8 @@ def extract_single_channel_features(data, channel_info, config):
     return features
 
 
-def extract_eog_features(eog_signal):
+
+def extract_eog_features(eog_signal, fs): # TODO: Make sure that there is a 2D array for the input
     """
     STUDENT TODO: Extract EOG-specific features for eye movement detection.
 
@@ -595,10 +599,47 @@ def extract_eog_features(eog_signal):
     - Slow eye movements
     - Eye blinks and artifacts
     """
+    """
+    Function to extract EOG features from the EOG signal
+    Args:
+        eog_signal (np.ndarray): 2D array with the EOG signal as follows: [left_eog, right_eog])
+        fs (int): Sampling frequency of signal
+    Returns:
+        features (dict): feature dictionary of EOG signal"""
+    
+    eog_signal_L = eog_signal[0]
+    eog_signal_R = eog_signal[1]
+
+    # Get highpass filter for REM detection
+    filtered_eog_R = bandpass_filter(eog_signal_R,0.5,5,fs,4)
+    filtered_eog_L = bandpass_filter(eog_signal_L,0.5,5,fs,4)
+    neg_product = -(filtered_eog_L * filtered_eog_R)
+    peaks = find_peaks(neg_product, distance = 75, height = 0) # Spacing: 75 samples/0.5 seconds from each other
+    peak = peaks[0]
+    num_peaks = len(peak)
+
+
+    cross_corr = cross_correlation(eog_signal_L, eog_signal_R)
+    
+
+
     features = {
-        'eog_mean': np.mean(eog_signal),
-        'eog_std': np.std(eog_signal),
-        'eog_range': np.max(eog_signal) - np.min(eog_signal),
+        'eog_mean_L': np.mean(eog_signal_L),
+        'eog_std_L': np.std(eog_signal_L),
+        'eog_range_L': np.max(eog_signal_L) - np.min(eog_signal_L),
+        'eog_max_L': np.max(eog_signal_L),
+
+        'eog_mean_R': np.mean(eog_signal_R),
+        'eog_std_R': np.std(eog_signal_R),
+        'eog_range_R': np.max(eog_signal_R) - np.min(eog_signal_R),
+        'eog_max_R': np.max(eog_signal_R),
+        
+        'cross_corr': cross_corr,
+        'REM_peaks': num_peaks
+
+
+
+
     }
 
     # TODO: Students should add:
@@ -694,13 +735,16 @@ def _process_epoch(epoch_data: dict, channel_info: dict, config: dict) -> list:
     if config.CURRENT_ITERATION >= 3:
         # Add EOG features (2 channels)
         eog_data = epoch_data['eog']
-        for ch in range(eog_data.shape[0]):
+        eog_features = extract_eog_features(eog_signal=eog_data, fs = channel_info['eog_fs'])
+        epoch_features.extend(list(eog_features.values()))
+
+        '''for ch in range(eog_data.shape[0]):
             eog_signal = eog_data[ch, :]
             eog_features = extract_eog_features(eog_signal)
             epoch_features.extend(list(eog_features.values()))
-
+'''
         # Add EMG features (1 channel)
-        emg_signal = epoch_data['emg']
+        emg_signal = epoch_data['emg'][0, :]
         emg_features = extract_emg_features(emg_signal, channel_info['emg_fs'], config.EEG_BANDS)
         epoch_features.extend(list(emg_features.values()))
 
