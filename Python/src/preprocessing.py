@@ -148,7 +148,6 @@ def preprocess_multi_channel(multi_channel_data,channel_info, config):
     preprocessed_data = {}
     preprocessed_data['eeg'] = preprocess_eeg_channel(multi_channel_data['eeg'],channel_info, config)
 
-    channel_info['eog_fs'] = 50
 
     if config.CURRENT_ITERATION > 2:  # EOG starts in iteration 2
         # Process EOG channels (2 channels) - may need different filtering
