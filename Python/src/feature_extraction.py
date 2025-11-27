@@ -609,7 +609,7 @@ def extract_eog_features(eog_signal):
     return features
 
 
-def extract_emg_features(emg_signal: np.ndarray, channel_info: dict, bands: dict)->dict:
+def extract_emg_features(emg_signal: np.ndarray, fs: int, bands: dict)->dict:
     """
     Extract EMG-specific features for muscle tone detection.
 
@@ -618,7 +618,6 @@ def extract_emg_features(emg_signal: np.ndarray, channel_info: dict, bands: dict
     - Muscle twitches and artifacts
     - Sleep-related muscle activity
     """
-    fs = channel_info['emg_fs']
     fmin_total = bands['delta'][0]
     fmax_total = bands['beta'][1]
 
@@ -702,7 +701,7 @@ def _process_epoch(epoch_data: dict, channel_info: dict, config: dict) -> list:
 
         # Add EMG features (1 channel)
         emg_signal = epoch_data['emg']
-        emg_features = extract_emg_features(emg_signal, channel_info, config.EEG_BANDS)
+        emg_features = extract_emg_features(emg_signal, channel_info['emg_fs'], config.EEG_BANDS)
         epoch_features.extend(list(emg_features.values()))
 
     return epoch_features
