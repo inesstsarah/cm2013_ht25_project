@@ -713,11 +713,14 @@ def _process_epoch(epoch_data: dict, channel_info: dict, config: dict) -> list:
     if config.CURRENT_ITERATION >= 3:
         # Add EOG features (2 channels)
         eog_data = epoch_data['eog']
-        for ch in range(eog_data.shape[0]):
+        eog_features = extract_eog_features(eog_signal=eog_data, fs = channel_info['eog_fs'])
+        epoch_features.extend(list(eog_features.values()))
+
+        '''for ch in range(eog_data.shape[0]):
             eog_signal = eog_data[ch, :]
             eog_features = extract_eog_features(eog_signal)
             epoch_features.extend(list(eog_features.values()))
-
+'''
         # Add EMG features (1 channel)
         if epoch_data.get('emg') is not None:
             emg_signal = epoch_data['emg']
