@@ -13,9 +13,14 @@ def run_inference():
 
     # Load the trained model (assuming it was saved during training)
     model_filename = f"model_iter{config.CURRENT_ITERATION}.joblib"
+    scaler_filename = f"scaler_iter{config.CURRENT_ITERATION}.joblib"
     model = load_cache(model_filename, config.CACHE_DIR)
+    scaler = load_cache(scaler_filename, config.CACHE_DIR)
     if model is None:
         print("Error: Trained model not found. Please run main.py first to train a model.")
+        return
+    if scaler is None:
+        print("Error: Scaler not found. Please run main.py first to train a model.")
         return
 
     # 1. Load Hold-out Data
@@ -44,12 +49,14 @@ def run_inference():
             save_cache(holdout_features, cache_filename_features_holdout, config.CACHE_DIR)
 
     # 4. Feature Selection
+    holdout_features = scaler.transform(holdout_features)
+
     cache_filename_selected_indices = f"selected_indices_iter{config.CURRENT_ITERATION}.joblib"
     selected_indices = load_cache(cache_filename_selected_indices, config.CACHE_DIR)
     selected_features = holdout_features[:, selected_indices]
 
-    scaler = StandardScaler()
-    holdout_features = scaler.fit_transform(holdout_features)
+    # Use the same scaler that was fitted on training data (transform only, don't fit!)
+    # selected_features = scaler.transform(selected_features)
 
     # 5. Make Inference
     predictions = make_inference(model, selected_features, config)
