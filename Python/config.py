@@ -2,7 +2,7 @@
 
 # Set the current iteration of the project (1-4). 
 # This controls which parts of the pipeline are active.
-CURRENT_ITERATION = 2
+CURRENT_ITERATION = 3
 
 # Set to True to use cached data for preprocessing and feature extraction.
 USE_CACHE = True
@@ -106,9 +106,24 @@ elif CURRENT_ITERATION == 2:
     
 elif CURRENT_ITERATION == 3:
     # Iteration 3: Multi-signal processing with Random Forest
-    CLASSIFIER_TYPE = 'random_forest'
-    RF_N_ESTIMATORS = 100
-    RF_MAX_DEPTH = 10
+    CLASSIFIER_TYPE = 'svm'
+    # SVM Grid Search Parameters
+    GRID_PARAMS = {
+        'C': [0.1, 0.5, 1.0, 5.0, 10.0, 50.0, 100.0],
+        'gamma': ['scale', 'auto', 0.001, 0.01, 0.1, 1.0], 
+        'kernel': ['rbf'],
+        'class_weight': ['balanced']
+    }
+    BEST_PARAMS = {
+        'C': 5.0,
+        'gamma': 'auto',
+        'kernel': 'rbf',
+        'class_weight': 'balanced'
+    }
+
+    # CLASSIFIER_TYPE = 'random_forest'
+    # RF_N_ESTIMATORS = 100
+    # RF_MAX_DEPTH = 10
 elif CURRENT_ITERATION == 4:
     # Iteration 4: Full system optimization
     CLASSIFIER_TYPE = 'random_forest'

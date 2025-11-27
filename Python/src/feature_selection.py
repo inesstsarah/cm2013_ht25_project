@@ -34,6 +34,7 @@ def select_features(features, labels, config):
     print(f"Selecting features for iteration {config.CURRENT_ITERATION}...")
     print(f"Input features shape: {features.shape}")
 
+    selected_indices = np.arange(features.shape[1])
 
     if features.shape[1] == 0:
         print("⚠️  WARNING: No features to select from!")
@@ -51,6 +52,10 @@ def select_features(features, labels, config):
         
     elif config.CURRENT_ITERATION == 3:
         selected_features = features
+        # selected_features = variance_threshold_selector(features,threshold=0.1)
+        # selected_features = _select_features_correlation(selected_features)
+        # selected_features, selected_indices = _select_features_mutual_information(selected_features, labels, config.FEATURE_SELECTION_K)
+        
         
     elif config.CURRENT_ITERATION == 4:
         # TODO: Students should implement advanced feature selection

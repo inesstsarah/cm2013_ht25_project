@@ -46,16 +46,22 @@ def run_inference():
     # 4. Feature Selection
     cache_filename_selected_indices = f"selected_indices_iter{config.CURRENT_ITERATION}.joblib"
     selected_indices = load_cache(cache_filename_selected_indices, config.CACHE_DIR)
+    selected_features = holdout_features[:, selected_indices]
 
     scaler = StandardScaler()
     holdout_features = scaler.fit_transform(holdout_features)
 
-    selected_features = holdout_features[:, selected_indices]
-
     # 5. Make Inference
     predictions = make_inference(model, selected_features, config)
 
-    epoch_numbers = list(range(len(predictions)))
+    # Generate epoch_numbers
+    epoch_numbers = []
+    epoch_counter = {}
+    for rid in holdout_record_ids:
+        if rid not in epoch_counter:
+            epoch_counter[rid] = 0
+        epoch_numbers.append(epoch_counter[rid])
+        epoch_counter[rid] += 1
 
     # 5. Generate Submission File
     generate_submission_file(predictions, holdout_record_ids, epoch_numbers, config)

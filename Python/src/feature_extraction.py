@@ -609,25 +609,48 @@ def extract_eog_features(eog_signal):
     return features
 
 
-def extract_emg_features(emg_signal):
+def extract_emg_features(emg_signal: np.ndarray, channel_info: dict, bands: dict)->dict:
     """
-    STUDENT TODO: Extract EMG-specific features for muscle tone detection.
+    Extract EMG-specific features for muscle tone detection.
 
     EMG signals are used to detect:
     - Muscle tone levels (high in wake, low in REM)
     - Muscle twitches and artifacts
     - Sleep-related muscle activity
     """
+    fs = channel_info['emg_fs']
+    fmin_total = bands['delta'][0]
+    fmax_total = bands['beta'][1]
+
     features = {
         'emg_mean': np.mean(emg_signal),
         'emg_std': np.std(emg_signal),
         'emg_rms': np.sqrt(np.mean(emg_signal**2)),
+        'emg_power': np.mean(emg_signal**2), # Signal power (mean squared amplitude)
+        'emg_variance': np.var(emg_signal),  # Variance
     }
 
     # TODO: Students should add:
     # - High-frequency power (muscle activity indicator)
     # - Spectral edge frequency
     # - Muscle tone quantification
+
+    # High-frequency (20-40 Hz) power ratio
+    nperseg = min(len(emg_signal), fs * 2)
+    freqs, psd = welch(emg_signal, fs=fs, nperseg=nperseg)
+    
+    # Total power
+    total_power = np.sum(psd)
+    
+    # High-frequency power (20-40 Hz)
+    hf_mask = (freqs >= 20) & (freqs <= 40)
+    hf_power = np.sum(psd[hf_mask]) if np.any(hf_mask) else 0
+    
+    features['emg_hf_power'] = hf_power
+    features['emg_hf_ratio'] = hf_power / (total_power + 1e-10)
+
+    # Spectral edge frequency
+    features['emg_spectral_edge_freq'] = _spectral_edge_frequency(freqs, psd, fmin_total, fmax_total, 0.9)
 
     return features
 
@@ -678,10 +701,9 @@ def _process_epoch(epoch_data: dict, channel_info: dict, config: dict) -> list:
             epoch_features.extend(list(eog_features.values()))
 
         # Add EMG features (1 channel)
-        if epoch_data.get('emg') is not None:
-            emg_signal = epoch_data['emg']
-            emg_features = extract_emg_features(emg_signal)
-            epoch_features.extend(list(emg_features.values()))
+        emg_signal = epoch_data['emg']
+        emg_features = extract_emg_features(emg_signal, channel_info, config.EEG_BANDS)
+        epoch_features.extend(list(emg_features.values()))
 
     return epoch_features
 
