@@ -349,15 +349,15 @@ def visualize_signal(signal: np.ndarray, fs: float, ax: plt.Axes = None, title: 
         title (str, optional): Plot title.
     """
     n = len(signal)
-    t = np.arange(n) / fs  # 时间轴
+    t = np.arange(n) / fs  
 
     if ax is None:
         fig, ax = plt.subplots(figsize=(10, 5))
 
-    ax.plot(t, signal)
+    ax.plot(t, signal*1e6)  # Convert to microvolts for better visualization
     ax.set_title(title)
     ax.set_xlabel("Time (s)")
-    ax.set_ylabel("Amplitude")
+    ax.set_ylabel("Amplitude (µV)")
     ax.grid(True)
 
 

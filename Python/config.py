@@ -47,7 +47,7 @@ BANDPASS_FILTER_HIGHER_FREQ = 33 # Hz
 BANDPASS_FILTER_ORDER = 5
 HIGHPASS_FILTER_FREQ = 0.5 # Hz
 EOG_BANDPASS_FILTER_LOWER_FREQ = 0.3 # Hz
-EOG_BANDPASS_FILTER_HIGHER_FREQ = 24 # Hz
+EOG_BANDPASS_FILTER_HIGHER_FREQ = 35 # Hz
 EOG_BANDPASS_FILTER_ORDER = 5
 EMG_HIGHPASS_FILTER_FREQ = 10 # Hz
 EMG_LOWPASS_FILTER_FREQ = 62 # Hz
@@ -78,7 +78,7 @@ WAVELET_NAME = 'bior6.8'
 FEATURE_SELECTION_K = 50  # Number of top features to select
 
 # -- Classification --
-USE_HYPERPARAM_OPTIMAZATION = False
+USE_HYPERPARAM_OPTIMAZATION = True
 # Iteration-specific parameters - students should modify these based on current iteration
 if CURRENT_ITERATION == 1: # TODO: add more hyperparameters for the hyperparameter optimization
     # Iteration 1: Basic pipeline with k-NN
