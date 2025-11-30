@@ -49,7 +49,7 @@ def run_inference():
     selected_features = holdout_features[:, selected_indices]
 
     scaler = StandardScaler()
-    holdout_features = scaler.fit_transform(holdout_features)
+    selected_features = scaler.fit_transform(selected_features)
 
     # 5. Make Inference
     predictions = make_inference(model, selected_features, config)
