@@ -65,9 +65,16 @@ def select_features(features, labels, config):
         # TODO: Students should implement advanced feature selection
         print("TODO: Students should implement advanced feature selection for iteration 4")
         print("Suggested: Use more sophisticated methods like RFE or feature importance")
+        selected_features = features
+        selected_features, selected_mask = variance_threshold_selector(features,threshold=0.1)
+        selected_indices = selected_indices[selected_mask]
+        selected_features, selected_mask = _select_features_correlation(selected_features)
+        selected_indices = selected_indices[selected_mask]
+        selected_features, selected_mask = _select_features_mutual_information(selected_features, labels, config.FEATURE_SELECTION_K)
+        selected_indices = selected_indices[selected_mask]
 
-        # Placeholder - students must replace:
-        selected_features = features  # No selection implemented yet
+        '''# Placeholder - students must replace:
+        selected_features = features  # No selection implemented yet'''
 
     #print(f"Selected features shape: {selected_features.shape}")
     return selected_features, selected_indices
