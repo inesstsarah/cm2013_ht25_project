@@ -107,12 +107,14 @@ def main():
     # 5. Classification
     print("\n=== STEP 5: CLASSIFICATION ===")
     cache_filename_model = f"model_iter{config.CURRENT_ITERATION}.joblib"
+    cache_filename_scaler = f"scaler_iter{config.CURRENT_ITERATION}.joblib"
     if selected_features.shape[1] > 0:
         model = train_classifier(selected_features, labels, record_ids, config)
         print(f"Trained {config.CLASSIFIER_TYPE} classifier")
         if config.USE_CACHE:
             save_cache(model['model'], cache_filename_model, config.CACHE_DIR)
-            print("Saved model to cache")
+            save_cache(model['scaler'], cache_filename_scaler, config.CACHE_DIR)
+            print("Saved model and scaler to cache")
     else:
         print("⚠️  WARNING: Cannot train classifier - no features available!")
         print("Students must implement feature extraction first.")

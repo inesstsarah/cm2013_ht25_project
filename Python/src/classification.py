@@ -158,17 +158,24 @@ def _LOSO_split_training(features: np.ndarray, labels: np.ndarray, record_ids: n
     std_acc = np.std([r['accuracy'] for r in loso_results])
     mean_kappa = np.mean([r['kappa'] for r in loso_results])
     std_kappa = np.std([r['kappa'] for r in loso_results])
+    mean_macro_f1 = np.mean([r['macro_f1'] for r in loso_results])
+    std_macro_f1 = np.std([r['macro_f1'] for r in loso_results])
 
     print("\n" + "="*60)
     print(f"LOSO Cross-Validation Results ({len(loso_results)} subjects):")
+    print(f"  Macro F1 = {mean_macro_f1:.1%} +/- {std_macro_f1:.1%}")
     print(f"  Accuracy = {mean_acc:.1%} +/- {std_acc:.1%}")
     print(f"  Kappa    = {mean_kappa:.3f} +/- {std_kappa:.3f}")
     print("="*60)
 
-    model.fit(scaler.fit_transform(X_full), y_full)
+    # Train final model on all data with a scaler fitted on all training data
+    final_scaler = StandardScaler()
+    X_full_scaled = final_scaler.fit_transform(X_full)
+    model.fit(X_full_scaled, y_full)
 
     return {
     'model': model,
+    'scaler': final_scaler,  # Save the scaler for inference
     'y_true_aggregate': np.array(all_y_test),
     'y_pred_aggregate': np.array(all_y_pred)
     }
