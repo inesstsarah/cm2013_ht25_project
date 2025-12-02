@@ -54,7 +54,7 @@ def select_features(features, labels, config):
         
     elif config.CURRENT_ITERATION == 3:
         selected_features = features
-        selected_features, selected_mask = variance_threshold_selector(features,threshold=0.1)
+        selected_features, selected_mask = _variance_threshold_selector(features,threshold=0.1)
         selected_indices = selected_indices[selected_mask]
         selected_features, selected_mask = _select_features_correlation(selected_features)
         selected_indices = selected_indices[selected_mask]
@@ -73,7 +73,7 @@ def select_features(features, labels, config):
     return selected_features, selected_indices
 
 
-def variance_threshold_selector(features, threshold=0.0):
+def _variance_threshold_selector(features, threshold=0.0):
     """
     Select features based on variance threshold.
 
@@ -115,6 +115,12 @@ def _select_features_correlation(features: np.ndarray) -> np.ndarray:
     correlation (above 0.95).
     Args: 
         features (np.ndarray): The input features (n_samples, n_features).
+    
+    Returns:
+        np.ndarray: The selected features (n_samples, n_selected_features).
+
+    Example:
+        selected_features = _select_features_correlation(features)
     """
     df = pd.DataFrame(features)
     corr_matrix = df.corr(method='pearson', min_periods=1).abs()
@@ -143,6 +149,9 @@ def _select_features_mutual_information(features: np.ndarray, labels: np.ndarray
         k (int): The number of top features to select.
     Returns:
         np.ndarray: The selected features (n_samples, n_selected_features).
+    
+    Example:
+        selected_features = _select_features_mutual_information(features, labels, k)
     """
     k = min(k, features.shape[1])
     print(f"\nUsing Mutual Information to select top {k} features...")

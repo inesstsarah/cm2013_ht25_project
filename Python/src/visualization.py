@@ -358,6 +358,7 @@ def visualize_signal(signal: np.ndarray, fs: float, ax: plt.Axes = None, title: 
     ax.set_title(title)
     ax.set_xlabel("Time (s)")
     ax.set_ylabel("Amplitude (µV)")
+    ax.set_ylim(np.min(signal)*1.1e6, np.max(signal)*1.1e6)
     ax.grid(True)
 
 

@@ -15,7 +15,7 @@ from src.feature_selection import (
 
 from src.feature_selection import (
     _select_features_mutual_information,
-    variance_threshold_selector
+    _variance_threshold_selector
 )
 
 def test_select_features_variance_threshold():
@@ -23,7 +23,7 @@ def test_select_features_variance_threshold():
     features = np.random.rand(100, 10)
     features[:, 0] = 0.5  # Zero variance
 
-    selected_features = variance_threshold_selector(features, threshold=0.1)
+    selected_features = _variance_threshold_selector(features, threshold=0.1)
     assert selected_features.shape[1] == 9  # Should remove 1 low-variance feature
 
 def test_select_features_mutual_information():

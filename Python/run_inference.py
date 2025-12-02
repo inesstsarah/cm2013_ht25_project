@@ -9,6 +9,8 @@ import os
 import joblib
 
 def run_inference():
+    """Run inference on hold-out data using a trained model."""
+    
     print(f"--- Sleep Scoring Inference - Iteration {config.CURRENT_ITERATION} ---")
 
     # Load the trained model (assuming it was saved during training)
