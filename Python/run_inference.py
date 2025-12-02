@@ -49,14 +49,12 @@ def run_inference():
             save_cache(holdout_features, cache_filename_features_holdout, config.CACHE_DIR)
 
     # 4. Feature Selection
-    holdout_features = scaler.transform(holdout_features)
-
     cache_filename_selected_indices = f"selected_indices_iter{config.CURRENT_ITERATION}.joblib"
     selected_indices = load_cache(cache_filename_selected_indices, config.CACHE_DIR)
     selected_features = holdout_features[:, selected_indices]
 
     # Use the same scaler that was fitted on training data (transform only, don't fit!)
-    # selected_features = scaler.transform(selected_features)
+    selected_features = scaler.transform(selected_features)
 
     # 5. Make Inference
     predictions = make_inference(model, selected_features, config)
