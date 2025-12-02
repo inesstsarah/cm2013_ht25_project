@@ -36,6 +36,7 @@ def hyperparameter_optimization(base_model, X_train, y_train, grid_params):
     Function to search for the optimal parameters in a hyperparameter space
 
     Args:
+        base_model (model): Previously defined sklearn SVM, RandomForest, or KNN model
         X_train (np.ndarray[float]): Array of training set variables
         y_train (np.ndarray[int]): Array of training set classes
         config (dict): Config for repository.

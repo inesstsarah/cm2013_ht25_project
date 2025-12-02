@@ -2,10 +2,10 @@
 
 # Set the current iteration of the project (1-4). 
 # This controls which parts of the pipeline are active.
-CURRENT_ITERATION = 3
+CURRENT_ITERATION = 4
 
 # Set to True to use cached data for preprocessing and feature extraction.
-USE_CACHE = False
+USE_CACHE = True
 USE_PARALLEL = True # Use parallel processing where applicable
 PARALLEL_N_JOBS = -1  # Number of parallel jobs (-1 uses all available cores)
 
@@ -78,7 +78,7 @@ WAVELET_NAME = 'bior6.8'
 FEATURE_SELECTION_K = 50  # Number of top features to select
 
 # -- Classification --
-USE_HYPERPARAM_OPTIMAZATION = False
+USE_HYPERPARAM_OPTIMAZATION = True
 # Iteration-specific parameters - students should modify these based on current iteration
 if CURRENT_ITERATION == 1: # TODO: add more hyperparameters for the hyperparameter optimization
     # Iteration 1: Basic pipeline with k-NN
@@ -129,9 +129,16 @@ elif CURRENT_ITERATION == 3:
     # CLASSIFIER_TYPE = 'random_forest'
     # RF_N_ESTIMATORS = 100
     # RF_MAX_DEPTH = 10
+
 elif CURRENT_ITERATION == 4:
     # Iteration 4: Full system optimization
     CLASSIFIER_TYPE = 'random_forest'
+    GRID_PARAMS = {
+        'n_estimators': [100,200,300],
+        'max_depth': [10,20,30], 
+        'min_samples_split': [2,6,10],
+        'min_samples_leaf': [1]
+    }
     RF_N_ESTIMATORS = 200
     RF_MAX_DEPTH = None
     RF_MIN_SAMPLES_SPLIT = 5
