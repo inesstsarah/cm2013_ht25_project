@@ -1,7 +1,7 @@
 import config
 from src.data_loader import load_all_training_data
 from src.preprocessing import preprocess
-from src.feature_extraction import extract_features
+from src.feature_extraction import extract_features, get_feature_names
 from src.feature_selection import select_features
 from src.classification import train_classifier
 from src.visualization import visualize_results
@@ -95,6 +95,7 @@ def main():
             save_cache(features, cache_filename_features, config.CACHE_DIR)
             print("Saved features to cache")
 
+    feature_names = get_feature_names(preprocessed_data, channel_info, config)
     # 4. Feature Selection
     print("\n=== STEP 4: FEATURE SELECTION ===")
     selected_features, selected_indices = select_features(features, labels, config)
@@ -103,6 +104,13 @@ def main():
     cache_filename_selected_indices = f"selected_indices_iter{config.CURRENT_ITERATION}.joblib"
     save_cache(selected_indices, cache_filename_selected_indices, config.CACHE_DIR)
     print("Saved selected indices to cache")
+    selected_feature_names = [feature_names[i] for i in selected_indices]
+    for i, name in enumerate(selected_feature_names):
+        if i % 4 == 0:
+            print()  
+            print("  ", end="") 
+        print(f"{name:30s}", end="")
+    print()
 
     # 5. Classification
     print("\n=== STEP 5: CLASSIFICATION ===")
