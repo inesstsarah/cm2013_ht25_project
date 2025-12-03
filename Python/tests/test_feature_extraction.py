@@ -27,7 +27,10 @@ from src.feature_extraction import (
     _peak_frequency,
     _spectral_entropy,
     _extract_derivative_features,
-    _spectral_edge_frequency
+    _spectral_edge_frequency,
+    # EMG features
+    extract_emg_features,
+    get_feature_names
 )
 from src.data_loader import load_training_data
 from src.preprocessing import preprocess
@@ -38,6 +41,7 @@ xml_path = os.path.join('../data/training/', 'R1.xml')
 data,_,channel_info= load_training_data(edf_path, xml_path)
 preprocessed_data = preprocess(data,channel_info, config)
 epoch_eeg = preprocessed_data['eeg'][0,0,:]
+epoch_emg = preprocessed_data['emg'][0,0,:]
 
 def test_wavelet_decomposition():
     c = wavelet_decomposition(signal = epoch_eeg, wavelet_name = "coif1")
@@ -279,6 +283,23 @@ def test_extract_ar_features():
         else:
             # Other features should be finite
             assert np.isfinite(value), f"Feature {key} is not finite: {value}"
+
+
+def test_extract_emg_features():
+    features = extract_emg_features(epoch_emg, channel_info['emg_fs'], config.EEG_BANDS)
+    assert isinstance(features, dict)
+    assert len(features) > 0
+    assert 'emg_mean' in features
+    assert 'emg_std' in features
+    assert 'emg_rms' in features
+    assert 'emg_power' in features
+    assert 'emg_variance' in features
+
+
+def test_get_feature_names():
+    feature_names = get_feature_names(preprocessed_data, channel_info, config)
+    assert isinstance(feature_names, list)
+    assert len(feature_names) > 0
 
 
 if __name__ == "__main__":
