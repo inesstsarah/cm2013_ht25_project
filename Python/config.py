@@ -137,7 +137,8 @@ elif CURRENT_ITERATION == 4:
         'n_estimators': [100,200,300],
         'max_depth': [10,20,30], 
         'min_samples_split': [2,6,10],
-        'min_samples_leaf': [1]
+        'min_samples_leaf': [1],
+        'class_weight': ["balanced"]
     }
     RF_N_ESTIMATORS = 200
     RF_MAX_DEPTH = None
