@@ -75,10 +75,10 @@ WELCH_PARAMETERS = {
 WAVELET_NAME = 'bior6.8'
 
 # -- Feature Selection --
-FEATURE_SELECTION_K = 50  # Number of top features to select
+FEATURE_SELECTION_K = 50  # Number of top features to select (increased for Random Forest)
 
 # -- Classification --
-USE_HYPERPARAM_OPTIMAZATION = True
+USE_HYPERPARAM_OPTIMAZATION = False
 # Iteration-specific parameters - students should modify these based on current iteration
 if CURRENT_ITERATION == 1: # TODO: add more hyperparameters for the hyperparameter optimization
     # Iteration 1: Basic pipeline with k-NN
@@ -126,22 +126,32 @@ elif CURRENT_ITERATION == 3:
         'class_weight': 'balanced'
     }
 
-    # CLASSIFIER_TYPE = 'random_forest'
-    # RF_N_ESTIMATORS = 100
-    # RF_MAX_DEPTH = 10
-
 elif CURRENT_ITERATION == 4:
     # Iteration 4: Full system optimization
     CLASSIFIER_TYPE = 'random_forest'
     GRID_PARAMS = {
-        'n_estimators': [100,200,300],
-        'max_depth': [10,20,30], 
-        'min_samples_split': [2,6,10],
-        'min_samples_leaf': [1]
+        'n_estimators': [100,150,200,250,300],
+        'max_depth': [10,15,20,25,30], 
+        'min_samples_split': [2,4,6,8,10],
+        'min_samples_leaf': [1,2,3,4],
+        'max_features': ['sqrt'],
+        'class_weight': ['balanced']
     }
-    RF_N_ESTIMATORS = 200
-    RF_MAX_DEPTH = None
-    RF_MIN_SAMPLES_SPLIT = 5
+    # Optional: Custom class weights for better macro F1 (uncomment to use)
+    # Typically N1 and REM are minority classes and need higher weights
+    CUSTOM_CLASS_WEIGHTS = {0: 1.0, 1: 2.5, 2: 0.8, 3: 1.2, 4: 2.0}  # Wake, N1, N2, N3, REM
+
+    BEST_PARAMS = {
+        'n_estimators': 300,
+        'max_depth': 15,
+        'min_samples_split': 2,
+        'min_samples_leaf': 4,
+        'max_features': 'sqrt',
+        'class_weight': 'balanced',  # Can also use custom dict: {0: 1.0, 1: 2.0, 2: 0.8, 3: 1.5, 4: 2.0}
+        # 'class_weight': CUSTOM_CLASS_WEIGHTS,
+        'random_state': 42  # Set random seed for reproducibility
+    }
+
 else:
     raise ValueError(f"Invalid CURRENT_ITERATION: {CURRENT_ITERATION}. Must be 1-4.")
 

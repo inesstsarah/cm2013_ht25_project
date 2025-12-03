@@ -56,8 +56,9 @@ def run_inference():
     # Use the same scaler that was fitted on training data (transform only, don't fit!)
     selected_features = scaler.transform(selected_features)
 
-    # 5. Make Inference
-    predictions = make_inference(model, selected_features, config)
+    # 5. Make Inference (with temporal smoothing for better macro F1)
+    predictions = make_inference(model, selected_features, config, 
+                                  record_ids=holdout_record_ids, apply_smoothing=True)
 
     # Generate epoch_numbers
     epoch_numbers = []

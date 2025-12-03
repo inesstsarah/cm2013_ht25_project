@@ -1,8 +1,39 @@
 import numpy as np
 import pandas as pd
 import os
+from scipy.ndimage import median_filter
 
-def make_inference(model, holdout_data, config):
+def temporal_smoothing(predictions: np.ndarray, record_ids: np.ndarray, window_size: int = 3) -> np.ndarray:
+    """
+    Apply temporal smoothing to predictions to reduce unrealistic stage transitions.
+    Sleep stages should be continuous in time, so we smooth predictions within each record.
+    
+    Args:
+        predictions (np.ndarray): Raw predictions
+        record_ids (np.ndarray): Record IDs for each prediction
+        window_size (int): Size of the smoothing window (must be odd)
+    
+    Returns:
+        np.ndarray: Smoothed predictions
+    """
+    if window_size % 2 == 0:
+        window_size += 1  # Ensure odd window size
+    
+    smoothed_predictions = predictions.copy()
+    unique_records = np.unique(record_ids)
+    
+    for record_id in unique_records:
+        mask = record_ids == record_id
+        record_predictions = predictions[mask]
+        
+        # Apply median filter for temporal smoothing
+        # This helps remove isolated misclassifications
+        smoothed_record = median_filter(record_predictions, size=window_size, mode='nearest')
+        smoothed_predictions[mask] = smoothed_record
+    
+    return smoothed_predictions
+
+def make_inference(model, holdout_data, config, record_ids=None, apply_smoothing=True):
     """
     Makes predictions on the hold-out data using the trained model.
 
@@ -10,12 +41,21 @@ def make_inference(model, holdout_data, config):
         model (object): The trained classification model.
         holdout_data (np.ndarray): The preprocessed and feature-extracted hold-out data.
         config (module): The configuration module.
+        record_ids (np.ndarray, optional): Record IDs for temporal smoothing.
+        apply_smoothing (bool): Whether to apply temporal smoothing (default: True).
 
     Returns:
         np.ndarray: Predicted labels for the hold-out data.
     """
     print("Making inference on hold-out data...")
     predictions = model.predict(holdout_data)
+    
+    # Apply temporal smoothing if record_ids are provided
+    if apply_smoothing and record_ids is not None:
+        print("Applying temporal smoothing to predictions...")
+        predictions = temporal_smoothing(predictions, record_ids, window_size=3)
+        print("Temporal smoothing completed.")
+    
     return predictions
 
 def generate_submission_file(predictions, record_numbers, epoch_numbers, config):
