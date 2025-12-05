@@ -32,7 +32,7 @@ def _get_model_from_config(classifier_type: str) -> object:
         raise ValueError(f"Unknown classifier type: {classifier_type}")
 
 
-def hyperparameter_optimization(base_model, X_train, y_train, grid_params, config=None, use_smote=False):
+def hyperparameter_optimization(base_model, X_train, y_train, grid_params, config=None):
     """
     Function to search for the optimal parameters in a hyperparameter space
 
@@ -49,8 +49,10 @@ def hyperparameter_optimization(base_model, X_train, y_train, grid_params, confi
     """
     
     # Determine if SMOTE should be used
-    if config is not None and (config.CURRENT_ITERATION == 1 or config.CURRENT_ITERATION == 4):
+    if config is not None and (config.CURRENT_ITERATION == 1):
         use_smote = True
+    else:
+        use_smote = False
     
     # Create pipeline: StandardScaler -> (SMOTE) -> Model
     # This ensures SMOTE is applied within each CV fold, avoiding data leakage
@@ -158,9 +160,9 @@ def _LOSO_split_training(features: np.ndarray, labels: np.ndarray, record_ids: n
 
         # - Sleep stages are not equally distributed
         # Sleep stages are naturally imbalanced (more N2, less N1/REM)
-        # if config.CURRENT_ITERATION == 1 or config.CURRENT_ITERATION == 4:
-        #     smote_fold = SMOTE(random_state=42, k_neighbors=3)
-        #     X_train, y_train = smote_fold.fit_resample(X_train, y_train)
+        if config.CURRENT_ITERATION == 1:
+            smote_fold = SMOTE(random_state=42, k_neighbors=3)
+            X_train, y_train = smote_fold.fit_resample(X_train, y_train)
         
         # Which subject is held out in this fold?
         train_subjects = np.unique(record_ids[train_idx])
@@ -200,9 +202,9 @@ def _LOSO_split_training(features: np.ndarray, labels: np.ndarray, record_ids: n
     # Train final model on all data with a scaler fitted on all training data
     final_scaler = StandardScaler()
     X_full_scaled = final_scaler.fit_transform(X_full)
-    # if config.CURRENT_ITERATION == 1 or config.CURRENT_ITERATION == 4:
-    #     smote_fold = SMOTE(random_state=42, k_neighbors=3)
-    #     X_full_scaled, y_full = smote_fold.fit_resample(X_full_scaled, y_full)
+    if config.CURRENT_ITERATION == 1:
+        smote_fold = SMOTE(random_state=42, k_neighbors=3)
+        X_full_scaled, y_full = smote_fold.fit_resample(X_full_scaled, y_full)
     model.fit(X_full_scaled, y_full)
 
     return {

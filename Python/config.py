@@ -78,7 +78,7 @@ WAVELET_NAME = 'bior6.8'
 FEATURE_SELECTION_K = 50  # Number of top features to select (increased for Random Forest)
 
 # -- Classification --
-USE_HYPERPARAM_OPTIMAZATION = False
+USE_HYPERPARAM_OPTIMAZATION = True
 # Iteration-specific parameters - students should modify these based on current iteration
 if CURRENT_ITERATION == 1: # TODO: add more hyperparameters for the hyperparameter optimization
     # Iteration 1: Basic pipeline with k-NN
@@ -134,7 +134,7 @@ elif CURRENT_ITERATION == 4:
         'max_depth': [10,15,20,25,30], 
         'min_samples_split': [2,4,6,8,10],
         'min_samples_leaf': [1,2,3,4],
-        'max_features': ['sqrt'],
+        'max_features': ['sqrt','log2'],
         'class_weight': ['balanced']
     }
     # Optional: Custom class weights for better macro F1 (uncomment to use)
