@@ -27,7 +27,8 @@ from src.feature_extraction import (
     _peak_frequency,
     _spectral_entropy,
     _extract_derivative_features,
-    _spectral_edge_frequency
+    _spectral_edge_frequency, 
+    extract_eog_features
 )
 from src.data_loader import load_training_data
 from src.preprocessing import preprocess
@@ -38,8 +39,20 @@ xml_path = os.path.join('../data/training/', 'R1.xml')
 data,_,channel_info= load_training_data(edf_path, xml_path)
 preprocessed_data = preprocess(data,channel_info, config)
 epoch_eeg = preprocessed_data['eeg'][0,0,:]
+epoch_eog = preprocessed_data['eog']
+
+
+def test_eog_features():
+    """Function to extract EOG features"""
+    epoch_eog_L = epoch_eog[0,0,:]
+    epoch_eog_R = epoch_eog[0,1,:]
+    eog_features = extract_eog_features([epoch_eog_L,epoch_eog_R], 125)
+    assert len(eog_features.values()) == 10 # EOG features must have 10 separate values
+    
+
 
 def test_wavelet_decomposition():
+    """Function to test wavelet decomposition"""
     c = wavelet_decomposition(signal = epoch_eeg, wavelet_name = "coif1")
     # Check if number of elements in array is more than one (there are more than one coefficients)
     assert len(c)>1

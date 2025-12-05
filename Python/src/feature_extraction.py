@@ -507,7 +507,7 @@ def extract_multi_channel_features(multi_channel_data, channel_info, config):
         }
         for epoch_idx in range(n_epochs)
     ]
-    
+
     if config.USE_PARALLEL:
         # from threadpoolctl import threadpool_limits
         # threadpool_limits(limits=1)
