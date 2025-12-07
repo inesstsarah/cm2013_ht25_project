@@ -310,7 +310,7 @@ def preprocess_emg_channel(emg_data,channel_info, config):
     signal = emg_data[:, 0, :].flatten()  # Convert to microvolts
     # Apply EMG-specific preprocessing
     filtered_signal = highpass_filter(signal, config.EMG_HIGHPASS_FILTER_FREQ, emg_fs)
-    filtered_signal = lowpass_filter(filtered_signal, config.EMG_LOWPASS_FILTER_FREQ, emg_fs)
+    filtered_signal = notch_filter(filtered_signal, config.EMG_NOTCH_FILTER_FREQ, config.NOTCH_FILTER_Q, emg_fs)
    
     # FFT visualization
     fig, axes = plt.subplots(2, 2, figsize=(8, 6))

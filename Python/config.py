@@ -2,7 +2,7 @@
 
 # Set the current iteration of the project (1-4). 
 # This controls which parts of the pipeline are active.
-CURRENT_ITERATION = 3
+CURRENT_ITERATION = 4
 
 # Set to True to use cached data for preprocessing and feature extraction.
 USE_CACHE = True
@@ -43,14 +43,14 @@ LOW_PASS_FILTER_FREQ = 40  # Hz
 NOTCH_FILTER_FREQ = 60 # Hz
 NOTCH_FILTER_Q = 30
 BANDPASS_FILTER_LOWER_FREQ = 0.5 # Hz
-BANDPASS_FILTER_HIGHER_FREQ = 33 # Hz
+BANDPASS_FILTER_HIGHER_FREQ = 35 # Hz
 BANDPASS_FILTER_ORDER = 5
 HIGHPASS_FILTER_FREQ = 0.5 # Hz
 EOG_BANDPASS_FILTER_LOWER_FREQ = 0.3 # Hz
 EOG_BANDPASS_FILTER_HIGHER_FREQ = 35 # Hz
 EOG_BANDPASS_FILTER_ORDER = 5
 EMG_HIGHPASS_FILTER_FREQ = 10 # Hz
-EMG_LOWPASS_FILTER_FREQ = 62 # Hz
+EMG_NOTCH_FILTER_FREQ = 50 # Hz
 
 # -- Feature Extraction --
 # (Add feature-specific parameters here)
@@ -78,9 +78,9 @@ WAVELET_NAME = 'bior6.8'
 FEATURE_SELECTION_K = 50  # Number of top features to select
 
 # -- Classification --
-USE_HYPERPARAM_OPTIMAZATION = True
+USE_HYPERPARAM_OPTIMAZATION = False
 # Iteration-specific parameters - students should modify these based on current iteration
-if CURRENT_ITERATION == 1: # TODO: add more hyperparameters for the hyperparameter optimization
+if CURRENT_ITERATION == 1: 
     # Iteration 1: Basic pipeline with k-NN
     CLASSIFIER_TYPE = 'knn'
     GRID_PARAMS = { 'n_neighbors' : [5,7,9,11,13,15],
