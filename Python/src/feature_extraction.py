@@ -495,7 +495,7 @@ def extract_multi_channel_features(multi_channel_data, channel_info, config):
     """
 
     print("selecting multi-channel features...")
-    
+
     n_epochs = multi_channel_data['eeg'].shape[0]
     # OPTIMIZATION: Pre-extract epoch data to avoid any slicing/copying in worker processes
     # Extract all channel data upfront to minimize work inside parallel workers
@@ -636,10 +636,6 @@ def extract_eog_features(eog_signal, fs): # TODO: Make sure that there is a 2D a
         
         'cross_corr': cross_corr,
         'REM_peaks': num_peaks
-
-
-
-
     }
 
     # TODO: Students should add:
@@ -751,5 +747,28 @@ def _process_epoch(epoch_data: dict, channel_info: dict, config: dict) -> list:
     return epoch_features
 
 
+def get_feature_names(multi_channel_data: dict, channel_info: dict, config: dict) -> list:
+    """
+    Get the feature names for the current iteration.
+    """
+    feature_names = []
+    if config.CURRENT_ITERATION == 1:
+        feature_names.extend(list[Any](extract_time_domain_features(multi_channel_data['eeg'][0, 0, :]).keys()))
+    elif config.CURRENT_ITERATION == 2:
+        feature_names.extend(list(extract_time_domain_features(multi_channel_data['eeg'][0, 0, :]).keys()))
+        feature_names.extend(list(extract_ar_features(multi_channel_data['eeg'][0, 0, :], channel_info['eeg_fs'], config.EEG_BANDS, config.AR_ORDER).keys()))
+    else:
+        for ch in range(multi_channel_data['eeg'].shape[1]):
+            ch_feature_names = []
+            ch_feature_names.extend(list(extract_time_domain_features(multi_channel_data['eeg'][0, ch, :]).keys()))
+            ch_feature_names.extend(list(extract_ar_features(multi_channel_data['eeg'][0, ch, :], channel_info['eeg_fs'], config.EEG_BANDS, config.AR_ORDER).keys()))
+            ch_feature_names.extend(list(wavelet_processing(multi_channel_data['eeg'][0, ch, :], config.WAVELET_NAME).keys()))
+            ch_feature_names.extend(list(extract_welch_features(multi_channel_data['eeg'][0, ch, :], channel_info['eeg_fs'], config).keys()))
+            # Add channel‑specific prefix only to this channel's features
+            ch_feature_names = [f"eeg_{ch}_{name}" for name in ch_feature_names]
+            feature_names.extend(ch_feature_names)
 
-
+        # EOG / EMG feature names stay as they are (no per‑channel EEG prefix)
+        feature_names.extend(list(extract_eog_features(multi_channel_data['eog'][0, :, :], channel_info['eog_fs']).keys()))
+        feature_names.extend(list(extract_emg_features(multi_channel_data['emg'][0, 0, :], channel_info['emg_fs'], config.EEG_BANDS).keys()))
+    return feature_names

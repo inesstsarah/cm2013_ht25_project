@@ -4,10 +4,11 @@ from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import LeaveOneGroupOut,GridSearchCV
 from sklearn.metrics import accuracy_score, confusion_matrix, cohen_kappa_score
-from sklearn.metrics import precision_recall_fscore_support, roc_auc_score
+from sklearn.metrics import precision_recall_fscore_support, roc_auc_score, make_scorer, f1_score
 from sklearn.preprocessing import StandardScaler
 import pandas as pd
 from imblearn.over_sampling import SMOTE
+from imblearn.pipeline import Pipeline as ImbPipeline
 from src.utils import calculate_sleep_metrics
 
 
@@ -31,30 +32,61 @@ def _get_model_from_config(classifier_type: str) -> object:
         raise ValueError(f"Unknown classifier type: {classifier_type}")
 
 
-def hyperparameter_optimization(base_model, X_train, y_train, grid_params):
+def hyperparameter_optimization(base_model, X_train, y_train, grid_params, config=None):
     """
     Function to search for the optimal parameters in a hyperparameter space
 
     Args:
+        base_model (model): Previously defined sklearn SVM, RandomForest, or KNN model
         X_train (np.ndarray[float]): Array of training set variables
         y_train (np.ndarray[int]): Array of training set classes
-        config (dict): Config for repository.
+        grid_params (dict): Grid search parameters
+        config (module, optional): Configuration module to check iteration
+        use_smote (bool): Whether to use SMOTE in the pipeline
+    
+    Returns:
+        tuple: (best_score, best_params)
     """
     
-    # CRITICAL: Scale features before hyperparameter optimization
-    # This ensures grid search evaluates models on properly scaled data
-    scaler = StandardScaler()
-    X_train_scaled = scaler.fit_transform(X_train)
-
-    # Perform grid search on scaled features
-    gs = GridSearchCV(base_model, grid_params, verbose=1, cv=3, n_jobs=-1)
-    g_res = gs.fit(X_train_scaled, y_train)
+    # Determine if SMOTE should be used
+    if config is not None and (config.CURRENT_ITERATION == 1):
+        use_smote = True
+    else:
+        use_smote = False
+    
+    # Create pipeline: StandardScaler -> (SMOTE) -> Model
+    # This ensures SMOTE is applied within each CV fold, avoiding data leakage
+    steps = [('scaler', StandardScaler())]
+    
+    if use_smote:
+        steps.append(('smote', SMOTE(random_state=42, k_neighbors=3)))
+    
+    steps.append(('classifier', base_model))
+    pipeline = ImbPipeline(steps)
+    
+    # Adjust grid_params keys to include pipeline step prefix
+    # For example, 'n_estimators' becomes 'classifier__n_estimators'
+    pipeline_grid_params = {}
+    for key, value in grid_params.items():
+        pipeline_grid_params[f'classifier__{key}'] = value
+    
+    # Perform grid search with pipeline
+    # Use macro F1 as scoring metric for better class balance handling
+    f1_macro_scorer = make_scorer(f1_score, average='macro')
+    gs = GridSearchCV(pipeline, pipeline_grid_params, scoring=f1_macro_scorer, verbose=1, cv=3, n_jobs=-1)
+    g_res = gs.fit(X_train, y_train)
 
     # find the best score
     best_score = g_res.best_score_
 
-    # Get dictionary of best params
-    best_params = g_res.best_params_
+    # Get dictionary of best params (remove 'classifier__' prefix for consistency)
+    best_params = {}
+    for key, value in g_res.best_params_.items():
+        if key.startswith('classifier__'):
+            best_params[key.replace('classifier__', '')] = value
+        else:
+            best_params[key] = value
+    
     return(best_score, best_params)
 
 
@@ -101,17 +133,16 @@ def _LOSO_split_training(features: np.ndarray, labels: np.ndarray, record_ids: n
     all_y_pred = []
     scaler = StandardScaler()
 
-    if config.CURRENT_ITERATION == 1:
-        # - Sleep stages are not equally distributed
-        smote = SMOTE(random_state=42)
-        X_full, y_full = smote.fit_resample(features, labels)
-    else:
-        X_full, y_full = features, labels
+    # Note: SMOTE is applied within each fold AFTER standardization
+    # This ensures proper cross-validation without data leakage
+    # For hyperparameter optimization, we use original features (standardization happens inside)
+    X_full, y_full = features, labels
     
     model = _get_model_from_config(config.CLASSIFIER_TYPE)
     if config.USE_HYPERPARAM_OPTIMAZATION:
-        # Hyperparameter optimization and model creation
-        _, best_params = hyperparameter_optimization(model, X_full, y_full, config.GRID_PARAMS)
+        # Hyperparameter optimization (uses Pipeline with StandardScaler and SMOTE inside)
+        # SMOTE is applied within each CV fold to match the training pipeline
+        _, best_params = hyperparameter_optimization(model, X_full, y_full, config.GRID_PARAMS, config=config)
         # Create fresh model instance with best parameters for each fold
         model.set_params(**best_params)
         print(f"Model instance ID: {id(model)}, Params: {best_params}")
@@ -130,7 +161,8 @@ def _LOSO_split_training(features: np.ndarray, labels: np.ndarray, record_ids: n
         # - Sleep stages are not equally distributed
         # Sleep stages are naturally imbalanced (more N2, less N1/REM)
         if config.CURRENT_ITERATION == 1:
-            X_train, y_train = smote.fit_resample(X_train, y_train)
+            smote_fold = SMOTE(random_state=42, k_neighbors=3)
+            X_train, y_train = smote_fold.fit_resample(X_train, y_train)
         
         # Which subject is held out in this fold?
         train_subjects = np.unique(record_ids[train_idx])
@@ -157,17 +189,27 @@ def _LOSO_split_training(features: np.ndarray, labels: np.ndarray, record_ids: n
     std_acc = np.std([r['accuracy'] for r in loso_results])
     mean_kappa = np.mean([r['kappa'] for r in loso_results])
     std_kappa = np.std([r['kappa'] for r in loso_results])
+    mean_macro_f1 = np.mean([r['macro_f1'] for r in loso_results])
+    std_macro_f1 = np.std([r['macro_f1'] for r in loso_results])
 
     print("\n" + "="*60)
     print(f"LOSO Cross-Validation Results ({len(loso_results)} subjects):")
+    print(f"  Macro F1 = {mean_macro_f1:.1%} +/- {std_macro_f1:.1%}")
     print(f"  Accuracy = {mean_acc:.1%} +/- {std_acc:.1%}")
     print(f"  Kappa    = {mean_kappa:.3f} +/- {std_kappa:.3f}")
     print("="*60)
 
-    model.fit(scaler.fit_transform(X_full), y_full)
+    # Train final model on all data with a scaler fitted on all training data
+    final_scaler = StandardScaler()
+    X_full_scaled = final_scaler.fit_transform(X_full)
+    if config.CURRENT_ITERATION == 1:
+        smote_fold = SMOTE(random_state=42, k_neighbors=3)
+        X_full_scaled, y_full = smote_fold.fit_resample(X_full_scaled, y_full)
+    model.fit(X_full_scaled, y_full)
 
     return {
     'model': model,
+    'scaler': final_scaler,  # Save the scaler for inference
     'y_true_aggregate': np.array(all_y_test),
     'y_pred_aggregate': np.array(all_y_pred)
     }

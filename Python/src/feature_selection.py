@@ -1,9 +1,11 @@
 import numpy as np
-from sklearn.feature_selection import SelectKBest, mutual_info_classif
+from sklearn.feature_selection import SelectKBest, mutual_info_classif, RFE
+from sklearn.feature_selection import SelectFromModel
 import pandas as pd
-
+import config
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.preprocessing import StandardScaler
+from sklearn.ensemble import RandomForestClassifier
 
 def select_features(features, labels, config):
     """
@@ -62,14 +64,34 @@ def select_features(features, labels, config):
         selected_indices = selected_indices[selected_mask]
         
     elif config.CURRENT_ITERATION == 4:
-        # TODO: Students should implement advanced feature selection
-        print("TODO: Students should implement advanced feature selection for iteration 4")
-        print("Suggested: Use more sophisticated methods like RFE or feature importance")
+        # Advanced feature selection for Random Forest
+        print("Using advanced feature selection optimized for Random Forest...")
+        selected_features = features
+        
+        # Step 1: Remove low variance features
+        selected_features, selected_mask = variance_threshold_selector(selected_features, threshold=0.1)
+        selected_indices = selected_indices[selected_mask]
+        
+        # Step 2: Remove highly correlated features
+        selected_features, kept_indices_corr = _select_features_correlation(selected_features)
+        # kept_indices_corr is a list of indices relative to current selected_features
+        # Map them back to original feature indices
+        selected_indices = selected_indices[kept_indices_corr]
+        
+        # Step 3: Use Random Forest-based feature importance for final selection
+        # This is more suitable for Random Forest classifier than mutual information
+        selected_features, top_k_indices_rf = _select_features_rf_importance(
+            selected_features, labels, config.FEATURE_SELECTION_K
+        )
+        # top_k_indices_rf are indices relative to current selected_features
+        # Map them back to original feature indices using index array indexing
+        selected_indices = selected_indices[top_k_indices_rf]
 
-        # Placeholder - students must replace:
-        selected_features = features  # No selection implemented yet
-
-    #print(f"Selected features shape: {selected_features.shape}")
+    # Ensure selected_indices is a numpy array and convert to int for indexing
+    selected_indices = np.asarray(selected_indices, dtype=int)
+    print(f"Selected features shape: {selected_features.shape}")
+    print(f"Final selected_indices shape: {selected_indices.shape}, dtype: {selected_indices.dtype}")
+    print(f"Final selected_indices range: [{selected_indices.min()}, {selected_indices.max()}]")
     return selected_features, selected_indices
 
 
@@ -167,3 +189,48 @@ def _select_features_mutual_information(features: np.ndarray, labels: np.ndarray
     print(f"  Selected features shape: {selected_features.shape}")
     print(f"  Top 5 feature scores: {sorted(feature_scores, reverse=True)[:5]}\n")
     return selected_features, selected_indices
+
+def _select_features_rf_importance(features: np.ndarray, labels: np.ndarray, k: int) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Select features using Random Forest feature importance.
+    This method is optimized for Random Forest classifiers.
+    
+    Args:
+        features (np.ndarray): The input features (n_samples, n_features).
+        labels (np.ndarray): The corresponding labels.
+        k (int): The number of top features to select.
+    
+    Returns:
+        tuple: (selected_features, selected_mask)
+    """
+    k = min(k, features.shape[1])
+    print(f"\nUsing Random Forest Feature Importance to select top {k} features...")
+    print(f"  Method: RandomForestClassifier with feature_importances_")
+    print(f"  Optimized for Random Forest classifier")
+    
+    # Train a Random Forest to get feature importance
+    # Use a quick RF with reasonable parameters
+    rf_selector = RandomForestClassifier(**config.BEST_PARAMS)
+    
+    # Scale features before training RF (for consistency)
+    scaler_temp = StandardScaler()
+    features_scaled = scaler_temp.fit_transform(features)
+    
+    rf_selector.fit(features_scaled, labels)
+    
+    # Get feature importances
+    importances = rf_selector.feature_importances_
+    
+    # Select top k features based on importance
+    top_k_indices = np.argsort(importances)[-k:][::-1]
+    
+    selected_features = features[:, top_k_indices]
+    
+    print(f"  Selected {len(top_k_indices)} features from {features.shape[1]} total")
+    print(f"  Selected features shape: {selected_features.shape}")
+    print(f"  Top 5 feature importances: {sorted(importances, reverse=True)[:5]}\n")
+    print(f"  Selected indices (relative to input): {top_k_indices[:10] if len(top_k_indices) > 10 else top_k_indices}...")  # Debug info
+    
+    # Return indices array (not boolean mask) for consistency with mutual information method
+    # This ensures correct indexing when mapping back to original feature space
+    return selected_features, top_k_indices
