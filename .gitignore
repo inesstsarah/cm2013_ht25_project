@@ -15,3 +15,4 @@ Python/*.txt
 *.txt
 *.png
 .DS_Store
+.csv
