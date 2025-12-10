@@ -32,6 +32,8 @@ def select_features(features, labels, config):
 
     Returns:
         np.ndarray: The selected features (n_samples, n_selected_features).
+    Example:
+        >>> selected_features, selected_indices = select_features(features, labels, config)
     """
     print(f"Selecting features for iteration {config.CURRENT_ITERATION}...")
     print(f"Input features shape: {features.shape}")
@@ -69,7 +71,7 @@ def select_features(features, labels, config):
         selected_features = features
         
         # Step 1: Remove low variance features
-        selected_features, selected_mask = variance_threshold_selector(selected_features, threshold=0.1)
+        selected_features, selected_mask = _variance_threshold_selector(selected_features, threshold=0.1)
         selected_indices = selected_indices[selected_mask]
         
         # Step 2: Remove highly correlated features
@@ -105,10 +107,11 @@ def _variance_threshold_selector(features, threshold=0.0):
 
     Returns:
         np.ndarray: The selected features (n_samples, n_selected_features).
-
     Example:
-        selected_features = variance_threshold_selector(features, threshold=0.1)
+        >>> selected_features = _variance_threshold_selector(features, threshold=0.1)
     """
+
+
     max_variance = np.var(features, axis=0).max()
     min_variance = np.var(features, axis=0).min()
     print(f"Feature variance range: [{min_variance:.4f}, {max_variance:.4f}]")
@@ -142,7 +145,7 @@ def _select_features_correlation(features: np.ndarray) -> np.ndarray:
         np.ndarray: The selected features (n_samples, n_selected_features).
 
     Example:
-        selected_features = _select_features_correlation(features)
+        >>> selected_features = _select_features_correlation(features)
     """
     df = pd.DataFrame(features)
     corr_matrix = df.corr(method='pearson', min_periods=1).abs()
@@ -173,7 +176,7 @@ def _select_features_mutual_information(features: np.ndarray, labels: np.ndarray
         np.ndarray: The selected features (n_samples, n_selected_features).
     
     Example:
-        selected_features = _select_features_mutual_information(features, labels, k)
+        >>> selected_features = _select_features_mutual_information(features, labels, k)
     """
     k = min(k, features.shape[1])
     print(f"\nUsing Mutual Information to select top {k} features...")

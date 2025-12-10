@@ -47,10 +47,10 @@ BANDPASS_FILTER_HIGHER_FREQ = 35 # Hz
 BANDPASS_FILTER_ORDER = 5
 HIGHPASS_FILTER_FREQ = 0.5 # Hz
 EOG_BANDPASS_FILTER_LOWER_FREQ = 0.3 # Hz
-EOG_BANDPASS_FILTER_HIGHER_FREQ = 35 # Hz
+EOG_BANDPASS_FILTER_HIGHER_FREQ = 24 # Hz
 EOG_BANDPASS_FILTER_ORDER = 5
 EMG_HIGHPASS_FILTER_FREQ = 10 # Hz
-EMG_NOTCH_FILTER_FREQ = 50 # Hz
+EMG_NOTCH_FILTER_FREQ = 60 # Hz
 
 # -- Feature Extraction --
 # (Add feature-specific parameters here)
@@ -78,7 +78,7 @@ WAVELET_NAME = 'bior6.8'
 FEATURE_SELECTION_K = 50  # Number of top features to select (increased for Random Forest)
 
 # -- Classification --
-USE_HYPERPARAM_OPTIMAZATION = True
+USE_HYPERPARAM_OPTIMAZATION = False
 # Iteration-specific parameters - students should modify these based on current iteration
 if CURRENT_ITERATION == 1: 
     # Iteration 1: Basic pipeline with k-NN

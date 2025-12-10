@@ -13,7 +13,14 @@ from src.utils import calculate_sleep_metrics
 
 
 def _get_model_from_config(classifier_type: str) -> object:
-    """Get model instance based on config CLASSIFIER_TYPE"""
+    """Get model instance based on config CLASSIFIER_TYPE
+    Args:
+        classifier_type (str): Type of classifier ('knn', 'svm', 'random_forest')
+    Returns:
+        object: An instance of the specified classifier.
+    Example:
+        >>> model = _get_model_from_config('svm')
+    """
     if classifier_type == 'knn':
         return KNeighborsClassifier()
     
@@ -91,24 +98,18 @@ def hyperparameter_optimization(base_model, X_train, y_train, grid_params, confi
 
 
 def train_classifier(features, labels, record_ids, config):
-    """
-    STUDENT IMPLEMENTATION AREA: Train classifier based on iteration.
-
-    This function provides a basic framework but students should enhance it:
-
-    1. Implement proper cross-validation (not just train/test split)
-    2. Address class imbalance in sleep stage data
-    3. Tune hyperparameters for each classifier
-    4. Add more sophisticated evaluation metrics
-    5. Consider ensemble methods in later iterations
+    """Train classifier based on iteration.
 
     Args:
         features (np.ndarray): The input features.
         labels (np.ndarray): The corresponding labels.
         config (module): The configuration module.
-
     Returns:
-        object: The trained classifier.
+        dict: A dictionary containing the trained model and scaler.
+    
+    Example:
+        >>> model = train_classifier(features, labels, record_ids, config)
+    
     """
   
     print(f"Training {config.CLASSIFIER_TYPE} classifier...")
@@ -126,6 +127,19 @@ def train_classifier(features, labels, record_ids, config):
 
 # TODO: Statistical comparison between iterations (t-test on kappa scores)
 def _LOSO_split_training(features: np.ndarray, labels: np.ndarray, record_ids: np.ndarray, config: dict) -> dict:
+    """
+    Train and evaluate the model using Leave-One-Subject-Out (LOSO) cross-validation.
+    Args:
+        features (np.ndarray): The input features (n_samples, n_features).
+        labels (np.ndarray): The corresponding labels (n_samples,).
+        record_ids (np.ndarray): The record IDs indicating subject membership (n_samples,).
+        config (module): The configuration module.
+    Returns:
+        dict: A dictionary containing the trained model, scaler, and aggregated predictions.
+    Example:
+        >>> model = _LOSO_split_training(features, labels, record_ids, config)
+    """
+    
     # Create LOSO cross-validation split
     logo = LeaveOneGroupOut()
     loso_results = []
@@ -216,6 +230,18 @@ def _LOSO_split_training(features: np.ndarray, labels: np.ndarray, record_ids: n
    
 
 def _training_evaluation(y_true: np.ndarray, y_pred: np.ndarray, y_pred_proba: np.ndarray, record_ids: np.ndarray) -> dict:
+    """
+    Evaluate training results and print detailed report.
+    Args:
+        y_true (np.ndarray): True labels.
+        y_pred (np.ndarray): Predicted labels.
+        y_pred_proba (np.ndarray): Predicted probabilities for each class.
+        record_ids (np.ndarray): Record IDs for clinical plausibility check.
+    Returns:
+        dict: A dictionary containing evaluation metrics.
+    Example:
+        >>> results = _training_evaluation(y_true, y_pred, y_pred_proba, record_ids)
+    """
     # Calculate metrics for this subject
     stage_names = ['Wake', 'N1', 'N2', 'N3', 'REM']
     stage_labels = list(range(5))
@@ -293,6 +319,9 @@ def _compute_auc(y_true: np.ndarray, y_pred_proba: np.ndarray) -> dict:
 
     Returns:
         dict: containing per-class and macro ROC-AUC scores
+    
+    Example:
+        >>> auc_results = _compute_auc(y_true, y_pred_proba)
     """
     # Translate to one-hot matrix
     n_classes = y_pred_proba.shape[1]
@@ -335,6 +364,17 @@ def _compute_auc(y_true: np.ndarray, y_pred_proba: np.ndarray) -> dict:
 
 
 def _compute_specificity(y_true: np.ndarray, y_pred: np.ndarray, stage_label: list) -> list:
+    """
+    Compute specificity (True Negative Rate) for each class.
+    Args:
+        y_true (np.ndarray): True labels.
+        y_pred (np.ndarray): Predicted labels.
+        stage_label (list): List of class labels.
+    Returns:
+        list: Specificity for each class.
+    Example:
+        >>> specificity = _compute_specificity(y_true, y_pred, stage_labels)
+    """
     specificity = []
     for i in range(len(stage_label)):
         tn = np.sum((y_true != i) & (y_pred != i))
@@ -345,6 +385,16 @@ def _compute_specificity(y_true: np.ndarray, y_pred: np.ndarray, stage_label: li
 
 
 def _print_confusion_matrix(y_true: np.ndarray, y_pred: np.ndarray, stage_names: list, stage_labels: list):
+    """
+    Print formatted confusion matrix.
+    Args:
+        y_true (np.ndarray): True labels.
+        y_pred (np.ndarray): Predicted labels.
+        stage_names (list): List of class names.
+        stage_labels (list): List of class labels.
+    Example:
+        >>> _print_confusion_matrix(y_true, y_pred, stage_names, stage_labels)
+    """
     print("\nConfusion Matrix:")
     cm = confusion_matrix(y_true, y_pred, labels=stage_labels) 
     # Create a formatted confusion matrix
@@ -353,6 +403,13 @@ def _print_confusion_matrix(y_true: np.ndarray, y_pred: np.ndarray, stage_names:
 
 
 def _print_sleep_stage_distribution(y_true: np.ndarray) -> None:
+    """
+    Print the distribution of sleep stages in the test set.
+    Args:
+        y_true (np.ndarray): True labels.
+    Example:
+        >>> _print_sleep_stage_distribution(y_true)
+    """
     print("\nClass Distribution in Test Set:")
     stage_names = ['Wake', 'N1', 'N2', 'N3', 'REM']
     unique, counts = np.unique(y_true, return_counts=True)
@@ -380,6 +437,8 @@ def _print_sleep_metrics_comparison_table(true_metrics: dict, pred_metrics: dict
     Args:
         true_metrics (dict): Ground truth sleep metrics
         pred_metrics (dict): Predicted sleep metrics
+    Example:
+        >>> _print_sleep_metrics_comparison_table(true_metrics, pred_metrics)
     """
     # Define metric display names and units
     metric_info = {
@@ -480,6 +539,8 @@ def _compare_sleep_metrics(y_true: np.ndarray, y_pred: np.ndarray, record_ids: n
         
     Returns:
         dict: Comparison results for each record
+    Example:
+        >>> results = _compare_sleep_metrics(y_true, y_pred, record_ids)
     """
     if record_ids is None:
         # Overall comparison

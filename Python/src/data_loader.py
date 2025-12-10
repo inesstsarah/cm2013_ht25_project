@@ -247,6 +247,8 @@ def _extract_epochs(raw, epoch_length, n_epochs):
         tuple: (epochs_array, sampling_rate) where:
             - epochs_array: np.ndarray, shape (n_epochs, n_channels, samples_per_epoch)
             - sampling_rate: float, sampling frequency in Hz
+    Example:
+        >>> epochs, fs = _extract_epochs(raw, 30, 100)
     """
     # Get data and sampling rate
     data = raw.get_data()  # Shape: (n_channels, n_samples)
@@ -275,7 +277,16 @@ def _extract_epochs(raw, epoch_length, n_epochs):
 
 
 def _print_label_distribution(labels):
-    """Print sleep stage distribution."""
+    """Print sleep stage distribution.
+    Args:
+        labels (np.ndarray): Array of sleep stage labels.
+
+    Returns:        
+        None
+
+    Example:
+        >>> _print_label_distribution(labels)
+    """
     unique, counts = np.unique(labels, return_counts=True)
     stage_names = ['Wake', 'N1', 'N2', 'N3', 'REM']
 
@@ -394,6 +405,19 @@ def load_all_training_data(training_dir, epoch_length=30):
 def load_all_holdout_data(holdout_dir, epoch_length=30):
     """
     Load all holdout recordings from a directory.
+
+    Args:
+        holdout_dir (str): Path to directory containing EDF files 
+        epoch_length (float): Epoch duration in seconds (default 30)
+    Returns:
+        tuple: (all_data, all_record_ids, channel_info) where:
+            - all_data (dict): Combined multi-channel data from all recordings
+            - all_record_ids (np.ndarray): Record ID for each epoch
+            - channel_info (dict): Channel information (same across recordings)
+    Example:
+        >>> data, record_ids, info = load_all_holdout_data('data/holdout/')
+        >>> print(f"Total epochs: {len(record_ids)}")
+        >>> print(f"Unique recordings: {len(np.unique(record_ids))}")
     """
     from glob import glob
     print(f"Loading all holdout data from {holdout_dir}...")

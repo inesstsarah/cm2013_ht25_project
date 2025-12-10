@@ -269,7 +269,7 @@ def preprocess_eog_channel(eog_data,channel_info, config):
     for ch in range(eog_data.shape[1]):
         print(f"Processing EOG channel {ch+1}")
         nepochs = eog_data.shape[0]
-        signal = eog_data[:, ch, :].flatten()  # Convert to microvolts
+        signal = eog_data[:, ch, :].flatten() 
         # Apply EOG-specific preprocessing
         filtered_signal = bandpass_filter(signal, config.EOG_BANDPASS_FILTER_LOWER_FREQ, config.EOG_BANDPASS_FILTER_HIGHER_FREQ, eog_fs, config.EOG_BANDPASS_FILTER_ORDER)
         
@@ -307,11 +307,11 @@ def preprocess_emg_channel(emg_data,channel_info, config):
 
     print(f"Processing EMG")
     nepochs = emg_data.shape[0]
-    signal = emg_data[:, 0, :].flatten()  # Convert to microvolts
+    signal = emg_data[:, 0, :].flatten()  
     # Apply EMG-specific preprocessing
     filtered_signal = highpass_filter(signal, config.EMG_HIGHPASS_FILTER_FREQ, emg_fs)
     filtered_signal = notch_filter(filtered_signal, config.EMG_NOTCH_FILTER_FREQ, config.NOTCH_FILTER_Q, emg_fs)
-   
+
     # FFT visualization
     fig, axes = plt.subplots(2, 2, figsize=(8, 6))
     visualize_signal(signal[0:3750], emg_fs, ax=axes[0,0], title=f"EMG - Original Signal")
@@ -368,15 +368,15 @@ def remove_emg_artifacts(eeg_data, emg_data, fs):
     If EMG power is high, apply a stricter low-pass filter to EEG.
 
     Args:
-        eeg_data (np.ndarray): (n_epochs, n_channels, n_samples)
+        eeg_data np.ndarray): (n_epochs, n_channels, n_samples)
         emg_data (np.ndarray): (n_epochs, 1, n_samples)
         fs (int): EEG sampling frequency
 
     Returns:
         np.ndarray: cleaned EEG data
-
     Example:
-        >>> cleaned_eeg = remove_emg_artifacts(eeg_data, emg_data,
+        >>> cleaned_eeg = remove_emg_artifacts(eeg_data, emg_data, fs)
+
     """
     cleaned_eeg = np.copy(eeg_data)
     n_epochs = eeg_data.shape[0]
