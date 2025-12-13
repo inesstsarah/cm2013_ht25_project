@@ -6,8 +6,7 @@ joblib
 mne
 pandas
 pytest
-nolds
-imblearn
+imbalanced-learn
 pyedflib
 PyWavelets
 spectrum

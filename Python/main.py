@@ -9,6 +9,8 @@ from src.report import generate_report
 from src.utils import save_cache, load_cache
 import sys
 import io
+import time
+from datetime import timedelta
 
 
 class TeeIO:
@@ -45,10 +47,15 @@ def main():
     print("=== PROCESSING LOG ===")
 
     print(f"--- Sleep Scoring Pipeline - Iteration {config.CURRENT_ITERATION} ---")
+    
+    # Start total timing
+    total_start_time = time.time()
+    step_times = {}
 
     # 1. Load Data
     # Example uses R1.edf and R1.xml - students should adapt for their dataset
     print("\n=== STEP 1: DATA LOADING ===")
+    step_start = time.time()
     # Handle both new multi-channel format and old single-channel format for compatibility
     try:
         multi_channel_data, labels, record_ids, channel_info = load_all_training_data(config.TRAINING_DIR)
@@ -60,9 +67,11 @@ def main():
 
     except (ValueError, TypeError):
         print("Fail to load multi-channel data, closely check the error message above.")
+    step_times['Data Loading'] = time.time() - step_start
 
     # 2. Preprocessing
     print("\n=== STEP 2: PREPROCESSING ===")
+    step_start = time.time()
     preprocessed_data = None
     cache_filename_preprocess = f"preprocessed_data_iter{config.CURRENT_ITERATION}.joblib"
     if config.USE_CACHE:
@@ -76,9 +85,11 @@ def main():
         if config.USE_CACHE:
             save_cache(preprocessed_data, cache_filename_preprocess, config.CACHE_DIR)
             print("Saved preprocessed data to cache")
+    step_times['Preprocessing'] = time.time() - step_start
 
     # 3. Feature Extraction
     print("\n=== STEP 3: FEATURE EXTRACTION ===")
+    step_start = time.time()
     features = None
     cache_filename_features = f"features_iter{config.CURRENT_ITERATION}.joblib"
     if config.USE_CACHE:
@@ -96,8 +107,10 @@ def main():
             print("Saved features to cache")
 
     feature_names = get_feature_names(preprocessed_data, channel_info, config)
+    step_times['Feature Extraction'] = time.time() - step_start
     # 4. Feature Selection
     print("\n=== STEP 4: FEATURE SELECTION ===")
+    step_start = time.time()
     selected_features, selected_indices = select_features(features, labels, config)
     print(f"Selected features shape: {selected_features.shape}")
 
@@ -111,9 +124,11 @@ def main():
             print("  ", end="") 
         print(f"{name:30s}", end="")
     print()
+    step_times['Feature Selection'] = time.time() - step_start
 
     # 5. Classification
     print("\n=== STEP 5: CLASSIFICATION ===")
+    step_start = time.time()
     cache_filename_model = f"model_iter{config.CURRENT_ITERATION}.joblib"
     cache_filename_scaler = f"scaler_iter{config.CURRENT_ITERATION}.joblib"
     if selected_features.shape[1] > 0:
@@ -127,17 +142,35 @@ def main():
         print("⚠️  WARNING: Cannot train classifier - no features available!")
         print("Students must implement feature extraction first.")
         model = None
+    step_times['Classification'] = time.time() - step_start
 
     # 6. Visualization
     print("\n=== STEP 6: VISUALIZATION ===")
+    step_start = time.time()
     if model is not None:
         visualize_results(model, record_ids, config)
     else:
         print("Skipping visualization - no trained model")
+    step_times['Visualization'] = time.time() - step_start
 
     # 7. Report Generation
     print("\n=== STEP 7: PROCESSING LOG & REPORT GENERATION ===")
+    # Calculate total time
+    total_time = time.time() - total_start_time
+    step_times['Total'] = total_time
 
+    # Print timing summary
+    print("\n" + "="*60)
+    print("TIMING SUMMARY")
+    print("="*60)
+    for step_name, step_time in step_times.items():
+        if step_name == 'Total':
+            print(f"{step_name:25s}: {step_time:8.2f} seconds ({str(timedelta(seconds=int(step_time)))})")
+        else:
+            percentage = (step_time / total_time) * 100
+            print(f"{step_name:25s}: {step_time:8.2f} seconds ({percentage:5.1f}%)")
+    print("="*60)
+    
     # Restore the original stdout
     sys.stdout = original_stdout
 
@@ -148,12 +181,6 @@ def main():
         generate_report(model, selected_features, labels, config, processing_log)
     else:
         print("Skipping report - no trained model")
-
-    print("\n" + "="*50)
-    print("PIPELINE FINISHED")
-    if model is None:
-        print("⚠️  Students need to implement missing components!")
-    print("="*50)
 
 
 if __name__ == "__main__":

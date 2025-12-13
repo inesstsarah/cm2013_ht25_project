@@ -192,11 +192,24 @@ def _LOSO_split_training(features: np.ndarray, labels: np.ndarray, record_ids: n
     mean_macro_f1 = np.mean([r['macro_f1'] for r in loso_results])
     std_macro_f1 = np.std([r['macro_f1'] for r in loso_results])
 
+    # Calculate per-class accuracy across all folds
+    stage_names = ['Wake', 'N1', 'N2', 'N3', 'REM']
+    per_class_acc_mean, per_class_acc_std = _calculate_per_class_accuracy(
+        all_y_test, all_y_pred, loso_results
+    )
+
     print("\n" + "="*60)
     print(f"LOSO Cross-Validation Results ({len(loso_results)} subjects):")
     print(f"  Macro F1 = {mean_macro_f1:.1%} +/- {std_macro_f1:.1%}")
     print(f"  Accuracy = {mean_acc:.1%} +/- {std_acc:.1%}")
     print(f"  Kappa    = {mean_kappa:.3f} +/- {std_kappa:.3f}")
+    print("\n  Per-Class Accuracy (mean +/- std across folds):")
+    for i, stage_name in enumerate(stage_names):
+        if i < len(per_class_acc_mean) and not np.isnan(per_class_acc_mean[i]):
+            std_val = per_class_acc_std[i] if i < len(per_class_acc_std) else 0.0
+            print(f"    {stage_name:6s} = {per_class_acc_mean[i]:.1%} +/- {std_val:.1%}")
+        else:
+            print(f"    {stage_name:6s} = N/A (no samples)")
     print("="*60)
 
     # Train final model on all data with a scaler fitted on all training data
@@ -281,6 +294,63 @@ def _training_evaluation(y_true: np.ndarray, y_pred: np.ndarray, y_pred_proba: n
             'specificity': specificity
     }
     return result
+
+
+def _calculate_per_class_accuracy(all_y_test: np.ndarray, all_y_pred: np.ndarray, 
+                                   loso_results: list) -> tuple[list, list]:
+    """
+    Calculate per-class accuracy (recall) mean and standard deviation across all LOSO folds.
+    
+    Per-class accuracy for a stage = correctly predicted samples of that stage / total samples of that stage
+    This is equivalent to recall for each class.
+    
+    Args:
+        all_y_test (np.ndarray): Aggregated true labels from all folds
+        all_y_pred (np.ndarray): Aggregated predictions from all folds
+        loso_results (list): List of evaluation results from each fold
+    
+    Returns:
+        tuple: (per_class_acc_mean, per_class_acc_std) - Lists of mean and std for each class
+    """
+    stage_names = ['Wake', 'N1', 'N2', 'N3', 'REM']
+    n_classes = len(stage_names)
+
+    # Ensure inputs are numpy arrays for boolean operations
+    all_y_test = np.array(all_y_test)
+    all_y_pred = np.array(all_y_pred)
+
+    # Calculate overall per-class accuracy from aggregated predictions
+    per_class_accuracies = []
+    for stage_idx in range(n_classes):
+        # Find all samples of this stage
+        stage_mask = all_y_test == stage_idx
+        if np.sum(stage_mask) > 0:
+            # Calculate accuracy for this stage: correct predictions / total samples
+            stage_accuracy = np.sum((all_y_test == all_y_pred) & stage_mask) / np.sum(stage_mask)
+            per_class_accuracies.append(stage_accuracy)
+        else:
+            per_class_accuracies.append(np.nan)
+    
+    # Calculate per-class accuracy mean and std from each fold's recall
+    # (Recall is equivalent to per-class accuracy)
+    per_class_acc_mean = []
+    per_class_acc_std = []
+    for stage_idx in range(n_classes):
+        if len(loso_results) > 0 and 'recall' in loso_results[0]:
+            fold_recalls = [r['recall'][stage_idx] for r in loso_results 
+                          if 'recall' in r and stage_idx < len(r['recall'])]
+            if len(fold_recalls) > 0:
+                per_class_acc_mean.append(np.mean(fold_recalls))
+                per_class_acc_std.append(np.std(fold_recalls))
+            else:
+                per_class_acc_mean.append(np.nan)
+                per_class_acc_std.append(0.0)
+        else:
+            # Fallback: use overall accuracy from aggregated data
+            per_class_acc_mean.append(per_class_accuracies[stage_idx])
+            per_class_acc_std.append(0.0)
+    
+    return per_class_acc_mean, per_class_acc_std
 
 
 def _compute_auc(y_true: np.ndarray, y_pred_proba: np.ndarray) -> dict:

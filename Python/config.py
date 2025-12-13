@@ -2,7 +2,7 @@
 
 # Set the current iteration of the project (1-4). 
 # This controls which parts of the pipeline are active.
-CURRENT_ITERATION = 4
+CURRENT_ITERATION = 2
 
 # Set to True to use cached data for preprocessing and feature extraction.
 USE_CACHE = True
@@ -78,7 +78,7 @@ WAVELET_NAME = 'bior6.8'
 FEATURE_SELECTION_K = 50  # Number of top features to select (increased for Random Forest)
 
 # -- Classification --
-USE_HYPERPARAM_OPTIMAZATION = True
+USE_HYPERPARAM_OPTIMAZATION = False
 # Iteration-specific parameters - students should modify these based on current iteration
 if CURRENT_ITERATION == 1: # TODO: add more hyperparameters for the hyperparameter optimization
     # Iteration 1: Basic pipeline with k-NN

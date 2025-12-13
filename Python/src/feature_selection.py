@@ -44,15 +44,10 @@ def select_features(features, labels, config):
     if config.CURRENT_ITERATION == 1:
         # Early iterations: Use all available features
         print("Early iteration - using all available features")
+        selected_features = features
     
     elif config.CURRENT_ITERATION == 2:
         selected_features = features
-        # selected_features, selected_mask = variance_threshold_selector(features,threshold=0.1)
-        # selected_indices = selected_indices[selected_mask]
-        # selected_features, selected_mask = _select_features_correlation(selected_features)
-        # selected_indices = selected_indices[selected_mask]
-        # selected_features, selected_mask = _select_features_mutual_information(selected_features, labels, config.FEATURE_SELECTION_K)
-        # selected_indices = selected_indices[selected_mask]
         
     elif config.CURRENT_ITERATION == 3:
         selected_features = features

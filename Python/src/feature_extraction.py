@@ -502,7 +502,7 @@ def extract_multi_channel_features(multi_channel_data, channel_info, config):
     epoch_data_list = [
         {
             'eeg': multi_channel_data['eeg'][epoch_idx, :, :],
-            'eog': multi_channel_data['eog'][epoch_idx, :, :] if config.CURRENT_ITERATION >= 2 else None,
+            'eog': multi_channel_data['eog'][epoch_idx, :, :] if config.CURRENT_ITERATION >= 3 else None,
             'emg': multi_channel_data['emg'][epoch_idx, :, :] if config.CURRENT_ITERATION >= 3 else None
         }
         for epoch_idx in range(n_epochs)
@@ -715,18 +715,19 @@ def _process_epoch(epoch_data: dict, channel_info: dict, config: dict) -> list:
         # Time-domain features
         eeg_td = extract_time_domain_features(eeg_signal)
         epoch_features.extend(list(eeg_td.values()))
+    
+        if config.CURRENT_ITERATION >= 2:
+            # Add AR spectral features
+            eeg_ar = extract_ar_features(eeg_signal, channel_info['eeg_fs'], config.EEG_BANDS, config.AR_ORDER)
+            epoch_features.extend(list[Any](eeg_ar.values()))
 
-        # Add AR spectral features
-        eeg_ar = extract_ar_features(eeg_signal, channel_info['eeg_fs'], config.EEG_BANDS, config.AR_ORDER)
-        epoch_features.extend(list[Any](eeg_ar.values()))
+            # Add wavelet features
+            eeg_wavelet = wavelet_processing(eeg_signal, config.WAVELET_NAME)
+            epoch_features.extend(list(eeg_wavelet.values()))
 
-        # Add wavelet features
-        eeg_wavelet = wavelet_processing(eeg_signal, config.WAVELET_NAME)
-        epoch_features.extend(list(eeg_wavelet.values()))
-
-        # Add welch features
-        eeg_welch = extract_welch_features(eeg_signal, channel_info['eeg_fs'], config)
-        epoch_features.extend(list(eeg_welch.values()))
+            # Add welch features
+            eeg_welch = extract_welch_features(eeg_signal, channel_info['eeg_fs'], config)
+            epoch_features.extend(list(eeg_welch.values()))
 
     if config.CURRENT_ITERATION >= 3:
         # Add EOG features (2 channels)
@@ -753,10 +754,21 @@ def get_feature_names(multi_channel_data: dict, channel_info: dict, config: dict
     """
     feature_names = []
     if config.CURRENT_ITERATION == 1:
-        feature_names.extend(list[Any](extract_time_domain_features(multi_channel_data['eeg'][0, 0, :]).keys()))
+        for ch in range(multi_channel_data['eeg'].shape[1]):
+            ch_feature_names = []
+            ch_feature_names.extend(list(extract_time_domain_features(multi_channel_data['eeg'][0, ch, :]).keys()))
+            ch_feature_names = [f"eeg_{ch}_{name}" for name in ch_feature_names]
+            feature_names.extend(ch_feature_names)
     elif config.CURRENT_ITERATION == 2:
-        feature_names.extend(list(extract_time_domain_features(multi_channel_data['eeg'][0, 0, :]).keys()))
-        feature_names.extend(list(extract_ar_features(multi_channel_data['eeg'][0, 0, :], channel_info['eeg_fs'], config.EEG_BANDS, config.AR_ORDER).keys()))
+        for ch in range(multi_channel_data['eeg'].shape[1]):
+            ch_feature_names = []
+            ch_feature_names.extend(list(extract_time_domain_features(multi_channel_data['eeg'][0, ch, :]).keys()))
+            ch_feature_names.extend(list(extract_ar_features(multi_channel_data['eeg'][0, ch, :], channel_info['eeg_fs'], config.EEG_BANDS, config.AR_ORDER).keys()))
+            ch_feature_names.extend(list(wavelet_processing(multi_channel_data['eeg'][0, ch, :], config.WAVELET_NAME).keys()))
+            ch_feature_names.extend(list(extract_welch_features(multi_channel_data['eeg'][0, ch, :], channel_info['eeg_fs'], config).keys()))
+            # Add channel‑specific prefix only to this channel's features
+            ch_feature_names = [f"eeg_{ch}_{name}" for name in ch_feature_names]
+            feature_names.extend(ch_feature_names)
     else:
         for ch in range(multi_channel_data['eeg'].shape[1]):
             ch_feature_names = []
