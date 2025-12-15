@@ -99,16 +99,28 @@ def select_features(features, labels, config):
 
 def _variance_threshold_selector(features, threshold=0.0):
     """
-    Select features based on variance threshold.
+    Selects features based on a variance threshold strategy.
+
+    This function operates in two modes:
+    1. If threshold <= 0: Removes constant features (variance == 0).
+    2. If threshold > 0: Removes the bottom N% of features based on variance ranking,
+       where N is determined by (threshold * 100).
 
     Args:
-        features (np.ndarray): The input features (n_samples, n_features).
-        threshold (float): The variance threshold.
+        features (np.ndarray): The input features array of shape (n_samples, n_features).
+        threshold (float): The threshold for selection.
+            - If <= 0.0, removes features with 0 variance.
+            - If > 0.0, represents a percentile rank (0.0 to 1.0) to exclude.
+              For example, 0.1 removes the bottom 10% of features with the lowest variance.
 
     Returns:
-        np.ndarray: The selected features (n_samples, n_selected_features).
+        tuple: A tuple containing:
+            - selected_features (np.ndarray): The transformed feature subset of shape (n_samples, n_selected_features).
+            - support_mask (np.ndarray): A boolean mask indicating which features were retained.
+
     Example:
-        >>> selected_features = _variance_threshold_selector(features, threshold=0.1)
+        >>> # Remove bottom 20% of features by variance
+        >>> features_subset, mask = _variance_threshold_selector(X, threshold=0.2)
     """
 
 
