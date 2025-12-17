@@ -15,6 +15,9 @@ def temporal_smoothing(predictions: np.ndarray, record_ids: np.ndarray, window_s
     
     Returns:
         np.ndarray: Smoothed predictions
+    
+    Example:
+        >>> smoothed_preds = temporal_smoothing(predictions, record_ids, window_size=3)
     """
     if window_size % 2 == 0:
         window_size += 1  # Ensure odd window size
@@ -46,6 +49,9 @@ def make_inference(model, holdout_data, config, record_ids=None, apply_smoothing
 
     Returns:
         np.ndarray: Predicted labels for the hold-out data.
+    
+    Example:
+        >>> predictions = make_inference(model, holdout_data, config, record_ids, apply_smoothing=True)
     """
     print("Making inference on hold-out data...")
     predictions = model.predict(holdout_data)
@@ -67,6 +73,12 @@ def generate_submission_file(predictions, record_numbers, epoch_numbers, config)
         record_numbers (list): List of record numbers corresponding to each epoch.
         epoch_numbers (list): List of epoch numbers corresponding to each epoch.
         config (module): The configuration module.
+        
+    Returns:
+        None
+
+    Example:
+        >>> generate_submission_file(predictions, record_numbers, epoch_numbers, config)
     """
     print(f"Generating submission file: {config.SUBMISSION_FILE}...")
     submission_df = pd.DataFrame({

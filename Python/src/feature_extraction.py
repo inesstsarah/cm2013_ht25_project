@@ -104,6 +104,8 @@ def wavelet_decomposition(signal, wavelet_name):
 
     Returns:
         coeff_arr (np.ndarray): Array of coefficients of different levels
+    Example:
+        >>> coeff_arr = wavelet_decomposition(signal, wavelet_name)
     """
     # Get wavelet 
     wavelet = pywt.Wavelet(wavelet_name)
@@ -120,7 +122,11 @@ def wavelet_feature_extraction(coeff_arr):
         coeff_arr (np.ndarray): 2D array of all coefficients from array
     
     Returns:
-        wavelet_features (dict): A dictionary of all wavelet features"""
+        wavelet_features (dict): A dictionary of all wavelet features
+    
+    Example:
+        >>> wavelet_features = wavelet_feature_extraction(coeff_arr)
+    """
 
     wavelet_features = {}
     # Try extracting the entropy, and other statistics from every coefficient if possible
@@ -154,6 +160,15 @@ def wavelet_feature_extraction(coeff_arr):
     return(wavelet_features)
 
 def wavelet_processing(epoch, wavelet_name):
+    """Function to do wavelet processing on a signal epoch
+    Args:
+        epoch (np.ndarray): 1D array of a signal epoch
+        wavelet_name (str): name of wavelet family and the number e.g 'coif1' or 'db1'
+    Returns:
+        wavelet_features (dict): A dictionary of all wavelet features
+    Example:  
+        >>> wavelet_features = wavelet_processing(epoch, wavelet_name)
+    """
     coeff_arr = wavelet_decomposition(signal = epoch, wavelet_name = wavelet_name)
     # print(f"Array of coeffs: {coeff_arr}")
     # print(f"Shape of array coeffs: {coeff_arr.shape}")
@@ -211,6 +226,17 @@ def extract_time_domain_features(epoch):
 
 # ========== AR features computation ========== {
 def _integrate_band_power(freqs: np.ndarray, psd: np.ndarray, f_low: float, f_high: float) -> float:
+    """ Compute the band power by integrating the PSD within a frequency band.
+    Args:
+        freqs (np.ndarray): Frequency array (Hz).
+        psd (np.ndarray): Power spectral density array.
+        f_low (float): Lower frequency bound (Hz).
+        f_high (float): Upper frequency bound (Hz).
+    Returns:
+        float: Band power.
+    Example:
+        >>> band_power = _integrate_band_power(freqs, psd, f_low, f_high)
+    """
     mask = (freqs >= f_low) & (freqs <= f_high)
     if not np.any(mask):
         return 0.0
@@ -218,6 +244,17 @@ def _integrate_band_power(freqs: np.ndarray, psd: np.ndarray, f_low: float, f_hi
 
 
 def _peak_frequency(freqs: np.ndarray, psd: np.ndarray, f_low: float = None, f_high: float = None) -> float:
+    """ Compute the peak frequency of the PSD within a frequency band.
+    Args:
+        freqs (np.ndarray): Frequency array (Hz).
+        psd (np.ndarray): Power spectral density array.
+        f_low (float, optional): Lower frequency bound (Hz). Defaults to None.
+        f_high (float, optional): Upper frequency bound (Hz). Defaults to None.
+    Returns:
+        float: Peak frequency (Hz).
+    Example:
+        >>> peak_freq = _peak_frequency(freqs, psd, f_low, f_high)
+    """
     if f_low is not None and f_high is not None:
         mask = (freqs >= f_low) & (freqs <= f_high)
         if not np.any(mask):
@@ -236,6 +273,17 @@ def _peak_frequency(freqs: np.ndarray, psd: np.ndarray, f_low: float = None, f_h
 
 
 def _spectral_entropy(freqs: np.ndarray, psd: np.ndarray, f_low: float, f_high: float) -> float:
+    """ Compute the spectral entropy of the PSD within a frequency band.
+    Args:
+        freqs (np.ndarray): Frequency array (Hz).
+        psd (np.ndarray): Power spectral density array.
+        f_low (float): Lower frequency bound (Hz).
+        f_high (float): Upper frequency bound (Hz).
+    Returns:
+        float: Spectral entropy (normalized).
+    Example:
+        >>> entropy = _spectral_entropy(freqs, psd, f_low, f_high)
+    """
     mask = (freqs >= f_low) & (freqs <= f_high)
     if not np.any(mask):
         return 0.0
@@ -260,6 +308,8 @@ def _extract_derivative_features(freqs: np.ndarray, psd: np.ndarray, f_low: floa
     
     Returns:
         dict: Dictionary containing derivative features.
+    Example:
+        >>> deriv_features = _extract_derivative_features(freqs, psd, f_low, f_high)
     """
     mask = (freqs >= f_low) & (freqs <= f_high)
     if not np.any(mask):
@@ -299,6 +349,18 @@ def _extract_derivative_features(freqs: np.ndarray, psd: np.ndarray, f_low: floa
 
 
 def _spectral_edge_frequency(freqs: np.ndarray, psd: np.ndarray, f_low: float, f_high: float, percentile: float = 0.9) -> float:
+    """ Compute the spectral edge frequency (SEF) at a given percentile within a frequency band.
+    Args:
+        freqs (np.ndarray): Frequency array (Hz).
+        psd (np.ndarray): Power spectral density array.
+        f_low (float): Lower frequency bound (Hz).
+        f_high (float): Upper frequency bound (Hz).
+        percentile (float, optional): Percentile for SEF calculation. Defaults to 0.9.
+    Returns:
+        float: Spectral edge frequency (Hz).
+    Example:
+        >>> sef = _spectral_edge_frequency(freqs, psd, f_low, f_high, percentile)
+    """
     mask = (freqs >= f_low) & (freqs <= f_high)
     if not np.any(mask):
         return float('nan')
@@ -327,6 +389,18 @@ def extract_ar_features(epoch: np.ndarray,
     - Spectral edge frequency (90% by default) within 0.5–30 Hz
     - Peak frequency within 0.5–30 Hz
     - Spectral entropy within 0.5–30 Hz
+
+    Args:
+        epoch (np.ndarray): A 1D array representing one epoch of EEG signal data.
+        fs (int): Sampling frequency of the signal.
+        bands (dict): Dictionary defining frequency bands.
+        order (int): Order of the AR model.
+
+    Returns:
+        dict: A dictionary containing the extracted AR spectral features.
+
+    Example:
+        >>> features = extract_ar_features(epoch, fs, bands, order)
     """
     fmin_total = bands['delta'][0]
     fmax_total = bands['beta'][1]
@@ -397,8 +471,10 @@ def extract_welch_features(signal, fs, config):
         freqs (np.ndarray): 1D array of frequencies 
         psd (np.ndarray): 1D array of power spectral density values
         config (module): The configuration module.      
+
     Returns:
         spectral_features (dict): A dictionary of all spectral features
+
     Example:
         >>> spectral_features = extract_spectral_features(freqs, psd, config)
     """
@@ -601,11 +677,18 @@ def extract_eog_features(eog_signal, fs): # TODO: Make sure that there is a 2D a
     """
     """
     Function to extract EOG features from the EOG signal
+
     Args:
         eog_signal (np.ndarray): 2D array with the EOG signal as follows: [left_eog, right_eog])
         fs (int): Sampling frequency of signal
+
     Returns:
-        features (dict): feature dictionary of EOG signal"""
+        features (dict): feature dictionary of EOG signal
+    
+    Example:
+        >>> features = extract_eog_features(eog_signal, fs)
+        
+    """
     
     eog_signal_L = eog_signal[0]
     eog_signal_R = eog_signal[1]
@@ -638,11 +721,6 @@ def extract_eog_features(eog_signal, fs): # TODO: Make sure that there is a 2D a
         'REM_peaks': num_peaks
     }
 
-    # TODO: Students should add:
-    # - Eye movement detection features
-    # - Rapid vs slow movement discrimination
-    # - Cross-channel correlations (left vs right eye)
-
     return features
 
 
@@ -654,6 +732,15 @@ def extract_emg_features(emg_signal: np.ndarray, fs: int, bands: dict)->dict:
     - Muscle tone levels (high in wake, low in REM)
     - Muscle twitches and artifacts
     - Sleep-related muscle activity
+
+    Args:
+        emg_signal (np.ndarray): A 1D array representing one epoch of EMG
+        fs (int): Sampling frequency of the signal.
+        bands (dict): Dictionary defining frequency bands.
+    Returns:
+        dict: A dictionary containing the extracted EMG features.
+    Example:
+        >>> features = extract_emg_features(emg_signal, fs, bands)
     """
     fmin_total = bands['delta'][0]
     fmax_total = bands['beta'][1]
@@ -703,8 +790,12 @@ def _process_epoch(epoch_data: dict, channel_info: dict, config: dict) -> list:
                           - 'emg': shape (n_samples,)
         channel_info (dict): Channel information (e.g., 'eeg_fs').
         config: Config object or proxy with necessary parameters.
+
     Returns:
         epoch_features (list): List of extracted features for the epoch.
+
+    Example:
+        >>> epoch_features = _process_epoch(epoch_data, channel_info, config)
     """
     epoch_features = []
     eeg_data = epoch_data['eeg']  # shape: (n_channels, n_samples)
@@ -735,11 +826,6 @@ def _process_epoch(epoch_data: dict, channel_info: dict, config: dict) -> list:
         eog_features = extract_eog_features(eog_signal=eog_data, fs = channel_info['eog_fs'])
         epoch_features.extend(list(eog_features.values()))
 
-        '''for ch in range(eog_data.shape[0]):
-            eog_signal = eog_data[ch, :]
-            eog_features = extract_eog_features(eog_signal)
-            epoch_features.extend(list(eog_features.values()))
-'''
         # Add EMG features (1 channel)
         emg_signal = epoch_data['emg'][0, :]
         emg_features = extract_emg_features(emg_signal, channel_info['emg_fs'], config.EEG_BANDS)
@@ -751,6 +837,15 @@ def _process_epoch(epoch_data: dict, channel_info: dict, config: dict) -> list:
 def get_feature_names(multi_channel_data: dict, channel_info: dict, config: dict) -> list:
     """
     Get the feature names for the current iteration.
+    Args:
+        multi_channel_data (dict): Dictionary with keys 'eeg', 'eog', 'emg'.
+        channel_info (dict): Channel information (e.g., 'eeg_fs').
+        config: Config object or proxy with necessary parameters.
+    Returns:
+        feature_names (list): List of feature names.
+        
+    Example:
+        >>> feature_names = get_feature_names(multi_channel_data, channel_info, config)
     """
     feature_names = []
     if config.CURRENT_ITERATION == 1:

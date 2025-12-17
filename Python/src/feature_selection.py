@@ -32,6 +32,8 @@ def select_features(features, labels, config):
 
     Returns:
         np.ndarray: The selected features (n_samples, n_selected_features).
+    Example:
+        >>> selected_features, selected_indices = select_features(features, labels, config)
     """
     print(f"Selecting features for iteration {config.CURRENT_ITERATION}...")
     print(f"Input features shape: {features.shape}")
@@ -51,7 +53,7 @@ def select_features(features, labels, config):
         
     elif config.CURRENT_ITERATION == 3:
         selected_features = features
-        selected_features, selected_mask = variance_threshold_selector(features,threshold=0.1)
+        selected_features, selected_mask = _variance_threshold_selector(features,threshold=0.1)
         selected_indices = selected_indices[selected_mask]
         selected_features, selected_mask = _select_features_correlation(selected_features)
         selected_indices = selected_indices[selected_mask]
@@ -64,7 +66,7 @@ def select_features(features, labels, config):
         selected_features = features
         
         # Step 1: Remove low variance features
-        selected_features, selected_mask = variance_threshold_selector(selected_features, threshold=0.1)
+        selected_features, selected_mask = _variance_threshold_selector(selected_features, threshold=0.1)
         selected_indices = selected_indices[selected_mask]
         
         # Step 2: Remove highly correlated features
@@ -90,20 +92,33 @@ def select_features(features, labels, config):
     return selected_features, selected_indices
 
 
-def variance_threshold_selector(features, threshold=0.0):
+def _variance_threshold_selector(features, threshold=0.0):
     """
-    Select features based on variance threshold.
+    Selects features based on a variance threshold strategy.
+
+    This function operates in two modes:
+    1. If threshold <= 0: Removes constant features (variance == 0).
+    2. If threshold > 0: Removes the bottom N% of features based on variance ranking,
+       where N is determined by (threshold * 100).
 
     Args:
-        features (np.ndarray): The input features (n_samples, n_features).
-        threshold (float): The variance threshold.
+        features (np.ndarray): The input features array of shape (n_samples, n_features).
+        threshold (float): The threshold for selection.
+            - If <= 0.0, removes features with 0 variance.
+            - If > 0.0, represents a percentile rank (0.0 to 1.0) to exclude.
+              For example, 0.1 removes the bottom 10% of features with the lowest variance.
 
     Returns:
-        np.ndarray: The selected features (n_samples, n_selected_features).
+        tuple: A tuple containing:
+            - selected_features (np.ndarray): The transformed feature subset of shape (n_samples, n_selected_features).
+            - support_mask (np.ndarray): A boolean mask indicating which features were retained.
 
     Example:
-        selected_features = variance_threshold_selector(features, threshold=0.1)
+        >>> # Remove bottom 20% of features by variance
+        >>> features_subset, mask = _variance_threshold_selector(X, threshold=0.2)
     """
+
+
     max_variance = np.var(features, axis=0).max()
     min_variance = np.var(features, axis=0).min()
     print(f"Feature variance range: [{min_variance:.4f}, {max_variance:.4f}]")
@@ -132,6 +147,12 @@ def _select_features_correlation(features: np.ndarray) -> np.ndarray:
     correlation (above 0.95).
     Args: 
         features (np.ndarray): The input features (n_samples, n_features).
+    
+    Returns:
+        np.ndarray: The selected features (n_samples, n_selected_features).
+
+    Example:
+        >>> selected_features = _select_features_correlation(features)
     """
     df = pd.DataFrame(features)
     corr_matrix = df.corr(method='pearson', min_periods=1).abs()
@@ -160,6 +181,9 @@ def _select_features_mutual_information(features: np.ndarray, labels: np.ndarray
         k (int): The number of top features to select.
     Returns:
         np.ndarray: The selected features (n_samples, n_selected_features).
+    
+    Example:
+        >>> selected_features = _select_features_mutual_information(features, labels, k)
     """
     k = min(k, features.shape[1])
     print(f"\nUsing Mutual Information to select top {k} features...")
