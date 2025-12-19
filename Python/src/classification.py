@@ -4,15 +4,23 @@ from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import LeaveOneGroupOut,GridSearchCV
 from sklearn.metrics import accuracy_score, confusion_matrix, cohen_kappa_score
-from sklearn.metrics import precision_recall_fscore_support, roc_auc_score
+from sklearn.metrics import precision_recall_fscore_support, roc_auc_score, make_scorer, f1_score
 from sklearn.preprocessing import StandardScaler
 import pandas as pd
 from imblearn.over_sampling import SMOTE
+from imblearn.pipeline import Pipeline as ImbPipeline
 from src.utils import calculate_sleep_metrics
 
 
 def _get_model_from_config(classifier_type: str) -> object:
-    """Get model instance based on config CLASSIFIER_TYPE"""
+    """Get model instance based on config CLASSIFIER_TYPE
+    Args:
+        classifier_type (str): Type of classifier ('knn', 'svm', 'random_forest')
+    Returns:
+        object: An instance of the specified classifier.
+    Example:
+        >>> model = _get_model_from_config('svm')
+    """
     if classifier_type == 'knn':
         return KNeighborsClassifier()
     
@@ -31,7 +39,7 @@ def _get_model_from_config(classifier_type: str) -> object:
         raise ValueError(f"Unknown classifier type: {classifier_type}")
 
 
-def hyperparameter_optimization(base_model, X_train, y_train, grid_params):
+def hyperparameter_optimization(base_model, X_train, y_train, grid_params, config=None):
     """
     Function to search for the optimal parameters in a hyperparameter space
 
@@ -39,45 +47,69 @@ def hyperparameter_optimization(base_model, X_train, y_train, grid_params):
         base_model (model): Previously defined sklearn SVM, RandomForest, or KNN model
         X_train (np.ndarray[float]): Array of training set variables
         y_train (np.ndarray[int]): Array of training set classes
-        config (dict): Config for repository.
+        grid_params (dict): Grid search parameters
+        config (module, optional): Configuration module to check iteration
+        use_smote (bool): Whether to use SMOTE in the pipeline
+    
+    Returns:
+        tuple: (best_score, best_params)
     """
     
-    # CRITICAL: Scale features before hyperparameter optimization
-    # This ensures grid search evaluates models on properly scaled data
-    scaler = StandardScaler()
-    X_train_scaled = scaler.fit_transform(X_train)
-
-    # Perform grid search on scaled features
-    gs = GridSearchCV(base_model, grid_params, verbose=1, cv=3, n_jobs=-1)
-    g_res = gs.fit(X_train_scaled, y_train)
+    # Determine if SMOTE should be used
+    if config is not None and (config.CURRENT_ITERATION == 1):
+        use_smote = True
+    else:
+        use_smote = False
+    
+    # Create pipeline: StandardScaler -> (SMOTE) -> Model
+    # This ensures SMOTE is applied within each CV fold, avoiding data leakage
+    steps = [('scaler', StandardScaler())]
+    
+    if use_smote:
+        steps.append(('smote', SMOTE(random_state=42, k_neighbors=3)))
+    
+    steps.append(('classifier', base_model))
+    pipeline = ImbPipeline(steps)
+    
+    # Adjust grid_params keys to include pipeline step prefix
+    # For example, 'n_estimators' becomes 'classifier__n_estimators'
+    pipeline_grid_params = {}
+    for key, value in grid_params.items():
+        pipeline_grid_params[f'classifier__{key}'] = value
+    
+    # Perform grid search with pipeline
+    # Use macro F1 as scoring metric for better class balance handling
+    f1_macro_scorer = make_scorer(f1_score, average='macro')
+    gs = GridSearchCV(pipeline, pipeline_grid_params, scoring=f1_macro_scorer, verbose=1, cv=3, n_jobs=-1)
+    g_res = gs.fit(X_train, y_train)
 
     # find the best score
     best_score = g_res.best_score_
 
-    # Get dictionary of best params
-    best_params = g_res.best_params_
+    # Get dictionary of best params (remove 'classifier__' prefix for consistency)
+    best_params = {}
+    for key, value in g_res.best_params_.items():
+        if key.startswith('classifier__'):
+            best_params[key.replace('classifier__', '')] = value
+        else:
+            best_params[key] = value
+    
     return(best_score, best_params)
 
 
 def train_classifier(features, labels, record_ids, config):
-    """
-    STUDENT IMPLEMENTATION AREA: Train classifier based on iteration.
-
-    This function provides a basic framework but students should enhance it:
-
-    1. Implement proper cross-validation (not just train/test split)
-    2. Address class imbalance in sleep stage data
-    3. Tune hyperparameters for each classifier
-    4. Add more sophisticated evaluation metrics
-    5. Consider ensemble methods in later iterations
+    """Train classifier based on iteration.
 
     Args:
         features (np.ndarray): The input features.
         labels (np.ndarray): The corresponding labels.
         config (module): The configuration module.
-
     Returns:
-        object: The trained classifier.
+        dict: A dictionary containing the trained model and scaler.
+    
+    Example:
+        >>> model = train_classifier(features, labels, record_ids, config)
+    
     """
   
     print(f"Training {config.CLASSIFIER_TYPE} classifier...")
@@ -95,6 +127,19 @@ def train_classifier(features, labels, record_ids, config):
 
 # TODO: Statistical comparison between iterations (t-test on kappa scores)
 def _LOSO_split_training(features: np.ndarray, labels: np.ndarray, record_ids: np.ndarray, config: dict) -> dict:
+    """
+    Train and evaluate the model using Leave-One-Subject-Out (LOSO) cross-validation.
+    Args:
+        features (np.ndarray): The input features (n_samples, n_features).
+        labels (np.ndarray): The corresponding labels (n_samples,).
+        record_ids (np.ndarray): The record IDs indicating subject membership (n_samples,).
+        config (module): The configuration module.
+    Returns:
+        dict: A dictionary containing the trained model, scaler, and aggregated predictions.
+    Example:
+        >>> model = _LOSO_split_training(features, labels, record_ids, config)
+    """
+    
     # Create LOSO cross-validation split
     logo = LeaveOneGroupOut()
     loso_results = []
@@ -102,17 +147,16 @@ def _LOSO_split_training(features: np.ndarray, labels: np.ndarray, record_ids: n
     all_y_pred = []
     scaler = StandardScaler()
 
-    if config.CURRENT_ITERATION == 1:
-        # - Sleep stages are not equally distributed
-        smote = SMOTE(random_state=42)
-        X_full, y_full = smote.fit_resample(features, labels)
-    else:
-        X_full, y_full = features, labels
+    # Note: SMOTE is applied within each fold AFTER standardization
+    # This ensures proper cross-validation without data leakage
+    # For hyperparameter optimization, we use original features (standardization happens inside)
+    X_full, y_full = features, labels
     
     model = _get_model_from_config(config.CLASSIFIER_TYPE)
     if config.USE_HYPERPARAM_OPTIMAZATION:
-        # Hyperparameter optimization and model creation
-        _, best_params = hyperparameter_optimization(model, X_full, y_full, config.GRID_PARAMS)
+        # Hyperparameter optimization (uses Pipeline with StandardScaler and SMOTE inside)
+        # SMOTE is applied within each CV fold to match the training pipeline
+        _, best_params = hyperparameter_optimization(model, X_full, y_full, config.GRID_PARAMS, config=config)
         # Create fresh model instance with best parameters for each fold
         model.set_params(**best_params)
         print(f"Model instance ID: {id(model)}, Params: {best_params}")
@@ -131,7 +175,8 @@ def _LOSO_split_training(features: np.ndarray, labels: np.ndarray, record_ids: n
         # - Sleep stages are not equally distributed
         # Sleep stages are naturally imbalanced (more N2, less N1/REM)
         if config.CURRENT_ITERATION == 1:
-            X_train, y_train = smote.fit_resample(X_train, y_train)
+            smote_fold = SMOTE(random_state=42, k_neighbors=3)
+            X_train, y_train = smote_fold.fit_resample(X_train, y_train)
         
         # Which subject is held out in this fold?
         train_subjects = np.unique(record_ids[train_idx])
@@ -161,16 +206,32 @@ def _LOSO_split_training(features: np.ndarray, labels: np.ndarray, record_ids: n
     mean_macro_f1 = np.mean([r['macro_f1'] for r in loso_results])
     std_macro_f1 = np.std([r['macro_f1'] for r in loso_results])
 
+    # Calculate per-class accuracy across all folds
+    stage_names = ['Wake', 'N1', 'N2', 'N3', 'REM']
+    per_class_acc_mean, per_class_acc_std = _calculate_per_class_accuracy(
+        all_y_test, all_y_pred, loso_results
+    )
+
     print("\n" + "="*60)
     print(f"LOSO Cross-Validation Results ({len(loso_results)} subjects):")
     print(f"  Macro F1 = {mean_macro_f1:.1%} +/- {std_macro_f1:.1%}")
     print(f"  Accuracy = {mean_acc:.1%} +/- {std_acc:.1%}")
     print(f"  Kappa    = {mean_kappa:.3f} +/- {std_kappa:.3f}")
+    print("\n  Per-Class Accuracy (mean +/- std across folds):")
+    for i, stage_name in enumerate(stage_names):
+        if i < len(per_class_acc_mean) and not np.isnan(per_class_acc_mean[i]):
+            std_val = per_class_acc_std[i] if i < len(per_class_acc_std) else 0.0
+            print(f"    {stage_name:6s} = {per_class_acc_mean[i]:.1%} +/- {std_val:.1%}")
+        else:
+            print(f"    {stage_name:6s} = N/A (no samples)")
     print("="*60)
 
     # Train final model on all data with a scaler fitted on all training data
     final_scaler = StandardScaler()
     X_full_scaled = final_scaler.fit_transform(X_full)
+    if config.CURRENT_ITERATION == 1:
+        smote_fold = SMOTE(random_state=42, k_neighbors=3)
+        X_full_scaled, y_full = smote_fold.fit_resample(X_full_scaled, y_full)
     model.fit(X_full_scaled, y_full)
 
     return {
@@ -182,6 +243,18 @@ def _LOSO_split_training(features: np.ndarray, labels: np.ndarray, record_ids: n
    
 
 def _training_evaluation(y_true: np.ndarray, y_pred: np.ndarray, y_pred_proba: np.ndarray, record_ids: np.ndarray) -> dict:
+    """
+    Evaluate training results and print detailed report.
+    Args:
+        y_true (np.ndarray): True labels.
+        y_pred (np.ndarray): Predicted labels.
+        y_pred_proba (np.ndarray): Predicted probabilities for each class.
+        record_ids (np.ndarray): Record IDs for clinical plausibility check.
+    Returns:
+        dict: A dictionary containing evaluation metrics.
+    Example:
+        >>> results = _training_evaluation(y_true, y_pred, y_pred_proba, record_ids)
+    """
     # Calculate metrics for this subject
     stage_names = ['Wake', 'N1', 'N2', 'N3', 'REM']
     stage_labels = list(range(5))
@@ -249,6 +322,63 @@ def _training_evaluation(y_true: np.ndarray, y_pred: np.ndarray, y_pred_proba: n
     return result
 
 
+def _calculate_per_class_accuracy(all_y_test: np.ndarray, all_y_pred: np.ndarray, 
+                                   loso_results: list) -> tuple[list, list]:
+    """
+    Calculate per-class accuracy (recall) mean and standard deviation across all LOSO folds.
+    
+    Per-class accuracy for a stage = correctly predicted samples of that stage / total samples of that stage
+    This is equivalent to recall for each class.
+    
+    Args:
+        all_y_test (np.ndarray): Aggregated true labels from all folds
+        all_y_pred (np.ndarray): Aggregated predictions from all folds
+        loso_results (list): List of evaluation results from each fold
+    
+    Returns:
+        tuple: (per_class_acc_mean, per_class_acc_std) - Lists of mean and std for each class
+    """
+    stage_names = ['Wake', 'N1', 'N2', 'N3', 'REM']
+    n_classes = len(stage_names)
+
+    # Ensure inputs are numpy arrays for boolean operations
+    all_y_test = np.array(all_y_test)
+    all_y_pred = np.array(all_y_pred)
+
+    # Calculate overall per-class accuracy from aggregated predictions
+    per_class_accuracies = []
+    for stage_idx in range(n_classes):
+        # Find all samples of this stage
+        stage_mask = all_y_test == stage_idx
+        if np.sum(stage_mask) > 0:
+            # Calculate accuracy for this stage: correct predictions / total samples
+            stage_accuracy = np.sum((all_y_test == all_y_pred) & stage_mask) / np.sum(stage_mask)
+            per_class_accuracies.append(stage_accuracy)
+        else:
+            per_class_accuracies.append(np.nan)
+    
+    # Calculate per-class accuracy mean and std from each fold's recall
+    # (Recall is equivalent to per-class accuracy)
+    per_class_acc_mean = []
+    per_class_acc_std = []
+    for stage_idx in range(n_classes):
+        if len(loso_results) > 0 and 'recall' in loso_results[0]:
+            fold_recalls = [r['recall'][stage_idx] for r in loso_results 
+                          if 'recall' in r and stage_idx < len(r['recall'])]
+            if len(fold_recalls) > 0:
+                per_class_acc_mean.append(np.mean(fold_recalls))
+                per_class_acc_std.append(np.std(fold_recalls))
+            else:
+                per_class_acc_mean.append(np.nan)
+                per_class_acc_std.append(0.0)
+        else:
+            # Fallback: use overall accuracy from aggregated data
+            per_class_acc_mean.append(per_class_accuracies[stage_idx])
+            per_class_acc_std.append(0.0)
+    
+    return per_class_acc_mean, per_class_acc_std
+
+
 def _compute_auc(y_true: np.ndarray, y_pred_proba: np.ndarray) -> dict:
     """
     Compute per-class and macro ROC-AUC.
@@ -259,6 +389,9 @@ def _compute_auc(y_true: np.ndarray, y_pred_proba: np.ndarray) -> dict:
 
     Returns:
         dict: containing per-class and macro ROC-AUC scores
+    
+    Example:
+        >>> auc_results = _compute_auc(y_true, y_pred_proba)
     """
     # Translate to one-hot matrix
     n_classes = y_pred_proba.shape[1]
@@ -301,6 +434,17 @@ def _compute_auc(y_true: np.ndarray, y_pred_proba: np.ndarray) -> dict:
 
 
 def _compute_specificity(y_true: np.ndarray, y_pred: np.ndarray, stage_label: list) -> list:
+    """
+    Compute specificity (True Negative Rate) for each class.
+    Args:
+        y_true (np.ndarray): True labels.
+        y_pred (np.ndarray): Predicted labels.
+        stage_label (list): List of class labels.
+    Returns:
+        list: Specificity for each class.
+    Example:
+        >>> specificity = _compute_specificity(y_true, y_pred, stage_labels)
+    """
     specificity = []
     for i in range(len(stage_label)):
         tn = np.sum((y_true != i) & (y_pred != i))
@@ -311,6 +455,16 @@ def _compute_specificity(y_true: np.ndarray, y_pred: np.ndarray, stage_label: li
 
 
 def _print_confusion_matrix(y_true: np.ndarray, y_pred: np.ndarray, stage_names: list, stage_labels: list):
+    """
+    Print formatted confusion matrix.
+    Args:
+        y_true (np.ndarray): True labels.
+        y_pred (np.ndarray): Predicted labels.
+        stage_names (list): List of class names.
+        stage_labels (list): List of class labels.
+    Example:
+        >>> _print_confusion_matrix(y_true, y_pred, stage_names, stage_labels)
+    """
     print("\nConfusion Matrix:")
     cm = confusion_matrix(y_true, y_pred, labels=stage_labels) 
     # Create a formatted confusion matrix
@@ -319,6 +473,13 @@ def _print_confusion_matrix(y_true: np.ndarray, y_pred: np.ndarray, stage_names:
 
 
 def _print_sleep_stage_distribution(y_true: np.ndarray) -> None:
+    """
+    Print the distribution of sleep stages in the test set.
+    Args:
+        y_true (np.ndarray): True labels.
+    Example:
+        >>> _print_sleep_stage_distribution(y_true)
+    """
     print("\nClass Distribution in Test Set:")
     stage_names = ['Wake', 'N1', 'N2', 'N3', 'REM']
     unique, counts = np.unique(y_true, return_counts=True)
@@ -346,6 +507,8 @@ def _print_sleep_metrics_comparison_table(true_metrics: dict, pred_metrics: dict
     Args:
         true_metrics (dict): Ground truth sleep metrics
         pred_metrics (dict): Predicted sleep metrics
+    Example:
+        >>> _print_sleep_metrics_comparison_table(true_metrics, pred_metrics)
     """
     # Define metric display names and units
     metric_info = {
@@ -446,6 +609,8 @@ def _compare_sleep_metrics(y_true: np.ndarray, y_pred: np.ndarray, record_ids: n
         
     Returns:
         dict: Comparison results for each record
+    Example:
+        >>> results = _compare_sleep_metrics(y_true, y_pred, record_ids)
     """
     if record_ids is None:
         # Overall comparison

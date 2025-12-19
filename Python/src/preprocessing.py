@@ -227,20 +227,18 @@ def preprocess_eeg_channel(eeg_data,channel_info, config):
     for ch in range(eeg_data.shape[1]):
         print(f"Processing EEG channel {ch+1}")
         nepochs = eeg_data.shape[0]
-        signal = eeg_data[:, ch, :].flatten()
+        signal = eeg_data[:, ch, :].flatten()  
         # Apply EEG-specific preprocessing
         filtered_signal = highpass_filter(signal, config.HIGHPASS_FILTER_FREQ,eeg_fs)
         filtered_signal = notch_filter(filtered_signal, config.NOTCH_FILTER_FREQ, config.NOTCH_FILTER_Q, eeg_fs)
         filtered_signal = bandpass_filter(filtered_signal, config.BANDPASS_FILTER_LOWER_FREQ, config.BANDPASS_FILTER_HIGHER_FREQ, eeg_fs, config.BANDPASS_FILTER_ORDER)
         
         # FFT visualization
-        y_range_signal = [-0.0002, 0.0002]
+        
         fig, axes = plt.subplots(2, 2, figsize=(8, 6))
         visualize_signal(signal[0:3750], eeg_fs, ax=axes[0,0], title=f"EEG Channel {ch+1} - Original Signal")
-        axes[0,0].set_ylim(y_range_signal)
         visualize_fft(signal, eeg_fs, ax=axes[1,0], title=f"EEG Channel {ch+1} - Original Signal FFT")
         visualize_signal(filtered_signal[0:3750], eeg_fs, ax=axes[0,1], title=f"EEG Channel {ch+1} - Filtered Signal")
-        axes[0,1].set_ylim(y_range_signal)
         visualize_fft(filtered_signal, eeg_fs, ax=axes[1,1], title=f"EEG Channel {ch+1} - Filtered Signal FFT")
         plt.tight_layout()
         fig.savefig(os.path.join(config.FIGURES_PREPROCESSING_DIR, f"EEG_filtering_channel_{ch+1}.png"))
@@ -271,18 +269,15 @@ def preprocess_eog_channel(eog_data,channel_info, config):
     for ch in range(eog_data.shape[1]):
         print(f"Processing EOG channel {ch+1}")
         nepochs = eog_data.shape[0]
-        signal = eog_data[:, ch, :].flatten()
+        signal = eog_data[:, ch, :].flatten() 
         # Apply EOG-specific preprocessing
         filtered_signal = bandpass_filter(signal, config.EOG_BANDPASS_FILTER_LOWER_FREQ, config.EOG_BANDPASS_FILTER_HIGHER_FREQ, eog_fs, config.EOG_BANDPASS_FILTER_ORDER)
         
         # FFT visualization
-        y_range_signal = [-0.0002, 0.0002]
         fig, axes = plt.subplots(2, 2, figsize=(8, 6))
         visualize_signal(signal[0:3750], eog_fs, ax=axes[0,0], title=f"EOG Channel {ch+1} - Original Signal")
-        axes[0,0].set_ylim(y_range_signal)
         visualize_fft(signal, eog_fs, ax=axes[1,0], title=f"EOG Channel {ch+1} - Original Signal FFT")
         visualize_signal(filtered_signal[0:3750], eog_fs, ax=axes[0,1], title=f"EOG Channel {ch+1} - Filtered Signal")
-        axes[0,1].set_ylim(y_range_signal)
         visualize_fft(filtered_signal, eog_fs, ax=axes[1,1], title=f"EOG Channel {ch+1} - Filtered Signal FFT")
         plt.tight_layout()
         fig.savefig(os.path.join(config.FIGURES_PREPROCESSING_DIR, f"EOG_filtering_channel_{ch+1}.png"))
@@ -312,19 +307,16 @@ def preprocess_emg_channel(emg_data,channel_info, config):
 
     print(f"Processing EMG")
     nepochs = emg_data.shape[0]
-    signal = emg_data[:, 0, :].flatten()
+    signal = emg_data[:, 0, :].flatten()  
     # Apply EMG-specific preprocessing
     filtered_signal = highpass_filter(signal, config.EMG_HIGHPASS_FILTER_FREQ, emg_fs)
-    filtered_signal = lowpass_filter(filtered_signal, config.EMG_LOWPASS_FILTER_FREQ, emg_fs)
-   
+    filtered_signal = notch_filter(filtered_signal, config.EMG_NOTCH_FILTER_FREQ, config.NOTCH_FILTER_Q, emg_fs)
+
     # FFT visualization
-    y_range_signal = [-0.0002, 0.0002]
     fig, axes = plt.subplots(2, 2, figsize=(8, 6))
     visualize_signal(signal[0:3750], emg_fs, ax=axes[0,0], title=f"EMG - Original Signal")
-    axes[0,0].set_ylim(y_range_signal)
     visualize_fft(signal, emg_fs, ax=axes[1,0], title=f"EMG - Original Signal FFT")
     visualize_signal(filtered_signal[0:3750], emg_fs, ax=axes[0,1], title=f"EMG - Filtered Signal")
-    axes[0,1].set_ylim(y_range_signal)
     visualize_fft(filtered_signal, emg_fs, ax=axes[1,1], title=f"EMG - Filtered Signal FFT")
     plt.tight_layout()
     fig.savefig(os.path.join(config.FIGURES_PREPROCESSING_DIR, f"EMG_filtering_channel.png"))
@@ -343,6 +335,9 @@ def remove_eog_artifacts(eeg_data, eog_data):
 
     Returns:
         np.ndarray: Cleaned EEG data.
+        
+    Example:
+        >>> cleaned_eeg = remove_eog_artifacts(eeg_data, eog_data)
     """
     n_epochs, n_eeg_ch, _= eeg_data.shape
     
@@ -373,12 +368,15 @@ def remove_emg_artifacts(eeg_data, emg_data, fs):
     If EMG power is high, apply a stricter low-pass filter to EEG.
 
     Args:
-        eeg_data (np.ndarray): (n_epochs, n_channels, n_samples)
+        eeg_data np.ndarray): (n_epochs, n_channels, n_samples)
         emg_data (np.ndarray): (n_epochs, 1, n_samples)
         fs (int): EEG sampling frequency
 
     Returns:
         np.ndarray: cleaned EEG data
+    Example:
+        >>> cleaned_eeg = remove_emg_artifacts(eeg_data, emg_data, fs)
+
     """
     cleaned_eeg = np.copy(eeg_data)
     n_epochs = eeg_data.shape[0]
@@ -389,7 +387,7 @@ def remove_emg_artifacts(eeg_data, emg_data, fs):
     # Determine Threshold (Mean + 1 STD of the dataset's EMG activity)
     threshold = np.mean(emg_rms) + np.std(emg_rms)
     
-    print(f"EMG Adaptive Filter: Threshold set at {threshold:.4f} uV")
+    print(f"EMG Adaptive Filter: Threshold set at {threshold*1e6:.4f} uV")
     count_affected = 0
 
     for i in range(n_epochs):
