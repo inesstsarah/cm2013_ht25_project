@@ -12,7 +12,7 @@ PARALLEL_N_JOBS = -1  # Number of parallel jobs (-1 uses all available cores)
 # -- File Paths --
 import os
 DATA_DIR = '../data/'
-SAMPLE_DIR = '../old_data/' # use this because there is currently no sample directory
+SAMPLE_DIR = '../data/' # use this because there is currently no sample directory
 TRAINING_DIR = f'{DATA_DIR}training/'
 HOLDOUT_DIR = f'{DATA_DIR}holdout/'
 SAMPLE_DIR = f'{DATA_DIR}sample/'
