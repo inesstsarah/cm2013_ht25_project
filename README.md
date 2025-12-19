@@ -31,7 +31,7 @@ python main.py
 
 ````
 
-To run inference on holdout files, first make sure that all holdout files are in the data/holdout/ folder. Then run the following commands.
+To run inference on holdout files, first make sure that all holdout files are in the data/holdout/ folder and a model form training have been saved. Then run the following commands.
 ````
 
 cd Python
